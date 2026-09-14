@@ -1,0 +1,9 @@
+# Example only: provisioning the tunnel, credentials, and DNS is still required.
+# Run cloudflared on the Compose network for the service address below.
+tunnel: YOUR_TUNNEL_UUID
+credentials-file: /run/secrets/cloudflare_credentials.json
+ingress:
+  - hostname: suite.example.com
+    service: http://gateway:8080
+  - service: http_status:404
+# For a host-run connector, use http://127.0.0.1:58888 instead.

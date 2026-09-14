@@ -1,0 +1,194 @@
+name: ${COMPOSE_PROJECT_NAME:-looski-suite}
+
+x-logging: &logging
+  driver: local
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  db:
+    image: supabase/postgres:17.6.1.136
+    restart: unless-stopped
+    logging: *logging
+    entrypoint: ["/bin/sh", "/opt/looski/db-entrypoint.sh"]
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_statement=none"]
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: "5432"
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: postgres
+      JWT_EXP: "3600"
+    secrets: [db_password, runtime_password]
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - db-config:/etc/postgresql-custom
+      - ./infra/db/entrypoint.sh:/opt/looski/db-entrypoint.sh:ro
+      - ./infra/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+      - ./infra/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:ro
+      - ./infra/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:ro
+      - ./infra/db/runtime-role.sql:/docker-entrypoint-initdb.d/init-scripts/99-runtime-role.sql:ro
+      - ./infra/db/ready.sql:/docker-entrypoint-initdb.d/zz-looski-ready.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /var/lib/postgresql/data/.looski-bootstrap-complete && pg_isready -U postgres -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  auth:
+    build:
+      context: .
+      dockerfile: infra/auth/Dockerfile
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      db: { condition: service_healthy }
+    entrypoint: ["/bin/sh", "/opt/looski/auth-entrypoint.sh"]
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1
+      GOTRUE_SITE_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
+      GOTRUE_URI_ALLOW_LIST: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/confirm
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_JWT_ISSUER: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+    secrets: [db_password, jwt_secret]
+    volumes:
+      - ./infra/auth/entrypoint.sh:/opt/looski/auth-entrypoint.sh:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:9999/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  supabase-gateway:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      auth: { condition: service_healthy }
+    volumes:
+      - ./infra/gateway/supabase.Caddyfile:/etc/caddy/Caddyfile:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8000/auth/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/migrator/Dockerfile
+    restart: "no"
+    logging: *logging
+    environment:
+      # Local Compose database only. Hosted targets must use verified TLS.
+      PGSSLMODE: disable
+    depends_on:
+      db: { condition: service_healthy }
+      auth: { condition: service_healthy }
+    secrets: [migration_url]
+    volumes:
+      - ./supabase:/work/supabase:ro
+      - migration-lock:/locks
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.api
+    restart: unless-stopped
+    logging: *logging
+    command: ["api", "--bind", "0.0.0.0:8080"]
+    environment:
+      LOOSKI_DATABASE_URL_FILE: /run/secrets/database_url
+      LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
+      RUST_LOG: info
+    secrets: [database_url]
+    tmpfs:
+      - /run/looski:size=64k,mode=0755
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      auth: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "4", "http://127.0.0.1:8080/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.web
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      ORIGIN: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
+      LOOSKI_API_INTERNAL_URL: http://api:8080
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  gateway:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    logging: *logging
+    ports:
+      - "127.0.0.1:${LOOSKI_HTTP_PORT:-58888}:8080"
+    environment:
+      LOOSKI_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
+    depends_on:
+      web: { condition: service_healthy }
+      supabase-gateway: { condition: service_healthy }
+    volumes:
+      - ./infra/gateway/Caddyfile:/etc/caddy/Caddyfile:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Packaged independently; log ingestion/retention is the next observability probe.
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8.4.13
+    restart: unless-stopped
+    logging: *logging
+    profiles: [observability]
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./infra/clickhouse/users.xml:/etc/clickhouse-server/users.d/looski.xml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+secrets:
+  db_password:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/secrets/db_password
+  runtime_password:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/secrets/runtime_password
+  jwt_secret:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/secrets/jwt_secret
+  migration_url:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/secrets/migration_url
+  database_url:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/secrets/database_url
+
+volumes:
+  db-data:
+  db-config:
+  migration-lock:
+  clickhouse-data:

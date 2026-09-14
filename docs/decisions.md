@@ -35,13 +35,19 @@ This register records accepted direction and unresolved choices as of October 4,
 | First eight applications are the initial roadmap; later seventeen are an ordered expansion backlog | Establish concrete business workflows before building general-purpose application builders. | [Roadmap](roadmap.md) |
 | Five-minute setup and one-day builds are goals requiring evidence | Measure installation and disclose foundation reuse and supported replacement scope. | [Product intent](../intent.md) |
 
+## Initial scaffold implementation choices
+
+The first development scaffold uses Caddy 2.10.2 for routing, SvelteKit's Node adapter, `openapi-typescript` 7.13.0 plus `openapi-fetch` 0.17.0, and the official Rust MCP SDK (`rmcp` 3.5.0). These choices support the current metadata/health slice; authenticated CLI/MCP credential UX and business contract validation remain open. See [scaffold evidence](scaffold-status.md) for versions, checks, and limitations.
+
+The local Auth-only bundle retains official Supabase PostgreSQL/Auth bootstrap dependencies and omits Studio, Data API, Storage, Realtime, and Edge Functions. Its small internal gateway uses Caddy instead of importing the full upstream Envoy service graph. Runtime secret loading occurs before dropping privileges, to support both Linux file-backed secrets and Docker Desktop. Migration CLI connections explicitly set `PGSSLMODE=disable` only for the private local database; hosted mode will require a separate verified-TLS configuration.
+
 ## Open choices and required evidence
 
 | Choice | Current direction | Resolve with |
 | --- | --- | --- |
 | Future external OAuth integration (deferred beyond phases 0 and 1) | Preserve the authorization boundary now; evaluate Supabase OAuth server when implementing delegated access. | Pinned local/hosted support, client registration, consent/grant binding, API permission limits, refresh, revocation, and issuer-specific discovery. Custom scopes and client credentials are not currently supported upstream. |
 | CLI/MCP transport and credential UX | Propose CLI and local stdio MCP as authenticated API clients initially; remote OAuth MCP later. | Login/refresh/secure storage, installation/workspace selection, MCP SDK/version, structured errors/results, and capability coverage. |
-| TypeScript client tooling and API validation | Axum, SQLx, `utoipa`, and `utoipa-axum` selected. | Select the TypeScript generator; validate success/error schemas, security metadata, stable operation names, and a CI drift check. |
+| TypeScript client tooling and API validation | Axum, SQLx, `utoipa`, and `utoipa-axum` selected. | The scaffold selects openapi-typescript/openapi-fetch and checks drift. Complete authenticated success/error contracts and security metadata with the first business journey. |
 | PGMQ packaging and execution behavior | PGMQ selected in the same PostgreSQL database as business records. | Local/hosted extension compatibility, SQLx atomic enqueue, idempotency, leases, retry/crash tests, backup and restore. |
 | Setup ports, routing, and dependency readiness | Local gateway port 58888 selected; private service DNS ports, explicit health/migration gates, and tunnel-to-gateway routing remain proposed. | Validate the [setup contract](setup-contract.md), gateway implementation, configuration generation, tunnel provisioning, conflicts, and two simultaneous installations. |
 | Exact local Supabase service set | Start from official Compose configuration with pinned upstream images and standard Auth schema; validate removal of unused services. | Supported dependencies, migrations, upgrades, health checks, measured Apple Silicon footprint. |

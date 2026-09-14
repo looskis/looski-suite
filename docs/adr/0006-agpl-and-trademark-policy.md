@@ -13,7 +13,7 @@ AGPL does not require contributing changes upstream or publishing customer data 
 
 The accepted trade-off is that compliant commercial competitors remain allowed. Strong copyleft preserves users' rights to covered software and modifications; it does not prohibit vendors from earning money. The separate trademark policy should address misleading claims of affiliation or official status while respecting lawful references to the software. Trademark rights must not be presented as a blanket ban on compliant resale or hosting.
 
-Before publishing code, add the standard AGPLv3 license file and appropriate source notices, provide the required corresponding-source access, document dependency licenses, and finalize the trademark policy. This ADR records the decision; it does not itself install the license text or finalize trademark terms.
+The initial scaffold includes the standard AGPLv3 license file and source/upstream notices. Before publishing a release, provide the required corresponding-source access, complete dependency-license review, and finalize the trademark policy. This ADR records the decision; it does not itself finalize trademark terms.
 
 ## Decision history
 

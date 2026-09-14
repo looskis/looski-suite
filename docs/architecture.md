@@ -1,6 +1,6 @@
 # Suite architecture
 
-This document defines the accepted architecture and labels recommendations that still require validation. It describes planned behavior, not an implemented system. Product scope lives in [intent.md](../intent.md), terms in [CONTEXT.md](../CONTEXT.md), rationale in [decisions.md](decisions.md), and implementation gates in [build-plan.md](build-plan.md).
+This document defines the accepted architecture and labels recommendations that still require validation. It describes the target behavior; [scaffold evidence](scaffold-status.md) distinguishes the initial implementation from remaining work. Product scope lives in [intent.md](../intent.md), terms in [CONTEXT.md](../CONTEXT.md), rationale in [decisions.md](decisions.md), and implementation gates in [build-plan.md](build-plan.md).
 
 The suite is a modular monolith with selectable applications, shared business identities, and built-in workflows. One installation packages the business backend, frontend runtime, database, authentication, and operational support. Applications remain independently useful while optional connections compose them into a business system.
 
@@ -42,7 +42,7 @@ The Rust requirement applies to our business backend. Supabase Auth is an existi
 - Configurable SMTP delivery for invitations, account recovery, and magic-link login.
 - Cloudflare Tunnel for configured public HTTPS hostnames routed to local service ports.
 
-Supabase's self-hosted distribution is a collection of Docker services managed with Compose, not one all-in-one Supabase image. Use pinned upstream images and the official configuration as the starting point, retain the standard Supabase-managed `auth` schema, and validate any removal of unused services and dependencies. We have not yet validated the exact service set, migrations, Apple Silicon compatibility, or resource usage. See the [official Docker deployment guide](https://supabase.com/docs/guides/self-hosting/docker).
+Supabase's self-hosted distribution is a collection of Docker services managed with Compose, not one all-in-one Supabase image. Use pinned upstream images and the official configuration as the starting point, retain the standard Supabase-managed `auth` schema, and validate any removal of unused services and dependencies. The initial Auth-only subset is described in [scaffold evidence](scaffold-status.md); full login behavior, upgrades, and resource baselines remain validation gates. See the [official Docker deployment guide](https://supabase.com/docs/guides/self-hosting/docker).
 
 Docker and Compose are accepted local deployment dependencies. The user accepts container runtime overhead; measure it as part of whole-stack performance rather than making a native rewrite a prerequisite. A custom native Supabase distribution, the experimental native CLI runtime, and Apple Container orchestration are not phase 0 or phase 1 targets. Select and document a tested Docker environment on Apple Silicon during installation validation; this decision does not require a particular commercial desktop runtime or the entire Supabase service catalog.
 

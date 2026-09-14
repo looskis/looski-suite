@@ -1,0 +1,11 @@
+<clickhouse>
+  <users>
+    <default>
+      <!-- Until ingestion credentials exist, only in-container administration. -->
+      <networks replace="replace">
+        <ip>127.0.0.1</ip>
+        <ip>::1</ip>
+      </networks>
+    </default>
+  </users>
+</clickhouse>

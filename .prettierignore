@@ -1,0 +1,3 @@
+apps/web/.svelte-kit
+apps/web/build
+apps/web/src/lib/api/schema.d.ts

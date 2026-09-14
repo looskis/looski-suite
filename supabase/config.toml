@@ -1,0 +1,5 @@
+# CLI project metadata only. compose.yaml owns the local runtime.
+project_id = "looski-suite"
+
+[db]
+major_version = 17

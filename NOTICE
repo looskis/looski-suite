@@ -1,0 +1,16 @@
+Looski Suite
+Copyright 2026 Looski Suite contributors
+
+Original software in this repository is licensed under GNU AGPL version 3 only.
+See LICENSE. Third-party components retain their own licenses.
+
+infra/db/roles.sql, infra/db/jwt.sql, and infra/db/webhooks.sql are adapted/copied from
+supabase/supabase, tag self-hosted/v0.8.2 (Apache-2.0).
+The upstream license is preserved at infra/db/SUPABASE-LICENSE.
+roles.sql additionally suppresses logging of password-setting statements.
+
+Supabase PostgreSQL and Auth, Caddy, ClickHouse, Rust, Node, and package dependencies
+are separate upstream distributions. Their images/packages include their notices.
+Dependency compatibility, corresponding-source delivery, and a separate trademark
+policy must be checked before publishing a release. This scaffold does not grant
+endorsement rights or impose restrictions on license-compliant commercial use.

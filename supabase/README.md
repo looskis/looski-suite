@@ -1,7 +1,9 @@
-# Suite database migrations
+# Supabase integration
 
-Put suite-owned PostgreSQL migrations in `migrations/<timestamp>_<description>.sql` and apply them with the pinned Supabase CLI to an explicitly selected database. SQLx is used for runtime data access, not as a second migration runner.
+`config.toml` identifies CLI migration workflows; `compose.yaml` owns the running local stack. Do not run `supabase start` alongside the suite Compose deployment.
 
-Supabase manages its own `auth` schema and bootstrap/upgrade scripts. Suite tables and migrations stay outside `auth`. Development seeds are separate from production migrations. ClickHouse setup is separate from this PostgreSQL history.
+Suite SQL lives in `migrations/<timestamp>_<description>.sql`. `make up` runs a fresh container with Supabase CLI 2.75.0 and an explicit private database target before releasing the API. SQLx does not run migrations. Create a new migration with the pinned CLI’s `supabase migration new <name>` command; never edit an applied migration. Migration-content drift enforcement and production upgrades remain pending.
 
-See the [setup contract](../docs/setup-contract.md) for migration targeting, Compose naming, service readiness, and proposed ports. No CLI configuration, SQL migrations, or deployment has been initialized yet.
+The first migration enables the image’s bundled PGMQ extension and creates `suite.schema_version`. There are no Contacts/CRM tables yet. The separate runtime login cannot administer the suite schema. Supabase’s image and Auth service own upstream roles, the standard `auth` schema, and its migrations; suite migrations must not change them.
+
+See the [setup contract](../docs/setup-contract.md), [scaffold evidence](../docs/scaffold-status.md), and [development commands](../README.md).

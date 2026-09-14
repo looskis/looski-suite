@@ -1,6 +1,6 @@
 # Installation and setup contract
 
-Status: accepted migration location/runner, `looski-suite` installation namespace, and default local gateway port `58888`; internal port defaults, routing layout, and setup workflow remain proposed, October 4, 2026. No Compose stack or installer has been implemented or validated. This document owns setup configuration and endpoint planning; the architecture owns application behavior and security requirements.
+Status: accepted migration location/runner, `looski-suite` installation namespace, and default local gateway port `58888`; internal port defaults, routing layout, and setup workflow remain proposed, October 4, 2026. The initial development Compose stack and setup wrapper are implemented; see [scaffold evidence](scaffold-status.md) for validated behavior and remaining gates. This document owns setup configuration and endpoint planning; the architecture owns application behavior and security requirements.
 
 ## Migration ownership
 
@@ -54,7 +54,7 @@ A bind conflict should fail with the conflicting setting and a suggested overrid
 
 ## Configuration sources
 
-The following describes files to implement; it is not a claim that they already exist.
+The scaffold now implements these core configuration sources. Cloudflare provisioning and hosted-mode overlays remain pending.
 
 | File or mechanism | Owns |
 | --- | --- |
@@ -112,7 +112,7 @@ See [Cloudflare ingress configuration](https://developers.cloudflare.com/tunnel/
 
 ## Proposed setup experience
 
-The future setup command should resolve one installation identity/configuration, check prerequisites and collisions, create secrets only for a new installation, render deployment configuration, start dependencies, apply pending migrations, verify health, and guide first-admin authentication. It must be safe to rerun without resetting storage, rotating identity keys unexpectedly, or reopening bootstrap access. Tunnel/domain and SMTP configuration should be explicit steps, with useful local setup possible before public routing is configured.
+The development `make up` command implements the initial configuration/health/migration sequence. First-admin setup, hosted mode, backup/recovery, and release-grade migration drift checks remain pending. The eventual supported installer must resolve one installation identity/configuration, check prerequisites and collisions, create secrets only for a new installation, render deployment configuration, start dependencies, apply pending migrations, verify health, and guide first-admin authentication. It must be safe to rerun without resetting storage, rotating identity keys unexpectedly, or reopening bootstrap access. Tunnel/domain and SMTP configuration should be explicit steps, with useful local setup possible before public routing is configured.
 
 Status/diagnostics should show the installation identity, release/schema versions, local/public URLs, service health, pending migrations, and configuration problems without printing secrets. Optional cleanup must target only this installation; removing persistent data is distinct from stopping services.
 

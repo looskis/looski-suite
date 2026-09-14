@@ -1,12 +1,12 @@
 # Build plan and acceptance gates
 
-This plan implements the agreed architecture and the first eight applications in [roadmap.md](roadmap.md). No application code or deployment has been validated in this workspace. All milestones below are pending as of October 4, 2026.
+This plan implements the agreed architecture and the first eight applications in [roadmap.md](roadmap.md). A development scaffold is now implemented; see [scaffold evidence](scaffold-status.md) for checks and limitations. The milestones below remain release gates, not completion claims.
 
 Build complete user journeys in small increments. Develop the shared foundation through the first CRM journey instead of spending months building a general platform. Later milestones add optional integrations while retaining standalone application behavior.
 
 ## Build readiness and first implementation slice
 
-Ready to begin the foundation and a small Contacts journey. The workspace currently contains planning documents only; no code, installation, or runtime checks have been completed. Remaining product decisions do not block scaffolding and integration probes, but they must be resolved before the behavior that depends on them is finalized.
+Ready to begin the foundation and a small Contacts journey. The workspace now includes the first scaffold, with its implementation and verification tracked in [scaffold evidence](scaffold-status.md). Remaining product decisions do not block scaffolding and integration probes, but they must be resolved before the behavior that depends on them is finalized.
 
 Recommended first implementation order:
 
