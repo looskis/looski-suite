@@ -33,6 +33,8 @@ assert json.loads(request('/api/v1/openapi.json')) == json.loads((ROOT / 'contra
 request('/auth/v1/health')
 for path in ['/auth/v1/admin/users', '/auth/v1/token', '/rest/v1/contacts', '/api/v1/contacts']:
     request(path, 404)
+request('/api/v1/workspaces', 401)
+assert 'Your business starts here.' in request('/login')
 
 binary = ROOT / 'target/debug/looski'
 status = subprocess.check_output([str(binary), 'status', '--api-url', base], text=True)
@@ -68,10 +70,17 @@ with tempfile.TemporaryFile() as errors:
         assert initialized['serverInfo']['name'] == 'looski-suite'
         assert initialized['serverInfo']['version'] == system['version']
         rpc('notifications/initialized')
-        assert [tool['name'] for tool in rpc('tools/list', {}, 2)['tools']] == ['system_status']
+        assert {tool['name'] for tool in rpc('tools/list', {}, 2)['tools']} == {'system_status', 'list_workspaces'}
         result = rpc('tools/call', {'name': 'system_status', 'arguments': {}}, 3)
         assert not result.get('isError')
         assert json.loads(result['content'][0]['text']) == system
+        access = rpc('tools/call', {'name': 'list_workspaces', 'arguments': {}}, 4)
+        if os.environ.get('LOOSKI_ACCESS_TOKEN_FILE'):
+            expected = subprocess.check_output([str(binary), 'workspaces', '--api-url', base], text=True)
+            assert not access.get('isError')
+            assert json.loads(access['content'][0]['text']) == json.loads(expected)
+        else:
+            assert access['isError']
     finally:
         process.stdin.close()
         try:

@@ -109,8 +109,10 @@ services:
     environment:
       LOOSKI_DATABASE_URL_FILE: /run/secrets/database_url
       LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
+      LOOSKI_AUTH_ISSUER: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1
+      LOOSKI_JWT_SECRET_FILE: /run/secrets/jwt_secret
       RUST_LOG: info
-    secrets: [database_url]
+    secrets: [database_url, jwt_secret]
     tmpfs:
       - /run/looski:size=64k,mode=0755
     depends_on:
@@ -133,6 +135,7 @@ services:
       PORT: "3000"
       ORIGIN: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
       LOOSKI_API_INTERNAL_URL: http://api:8080
+      LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
     depends_on:
       api: { condition: service_healthy }
     healthcheck:

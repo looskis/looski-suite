@@ -18,6 +18,15 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Provision the first owner locally; reads credentials as JSON from stdin.
+    BootstrapOwner,
+    /// List permitted workspaces using an access-token file.
+    Workspaces {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+    },
     /// Start the HTTP API. Requires the migrated development database.
     Api {
         #[arg(long, env = "LOOSKI_API_BIND", default_value = "127.0.0.1:58081")]
@@ -34,6 +43,8 @@ enum Command {
     Mcp {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: Option<std::path::PathBuf>,
     },
 }
 
@@ -52,8 +63,25 @@ async fn main() -> anyhow::Result<()> {
             let info = ApiClient::new(&api_url)?.system().await?;
             println!("{}", serde_json::to_string_pretty(&info)?);
         }
-        Command::Mcp { api_url } => {
-            McpServer::new(ApiClient::new(&api_url)?)
+        Command::Workspaces {
+            api_url,
+            token_file,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&client.workspaces().await?)?
+            );
+        }
+        Command::Mcp {
+            api_url,
+            token_file,
+        } => {
+            let mut client = ApiClient::new(&api_url)?;
+            if let Some(file) = token_file {
+                client = client.with_token_file(file);
+            }
+            McpServer::new(client)
                 .serve(rmcp::transport::stdio())
                 .await?
                 .waiting()
@@ -70,6 +98,10 @@ async fn main() -> anyhow::Result<()> {
                     .timeout(Duration::from_secs(2))
                     .build()?,
                 auth_url: std::env::var("LOOSKI_AUTH_INTERNAL_URL")?,
+                verifier: looski::identity::Verifier::new(
+                    read_jwt_secret()?.as_bytes(),
+                    std::env::var("LOOSKI_AUTH_ISSUER")?,
+                ),
             };
             let listener = tokio::net::TcpListener::bind(bind).await?;
             tracing::info!(%bind, "API listening");
@@ -77,8 +109,38 @@ async fn main() -> anyhow::Result<()> {
                 .with_graceful_shutdown(shutdown())
                 .await?;
         }
+        Command::BootstrapOwner => {
+            let input = serde_json::from_reader(std::io::stdin())?;
+            let database_url = std::fs::read_to_string(std::env::var("LOOSKI_DATABASE_URL_FILE")?)?;
+            let db = PgPoolOptions::new()
+                .max_connections(1)
+                .connect(database_url.trim())
+                .await?;
+            let http = reqwest::Client::builder()
+                .timeout(Duration::from_secs(10))
+                .build()?;
+            looski::bootstrap::provision(
+                &db,
+                &http,
+                &std::env::var("LOOSKI_AUTH_INTERNAL_URL")?,
+                &std::env::var("LOOSKI_AUTH_ISSUER")?,
+                read_jwt_secret()?.as_bytes(),
+                input,
+            )
+            .await?;
+            println!("Owner and workspace created. You can now sign in.");
+        }
     }
     Ok(())
+}
+
+fn read_jwt_secret() -> anyhow::Result<String> {
+    let secret = std::fs::read_to_string(std::env::var("LOOSKI_JWT_SECRET_FILE")?)?;
+    anyhow::ensure!(
+        secret.trim().len() >= 32,
+        "JWT secret must have at least 32 bytes"
+    );
+    Ok(secret.trim().to_owned())
 }
 
 async fn shutdown() {

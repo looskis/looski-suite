@@ -18,11 +18,12 @@
     <div class="status">
       <span class:connected={data.system}></span>Development preview
     </div>
-    <h2 id="setup-title">The foundation is taking shape.</h2>
+    <h2 id="setup-title">Your workspace starts here.</h2>
     <p>
-      Sign-in and Contacts are next. This preview does not store business
-      records yet.
+      Sign in to your business workspace. Contacts and the rest of your tools
+      are coming next.
     </p>
+    <a href="/login">Sign in →</a>
     <p class="connection" role="status">
       {#if data.system}
         Connected to {data.system.name} · v{data.system.version}

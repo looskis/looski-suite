@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-use axum::{Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
+use axum::{
+    Json, Router,
+    extract::State,
+    http::{HeaderMap, StatusCode},
+    response::IntoResponse,
+    routing::get,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;
@@ -10,6 +16,7 @@ pub struct AppState {
     pub db: PgPool,
     pub http: reqwest::Client,
     pub auth_url: String,
+    pub verifier: crate::identity::Verifier,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -54,7 +61,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 1)
+        .is_ok_and(|version| version == 2)
     };
     let auth = async {
         state
@@ -78,6 +85,70 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
     }
 }
 
+#[utoipa::path(get, path = "/api/v1/workspaces", operation_id = "listWorkspaces", tag = "workspaces",
+    security(("bearerAuth" = [])),
+    responses((status = 200, body = Vec<crate::workspaces::Workspace>),
+        (status = 401, body = ApiError), (status = 503, body = ApiError)))]
+async fn workspaces(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<crate::workspaces::Workspace>>, (StatusCode, Json<ApiError>)> {
+    let denied = || {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(ApiError {
+                code: "unauthenticated".into(),
+                message: "A valid first-party session is required".into(),
+            }),
+        )
+    };
+    let unavailable = || {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(ApiError {
+                code: "unavailable".into(),
+                message: "The service is temporarily unavailable".into(),
+            }),
+        )
+    };
+    let token = headers
+        .get("authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .ok_or_else(denied)?;
+    let identity = state.verifier.verify(token).ok_or_else(denied)?;
+    // Verify the account still exists upstream; application suspension and
+    // membership revocation are independently checked in the business operation.
+    let response = state
+        .http
+        .get(format!("{}/user", state.auth_url))
+        .bearer_auth(token)
+        .send()
+        .await
+        .map_err(|_| unavailable())?;
+    if response.status().is_client_error() {
+        return Err(denied());
+    }
+    if !response.status().is_success() {
+        return Err(unavailable());
+    }
+    #[derive(Deserialize)]
+    struct User {
+        id: String,
+    }
+    let user: User = response.json().await.map_err(|_| unavailable())?;
+    if user.id != identity.subject() {
+        return Err(denied());
+    }
+    crate::workspaces::list(&state.db, &identity)
+        .await
+        .map(Json)
+        .map_err(|error| {
+            tracing::error!(error = %error, "Workspace query failed");
+            unavailable()
+        })
+}
+
 async fn not_found() -> impl IntoResponse {
     (
         StatusCode::NOT_FOUND,
@@ -92,9 +163,18 @@ fn documented_routes() -> OpenApiRouter<AppState> {
     let mut spec = utoipa::openapi::OpenApi::default();
     spec.info = utoipa::openapi::Info::new("Looski Suite API", env!("CARGO_PKG_VERSION"));
     spec.info.license = Some(utoipa::openapi::License::new("AGPL-3.0-only"));
+    let mut components = utoipa::openapi::Components::new();
+    components.add_security_scheme(
+        "bearerAuth",
+        utoipa::openapi::security::SecurityScheme::Http(utoipa::openapi::security::Http::new(
+            utoipa::openapi::security::HttpAuthScheme::Bearer,
+        )),
+    );
+    spec.components = Some(components);
     OpenApiRouter::with_openapi(spec)
         .routes(routes!(system))
         .routes(routes!(ready))
+        .routes(routes!(workspaces))
 }
 
 pub fn openapi() -> utoipa::openapi::OpenApi {
@@ -128,6 +208,10 @@ mod tests {
                 .build()
                 .unwrap(),
             auth_url: "http://127.0.0.1:1".into(),
+            verifier: crate::identity::Verifier::new(
+                b"test-key",
+                "http://localhost/auth/v1".into(),
+            ),
         })
     }
 
@@ -157,5 +241,78 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn workspace_api_rejects_wrong_or_delegated_credentials_before_dependencies() {
+        use jsonwebtoken::{EncodingKey, Header, encode};
+        let base = serde_json::json!({
+            "iss": "http://localhost/auth/v1", "aud": "authenticated",
+            "sub": "a48d6928-2106-4d8d-99ec-b2b1a94d8f05",
+            "session_id": "d5a10b87-3134-4584-af3d-882fe36c31c7",
+            "exp": jsonwebtoken::get_current_timestamp() + 60, "role": "authenticated"
+        });
+        for (field, value) in [
+            ("iss", serde_json::json!("https://other.example/auth/v1")),
+            ("aud", serde_json::json!("service_role")),
+            ("exp", serde_json::json!(1)),
+            ("role", serde_json::json!("service_role")),
+            ("is_anonymous", serde_json::json!(true)),
+            ("client_id", serde_json::json!("external-app")),
+            ("sub", serde_json::json!("")),
+            ("session_id", serde_json::json!(null)),
+        ] {
+            let mut claims = base.clone();
+            claims[field] = value;
+            let token = encode(
+                &Header::default(),
+                &claims,
+                &EncodingKey::from_secret(b"test-key"),
+            )
+            .unwrap();
+            let response = app()
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/v1/workspaces")
+                        .header("authorization", format!("Bearer {token}"))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::UNAUTHORIZED, "{field}");
+        }
+        for key in [b"test-key".as_slice(), b"wrong-key".as_slice()] {
+            let token = encode(&Header::default(), &base, &EncodingKey::from_secret(key)).unwrap();
+            let response = app()
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/v1/workspaces")
+                        .header("authorization", format!("Bearer {token}"))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(
+                response.status(),
+                if key == b"test-key" {
+                    StatusCode::SERVICE_UNAVAILABLE
+                } else {
+                    StatusCode::UNAUTHORIZED
+                }
+            );
+        }
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/workspaces")
+                    .header("cookie", "looski_access=anything")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 }

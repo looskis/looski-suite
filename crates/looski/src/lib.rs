@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pub mod api;
 pub mod application;
+pub mod bootstrap;
 pub mod client;
+pub mod identity;
 pub mod mcp;
+pub mod workspaces;

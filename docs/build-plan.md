@@ -8,6 +8,8 @@ Build complete user journeys in small increments. Develop the shared foundation 
 
 Ready to begin the foundation and a small Contacts journey. The workspace now includes the first scaffold, with its implementation and verification tracked in [scaffold evidence](scaffold-status.md). Remaining product decisions do not block scaffolding and integration probes, but they must be resolved before the behavior that depends on them is finalized.
 
+The [schema design draft](schema-design.md) proposes the foundation/CRM relations and the decisions required before each migration group.
+
 Recommended first implementation order:
 
 1. Scaffold the Rust workspace and SvelteKit frontend, add the selected license and developer commands, and establish formatting/lint/type-check/test checks. Use the [setup contract](setup-contract.md) for the `looski-suite` namespace, configuration ownership, and proposed ports.
@@ -148,3 +150,7 @@ Use domain tests, real-Postgres integration tests, and complete journey tests ac
 Every implementation task should identify its milestone, owning module, user-visible outcome, and acceptance evidence. Update these documents when a decision changes; do not turn a provisional library recommendation into an accepted choice implicitly through code.
 
 Do not start the general automation builder, custom database platform, or internal tool builder as prerequisites for this plan. Built-in recipes and focused module interfaces are enough to establish the suite's composition model.
+
+### October 12 implementation increment
+
+The [identity slice](identity-slice.md) adds local owner bootstrap, password sign-in, browser sessions, and permission-filtered workspace discovery through web/API/CLI/MCP. This begins the foundation access work; staff invitations, magic links, general role management, and module selection remain unimplemented. The next business operation is Contacts create/list after its matching and visibility decisions are finalized.

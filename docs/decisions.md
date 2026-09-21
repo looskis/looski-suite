@@ -89,6 +89,10 @@ Already accepted: Axum, SQLx, `utoipa`/`utoipa-axum`, PGMQ, email/password plus 
 
 Calendar providers and the full booking transaction wait until scheduling; the general workflow builder remains roadmap item 23. Detailed form mappings belong to phase 2. Local-to-hosted migration must be tested before it is advertised, but does not require automatic synchronization or a native installer. Supporting UI library choices and performance targets can be settled through the phase 0 CRM probe.
 
+## Schema design draft
+
+[Foundation and CRM schema design](schema-design.md) now describes proposed table ownership, identity/access separation, shared contact identifiers, workspace-qualified foreign keys, independent opportunity/deal lifecycles, typed tag assignments, and audit/retry records. These schema proposals are not new accepted product decisions; staff visibility and origin cardinality are still being discussed. No business migrations have been applied.
+
 ## Decisions before detailed CRM planning
 
 The [CRM planning record](crm-plan.md) owns the evolving product choices: the generalizable reference journey, lead/deal model, contact relationships and shared identifiers, custom statuses, communication model, imports, and programmatic contract. These are build/product decisions, not individual ADRs. RBAC and record visibility remain open. Gmail and CRM communication work are deferred until that capability is scheduled; authentication email remains required. Dedicated bulk-import tooling is deferred in favor of agent scripts.

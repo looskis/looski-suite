@@ -12,16 +12,18 @@ workspace = true
 anyhow = "1"
 axum = "=0.8.9"
 clap = { version = "=4.6.7", features = ["derive", "env"] }
+jsonwebtoken = { version = "=10.3.0", default-features = false, features = ["rust_crypto"] }
 reqwest = { version = "=0.13.5", default-features = false, features = ["json", "rustls"] }
 rmcp = { version = "=3.5.0", features = ["server", "transport-io"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sqlx = { version = "=0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring", "postgres"] }
+sqlx = { version = "=0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring", "postgres", "uuid"] }
 tokio = { version = "=1.53.2", features = ["macros", "rt-multi-thread", "net", "signal", "time"] }
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter", "json"] }
 utoipa = "=6.0.0"
 utoipa-axum = "=0.3.0"
+uuid = { version = "1", features = ["serde", "v4"] }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

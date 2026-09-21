@@ -1,5 +1,7 @@
 # Initial scaffold implementation
 
+Historical record; superseded for identity/session behavior by the [October 12 identity slice](identity-slice.md).
+
 Date: October 4, 2026. Scope: build-plan step 1 plus a local dependency integration probe. This is not completion of phase 0 or the first CRM release.
 
 ## Implemented

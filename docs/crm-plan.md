@@ -2,6 +2,8 @@
 
 This is the working product/build plan for CRM as of October 4, 2026, not an ADR or a completed implementation specification. It owns evolving CRM scope, examples, proposed behavior, open questions, and planning history. The [architecture](architecture.md) owns shared technical requirements; the [build plan](build-plan.md) owns delivery gates. Items marked proposed still need agreement or evidence.
 
+The [schema design draft](schema-design.md) translates this plan into proposed tables, constraints, and migration groups. It does not silently settle the open product choices below.
+
 ## Accepted direction
 
 - Keep opportunities (potential business) and deals (concrete live or historical transactions/engagements) as distinct records with independent lifecycles. A deal can originate from an opportunity or be created directly.
