@@ -171,6 +171,65 @@ enum TasksCommand {
 
 #[derive(Subcommand)]
 enum CrmCommand {
+    ActivityTypes {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        archived: Option<bool>,
+    },
+    ActivityType {
+        id: uuid::Uuid,
+    },
+    CreateActivityType {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditActivityType {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Activities {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        anchor_kind: String,
+        #[arg(long)]
+        anchor_id: uuid::Uuid,
+        #[arg(long)]
+        archived: Option<bool>,
+        #[arg(long)]
+        type_id: Option<uuid::Uuid>,
+    },
+    Activity {
+        id: uuid::Uuid,
+    },
+    CreateActivity {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditActivity {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    ArchiveActivity {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    ActivityHistory {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+
     OpportunityTasks {
         id: uuid::Uuid,
         #[arg(long)]
@@ -1345,6 +1404,144 @@ async fn run() -> anyhow::Result<()> {
                                 id,
                                 link_id,
                                 &looski::crm::HistoryQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::ActivityTypes {
+                    limit,
+                    after,
+                    archived,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_activity_types(
+                                workspace,
+                                &looski::crm::activities::types::ActivityTypeQuery {
+                                    limit,
+                                    after,
+                                    archived
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::ActivityType { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_activity_type(workspace, id).await?)?
+                ),
+                CrmCommand::CreateActivityType { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_activity_type(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditActivityType {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_activity_type(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Activities {
+                    limit,
+                    after,
+                    anchor_kind,
+                    anchor_id,
+                    archived,
+                    type_id,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_activities(
+                                workspace,
+                                &looski::crm::activities::ActivityQuery {
+                                    limit,
+                                    after,
+                                    anchor_kind: serde_json::from_value(
+                                        serde_json::Value::String(anchor_kind)
+                                    )?,
+                                    anchor_id,
+                                    archived,
+                                    type_id
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Activity { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_activity(workspace, id).await?)?
+                ),
+                CrmCommand::CreateActivity { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_activity(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditActivity {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_activity(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::ArchiveActivity {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_archive_activity(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::ActivityHistory { id, limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_activity_history(
+                                workspace,
+                                id,
+                                &looski::crm::activities::ActivityHistoryQuery { limit, after }
                             )
                             .await?
                     )?

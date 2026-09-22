@@ -50,3 +50,13 @@ pub(super) async fn lock(
         .await?;
     Ok(())
 }
+
+pub(super) async fn contact_family(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    a: &Access,
+    canonical: Uuid,
+) -> Result<Vec<Uuid>, Error> {
+    Ok(sqlx::query_scalar("SELECT c.id FROM contacts.contacts c JOIN contacts.contacts s ON s.workspace_id=c.workspace_id AND s.id=$2 WHERE c.workspace_id=$1 AND (c.id=$2 OR c.merged_into_id=$2) AND ($3 OR (c.owner_membership_id=$4 AND s.owner_membership_id=$4))")
+        .bind(workspace).bind(canonical).bind(a.workspace_wide).bind(a.membership_id).fetch_all(db).await?)
+}

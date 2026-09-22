@@ -1,4 +1,5 @@
 mod crm;
+mod crm_activities;
 mod crm_task_links;
 mod tasks;
 mod workspace_access;
@@ -69,7 +70,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 15)
+        .is_ok_and(|version| version == 17)
     };
     let auth = async {
         state
@@ -202,6 +203,7 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .merge(tags::routes())
         .merge(workspace_access::routes())
         .merge(crm::routes())
+        .merge(crm_activities::routes())
         .merge(crm_task_links::routes())
         .merge(tasks::routes())
         .merge(intake::routes())

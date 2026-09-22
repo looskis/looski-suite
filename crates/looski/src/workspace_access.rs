@@ -52,6 +52,10 @@ fn supported() -> Vec<Permission> {
     let scoped = [
         "crm.opportunities.tasks.manage",
         "crm.deals.tasks.manage",
+        "crm.activities.read",
+        "crm.activities.create",
+        "crm.activities.update",
+        "crm.activities.archive",
         "tasks.read",
         "tasks.create",
         "tasks.update",

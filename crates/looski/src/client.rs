@@ -29,6 +29,155 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn crm_activity_types(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::activities::types::ActivityTypeQuery,
+    ) -> anyhow::Result<crate::crm::activities::types::ActivityTypePage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/activity-types"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_activity_type(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::activities::types::ActivityType> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/activity-types/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_create_activity_type(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::activities::types::SaveActivityType,
+    ) -> anyhow::Result<crate::crm::activities::types::ActivityType> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/activity-types"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_activity_type(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::activities::types::SaveActivityType,
+    ) -> anyhow::Result<crate::crm::activities::types::ActivityType> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/activity-types/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_activities(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::activities::ActivityQuery,
+    ) -> anyhow::Result<crate::crm::activities::ActivityPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/activities"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_activity(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::activities::Activity> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/activities/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_create_activity(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::activities::CreateActivity,
+    ) -> anyhow::Result<crate::crm::activities::Activity> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/activities"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_activity(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::activities::EditActivity,
+    ) -> anyhow::Result<crate::crm::activities::Activity> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/activities/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_archive_activity(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::activities::ArchiveActivity,
+    ) -> anyhow::Result<crate::crm::activities::Activity> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/activities/{id}/archive"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_activity_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::activities::ActivityHistoryQuery,
+    ) -> anyhow::Result<crate::crm::activities::ActivityHistoryPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/activities/{id}/history"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+
     pub async fn crm_opportunity_tasks(
         &self,
         workspace: uuid::Uuid,

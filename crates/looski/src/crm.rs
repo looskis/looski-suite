@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Sales pursuit and concrete transactions have distinct records and histories.
+pub mod activities;
 pub mod configuration;
 mod dao;
 pub mod participants;

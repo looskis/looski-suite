@@ -125,3 +125,11 @@
     >Manage follow-up tasks</a
   >
 </section>
+
+<section>
+  <h2>Activity log</h2>
+  <a
+    href={`/workspaces/${data.workspace.id}/crm/activities?anchor_kind=opportunity&anchor_id=${data.record.id}`}
+    >View and record activities</a
+  >
+</section>

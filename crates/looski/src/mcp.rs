@@ -661,8 +661,212 @@ struct CrmDealTaskHistoryArgs {
     query: crate::crm::HistoryQuery,
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct CrmActivityTypesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::activities::types::ActivityTypeQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmActivityTypeArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmCreateActivityTypeArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::activities::types::SaveActivityType,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmEditActivityTypeArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::activities::types::SaveActivityType,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmActivitiesArgs {
+    workspace_id: Uuid,
+    query: crate::crm::activities::ActivityQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmActivityArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmCreateActivityArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::activities::CreateActivity,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmEditActivityArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::activities::EditActivity,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmArchiveActivityArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::activities::ArchiveActivity,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmActivityHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::activities::ActivityHistoryQuery,
+}
+
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "Crm activity types. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
+    )]
+    async fn crm_activity_types(
+        &self,
+        Parameters(input): Parameters<CrmActivityTypesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_activity_types(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm activity type. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
+    )]
+    async fn crm_activity_type(
+        &self,
+        Parameters(input): Parameters<CrmActivityTypeArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_activity_type(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm create activity type. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
+    )]
+    async fn crm_create_activity_type(
+        &self,
+        Parameters(input): Parameters<CrmCreateActivityTypeArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_activity_type(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm edit activity type. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
+    )]
+    async fn crm_edit_activity_type(
+        &self,
+        Parameters(input): Parameters<CrmEditActivityTypeArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_activity_type(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm activities. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
+    )]
+    async fn crm_activities(
+        &self,
+        Parameters(input): Parameters<CrmActivitiesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_activities(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm activity. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
+    )]
+    async fn crm_activity(
+        &self,
+        Parameters(input): Parameters<CrmActivityArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.crm_activity(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Crm create activity. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
+    )]
+    async fn crm_create_activity(
+        &self,
+        Parameters(input): Parameters<CrmCreateActivityArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_activity(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm edit activity. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
+    )]
+    async fn crm_edit_activity(
+        &self,
+        Parameters(input): Parameters<CrmEditActivityArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_activity(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm archive activity. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
+    )]
+    async fn crm_archive_activity(
+        &self,
+        Parameters(input): Parameters<CrmArchiveActivityArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_archive_activity(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm activity history. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
+    )]
+    async fn crm_activity_history(
+        &self,
+        Parameters(input): Parameters<CrmActivityHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_activity_history(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+
     #[tool(
         description = "Crm opportunity tasks. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
     )]

@@ -175,3 +175,11 @@
   workspace={data.workspace.id}
   version={data.contact.version}
 />
+
+<section>
+  <h2>CRM activities</h2>
+  <a
+    href={`/workspaces/${data.workspace.id}/crm/activities?anchor_kind=contact&anchor_id=${data.contact.id}`}
+    >View and record activities</a
+  >
+</section>

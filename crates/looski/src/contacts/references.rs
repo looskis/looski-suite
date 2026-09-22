@@ -77,3 +77,16 @@ pub(crate) async fn for_mutation(
     dao::lock(db, actor.workspace, kind, &ids).await?;
     require(db, actor, kind, id).await
 }
+
+/// Return independently visible original IDs belonging to one canonical contact.
+/// Consumers use these IDs to constrain their own indexed link queries, then
+/// project candidate batches again before exposing rows. This avoids scanning
+/// unrelated module records while keeping alias ownership inside Contacts.
+pub(crate) async fn contact_family(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    canonical: Uuid,
+) -> Result<Vec<Uuid>, Error> {
+    let a = access::require(db, actor.identity, actor.workspace, "contacts.read").await?;
+    dao::contact_family(db, actor.workspace, &a, canonical).await
+}
