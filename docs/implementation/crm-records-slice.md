@@ -1,0 +1,11 @@
+# CRM records checkpoint
+
+Schema 11 adds explicit CRM enablement, configurable opportunity pipelines/stages and deal categories/statuses, separate opportunity/deal records, and immutable transition history. Contacts remains available independently of CRM. Disabling CRM denies its operations while preserving records; re-enabling does not replay work. Configuration uses stable IDs and archive/restore. Semantic outcomes and parents are immutable; renaming labels is not a transition. Each deal has zero or one originating opportunity selected at creation; multiple deals may share an origin and direct deals are valid.
+
+API, CLI, MCP and server-rendered forms expose these operations. Amounts use exact `numeric(20,6)` strings and a pinned current/historical ISO currency catalog. Dates are validated calendar dates. Writes serialize on the workspace for module/configuration correctness, recheck current action/read authority, use expected versions and scoped idempotency, and commit data/history/audit together. Reads and filters enforce workspace/assigned scope; origins are independently permission-filtered, including saved-result retries.
+
+Browser forms retain rejected drafts, assignees, selected workflow, retry key and submitted version. Deal origin survives workflow navigation. Stale edits offer an explicit reload instead of adopting a new version automatically. Archive/restore preserves status history.
+
+Verification includes exact amount boundaries, independent lifecycles, multiple deals per origin, invalid/cross-workspace definitions, per-action scopes, hidden origin projection/filter/replay, concurrent edits, audit rollback, disabled-module retry, and web/API/CLI/MCP journeys. `make check test` passed. The complete sequential acceptance suite passed on both the upgraded and a fresh schema-11 installation. Standards/spec review findings on precision, currency validation and form restoration were fixed and rechecked. An upgraded-stack run encountered one malformed HTTP response during intake; the targeted intake rerun passed, and the full upgraded rerun passed.
+
+Participants, CRM tag assignments, Tasks, activity/coordination templates, exports, invitations/authentication mail and operational release gates remain subsequent increments in coverage.md. This checkpoint is not the completed first release.

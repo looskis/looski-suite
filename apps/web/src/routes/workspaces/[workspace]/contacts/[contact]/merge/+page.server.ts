@@ -44,7 +44,23 @@ export const load: PageServerLoad = async (event) => {
   };
   const survivorRelationships = await relationships(survivor.id);
   const sourceRelationships = source ? await relationships(source.id) : null;
+  const tags = async (id: string) => {
+    const result = await client.GET(
+      '/api/v1/workspaces/{workspace_id}/contacts/{contact_id}/tags',
+      { params: { path: { workspace_id: workspace.id, contact_id: id } } },
+    );
+    if (!result.data && result.response.status !== 403)
+      error(
+        result.response.status,
+        result.error?.message ?? 'Tags unavailable',
+      );
+    return result.data ?? null;
+  };
+  const survivorTags = await tags(survivor.id);
+  const sourceTags = source ? await tags(source.id) : null;
   return {
+    survivorTags,
+    sourceTags,
     workspace,
     survivor,
     source,

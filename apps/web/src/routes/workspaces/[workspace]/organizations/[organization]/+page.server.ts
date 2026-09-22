@@ -1,3 +1,4 @@
+import { tagPanel, saveTags } from '$lib/server/tag-panel';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 import { workspaceClient, requireSameOrigin } from '$lib/server/session';
@@ -29,7 +30,15 @@ export const load: PageServerLoad = async (event) => {
       303,
       `/workspaces/${workspace.id}/organizations/${result.data.id}`,
     );
+  const tags = await tagPanel(
+    client,
+    workspace.id,
+    result.data.id,
+    'organizations',
+    event.url.searchParams.get('tag_search') ?? '',
+  );
   return {
+    tags,
     workspace,
     organization: result.data,
     editKey: randomUUID(),
@@ -37,6 +46,13 @@ export const load: PageServerLoad = async (event) => {
   };
 };
 export const actions: Actions = {
+  tags: (event) =>
+    saveTags(
+      event,
+      event.params.workspace,
+      event.params.organization,
+      'organizations',
+    ),
   edit: async (event) => {
     requireSameOrigin(event);
     const { workspace, client } = await workspaceClient(

@@ -111,6 +111,9 @@ pub async fn list(
         "contacts.organizations.read",
     )
     .await?;
+    if let Some(tag) = query.tag_id {
+        crate::tags::definitions(&mut tx, actor, &[tag], false).await?;
+    }
     let mut items = dao::list(&mut tx, actor.workspace, &access, &query, limit + 1).await?;
     let next_cursor = if items.len() > limit as usize {
         items.pop();
@@ -477,4 +480,22 @@ pub(super) async fn merge_relationships(
     survivor: Uuid,
 ) -> Result<(), Error> {
     dao::merge(db, workspace, source, survivor).await
+}
+
+pub(super) async fn tag_target(
+    db: &mut sqlx::PgConnection,
+    workspace: Uuid,
+    id: Uuid,
+    access: &access::Access,
+    lock: bool,
+) -> Result<(Uuid, i64, bool), Error> {
+    let o = dao::get(db, workspace, id, access, lock).await?;
+    Ok((o.id, o.version, o.archived))
+}
+pub(super) async fn touch_for_tags(
+    db: &mut sqlx::PgConnection,
+    workspace: Uuid,
+    id: Uuid,
+) -> Result<(), Error> {
+    dao::touch(db, workspace, id).await
 }

@@ -1,7 +1,12 @@
 <script lang="ts">
   import type { components } from '$lib/api/schema';
-  let { contact }: { contact?: components['schemas']['ContactInput'] } =
-    $props();
+  let {
+    contact,
+    allowSharingReview = true,
+  }: {
+    contact?: components['schemas']['ContactInput'];
+    allowSharingReview?: boolean;
+  } = $props();
 </script>
 
 <label
@@ -48,11 +53,13 @@
     maxlength="10000"
     value={contact?.notes ?? ''}></textarea></label
 >
-<label class="check"
-  ><input
-    type="checkbox"
-    name="allow_shared"
-    checked={contact?.allow_shared ?? false}
-  /> I reviewed this person and confirm any shared email or phone belongs on this
-  separate contact.</label
->
+{#if allowSharingReview}
+  <label class="check"
+    ><input
+      type="checkbox"
+      name="allow_shared"
+      checked={contact?.allow_shared ?? false}
+    /> I reviewed this person and confirm any shared email or phone belongs on this
+    separate contact.</label
+  >
+{/if}

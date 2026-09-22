@@ -67,12 +67,12 @@ assert int(sql("SELECT count(*) FROM contacts.contact_organizations WHERE contac
 other_member=sql("WITH u AS (INSERT INTO suite.users(display_name) VALUES ('Organization scope fixture') RETURNING id) INSERT INTO suite.memberships(workspace_id,user_id) SELECT '"+fixture.workspace+"',id FROM u RETURNING id").splitlines()[0]
 private_org=call(orgs,'POST',{'name':name+' restricted','owner_membership_id':other_member},expected=201,key=key())
 relate(person,private_org)
-sql("UPDATE suite.role_permissions SET record_scope='assigned' WHERE permission_key='contacts.organizations.read'")
+sql("UPDATE suite.role_permissions SET record_scope='assigned' WHERE permission_key='contacts.organizations.read' AND role_id IN (SELECT id FROM suite.roles WHERE key='owner')")
 try:
     call(orgs+'/'+private_org['id'],expected=404)
     assert not any(r['organization_id']==private_org['id'] for r in relationships(person))
     assert call(orgs+'?search='+name.replace(' ','%20')+'%20restricted&limit=1')['items']==[]
-finally:sql("UPDATE suite.role_permissions SET record_scope='workspace' WHERE permission_key='contacts.organizations.read'")
+finally:sql("UPDATE suite.role_permissions SET record_scope='workspace' WHERE permission_key='contacts.organizations.read' AND role_id IN (SELECT id FROM suite.roles WHERE key='owner')")
 
 # Contact version and row lock prevent competing primary assignments.
 race=create_contact('race')
@@ -147,11 +147,11 @@ path=contacts+'/'+retry_contact['id']+'/organizations/'+organization['id']
 original=call(path,'PUT',retry_input,key=retry_key)
 relate(retry_contact,organization,relationship_label='Changed')
 assert call(path,'PUT',retry_input,key=retry_key)==original
-sql("UPDATE suite.role_permissions SET record_scope='assigned' WHERE permission_key='contacts.organizations.read'")
+sql("UPDATE suite.role_permissions SET record_scope='assigned' WHERE permission_key='contacts.organizations.read' AND role_id IN (SELECT id FROM suite.roles WHERE key='owner')")
 try:
     private_path=contacts+'/'+retry_contact['id']+'/organizations/'+private_org['id']
     call(private_path,'PUT',{'expected_contact_version':get_contact(retry_contact)['version']},expected=404,key=key())
-finally:sql("UPDATE suite.role_permissions SET record_scope='workspace' WHERE permission_key='contacts.organizations.read'")
+finally:sql("UPDATE suite.role_permissions SET record_scope='workspace' WHERE permission_key='contacts.organizations.read' AND role_id IN (SELECT id FROM suite.roles WHERE key='owner')")
 print('PASS: database workspace foreign keys, original-result relationship retry and authority checks')
 
 preview_person=create_contact('preview')

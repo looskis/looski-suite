@@ -11,3 +11,10 @@ pub mod access;
 pub mod contacts;
 
 pub mod reliability;
+
+pub mod tags;
+
+pub mod workspace_access;
+
+pub mod crm;
+pub mod modules;

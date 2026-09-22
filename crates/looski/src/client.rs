@@ -29,6 +29,556 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn crm_pipelines(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::configuration::DefinitionQuery,
+    ) -> anyhow::Result<crate::crm::configuration::DefinitionPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/pipelines"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_pipeline(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/pipelines/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_create_pipeline(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::configuration::SaveDefinition,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/pipelines"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_pipeline(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::configuration::SaveDefinition,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/pipelines/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_stages(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::configuration::DefinitionQuery,
+    ) -> anyhow::Result<crate::crm::configuration::DefinitionPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/stages"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_stage(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/stages/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_create_stage(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::configuration::SaveDefinition,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/stages"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_stage(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::configuration::SaveDefinition,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/stages/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_categories(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::configuration::DefinitionQuery,
+    ) -> anyhow::Result<crate::crm::configuration::DefinitionPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/categories"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_category(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/categories/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_create_category(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::configuration::SaveDefinition,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/categories"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_category(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::configuration::SaveDefinition,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/categories/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_statuses(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::configuration::DefinitionQuery,
+    ) -> anyhow::Result<crate::crm::configuration::DefinitionPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/statuses"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_status(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/statuses/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_create_status(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::configuration::SaveDefinition,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/statuses"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_status(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::configuration::SaveDefinition,
+    ) -> anyhow::Result<crate::crm::configuration::Definition> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/statuses/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_opportunities(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::OpportunityQuery,
+    ) -> anyhow::Result<crate::crm::OpportunityPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_opportunity(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::Opportunity> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_create_opportunity(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::OpportunityInput,
+    ) -> anyhow::Result<crate::crm::Opportunity> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_opportunity(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::EditOpportunity,
+    ) -> anyhow::Result<crate::crm::Opportunity> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_archive_opportunity(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::ArchiveRecord,
+    ) -> anyhow::Result<crate::crm::Opportunity> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/archive"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_opportunity_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::HistoryQuery,
+    ) -> anyhow::Result<crate::crm::HistoryPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/history"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_deals(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::DealQuery,
+    ) -> anyhow::Result<crate::crm::DealPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_deal(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::Deal> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_create_deal(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::NewDeal,
+    ) -> anyhow::Result<crate::crm::Deal> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_deal(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::EditDeal,
+    ) -> anyhow::Result<crate::crm::Deal> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_archive_deal(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::ArchiveRecord,
+    ) -> anyhow::Result<crate::crm::Deal> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/archive"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_deal_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::HistoryQuery,
+    ) -> anyhow::Result<crate::crm::HistoryPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/history"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_modules(
+        &self,
+        workspace: uuid::Uuid,
+    ) -> anyhow::Result<Vec<crate::modules::Module>> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/modules"),
+        )?)
+        .await
+    }
+    pub async fn crm_set_crm(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::modules::SetModule,
+    ) -> anyhow::Result<crate::modules::Module> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/modules/crm"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
+    pub async fn access_permissions(
+        &self,
+        workspace: uuid::Uuid,
+    ) -> anyhow::Result<Vec<crate::workspace_access::Permission>> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/access/permissions"),
+        )?)
+        .await
+    }
+    pub async fn access_roles(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::workspace_access::AccessQuery,
+    ) -> anyhow::Result<crate::workspace_access::RolePage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/access/roles"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn access_role(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::workspace_access::Role> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/access/roles/{id}"),
+        )?)
+        .await
+    }
+    pub async fn access_create_role(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::workspace_access::SaveRole,
+    ) -> anyhow::Result<crate::workspace_access::Role> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/access/roles"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn access_edit_role(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::workspace_access::SaveRole,
+    ) -> anyhow::Result<crate::workspace_access::Role> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/access/roles/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn access_members(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::workspace_access::AccessQuery,
+    ) -> anyhow::Result<crate::workspace_access::MemberPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/access/members"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn access_member(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::workspace_access::Member> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/access/members/{id}"),
+        )?)
+        .await
+    }
+    pub async fn access_edit_member(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::workspace_access::EditMember,
+    ) -> anyhow::Result<crate::workspace_access::Member> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/access/members/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
     pub fn new(base_url: &str) -> anyhow::Result<Self> {
         let base_url = reqwest::Url::parse(base_url)?;
         anyhow::ensure!(
@@ -291,6 +841,189 @@ impl ApiClient {
             .header("Idempotency-Key", key)
             .json(input),
         )
+        .await
+    }
+    pub async fn tags(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::tags::ListTags,
+    ) -> anyhow::Result<crate::tags::TagPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/tags"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn tag(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::tags::Tag> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/tags/{id}"),
+        )?)
+        .await
+    }
+    pub async fn create_tag(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::tags::SaveTag,
+    ) -> anyhow::Result<crate::tags::Tag> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/tags"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn edit_tag(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::tags::SaveTag,
+    ) -> anyhow::Result<crate::tags::Tag> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/tags/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn contacts_tags(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<Vec<crate::tags::Tag>> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/contacts/{id}/tags"),
+        )?)
+        .await
+    }
+    pub async fn set_contacts_tags(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::contacts::tagging::SetTags,
+    ) -> anyhow::Result<Vec<crate::tags::Tag>> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PUT,
+                &format!("/api/v1/workspaces/{workspace}/contacts/{id}/tags"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn organizations_tags(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<Vec<crate::tags::Tag>> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/organizations/{id}/tags"),
+        )?)
+        .await
+    }
+    pub async fn set_organizations_tags(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::contacts::tagging::SetTags,
+    ) -> anyhow::Result<Vec<crate::tags::Tag>> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PUT,
+                &format!("/api/v1/workspaces/{workspace}/organizations/{id}/tags"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn intakes(
+        &self,
+        workspace: uuid::Uuid,
+        input: &crate::contacts::intake::ListIntakes,
+    ) -> anyhow::Result<crate::contacts::intake::IntakePage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/contact-intakes"),
+            )?
+            .query(input),
+        )
+        .await
+    }
+    pub async fn intake(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::contacts::intake::Intake> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/contact-intakes/{id}"),
+        )?)
+        .await
+    }
+    pub async fn submit_intake(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::contacts::intake::SubmitIntake,
+    ) -> anyhow::Result<crate::contacts::intake::Intake> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/contact-intakes"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn resolve_intake(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::contacts::intake::ResolveIntake,
+    ) -> anyhow::Result<crate::contacts::intake::Intake> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/contact-intakes/{id}/resolve"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn intake_candidates(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<Vec<crate::contacts::Contact>> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/contact-intakes/{id}/candidates"),
+        )?)
         .await
     }
     async fn business<T: serde::de::DeserializeOwned>(

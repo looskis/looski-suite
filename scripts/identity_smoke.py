@@ -117,15 +117,18 @@ try:
 finally:
     token_file.unlink()
 
-# This fixture installation contains only our owner. Each revocation must take
-# effect with the same still-valid session; restore immediately even on failure.
+# Revoke only the authenticated fixture owner, preserving later suites' role data.
+workspace_id=workspaces[0]['id']
+owner_role=sql("SELECT id FROM suite.roles WHERE workspace_id='"+workspace_id+"' AND key='owner'")
+owner_membership=sql("SELECT membership_id FROM suite.membership_roles WHERE workspace_id='"+workspace_id+"' AND role_id='"+owner_role+"' LIMIT 1")
+owner_user=sql("SELECT user_id FROM suite.memberships WHERE id='"+owner_membership+"'")
 for deny, restore in [
-    ("UPDATE suite.memberships SET state='removed'", "UPDATE suite.memberships SET state='active'"),
-    ("UPDATE suite.users SET state='suspended'", "UPDATE suite.users SET state='active'"),
-    ("UPDATE suite.workspaces SET state='suspended'", "UPDATE suite.workspaces SET state='active'"),
-    ("UPDATE suite.roles SET archived_at=now()", "UPDATE suite.roles SET archived_at=NULL"),
-    ("UPDATE suite.auth_identities SET disabled_at=now()", "UPDATE suite.auth_identities SET disabled_at=NULL"),
-    ("DELETE FROM suite.role_permissions WHERE permission_key='workspace.read'", "INSERT INTO suite.role_permissions(workspace_id,role_id,permission_key) SELECT workspace_id,id,'workspace.read' FROM suite.roles"),
+    (f"UPDATE suite.memberships SET state='removed' WHERE id='{owner_membership}'", f"UPDATE suite.memberships SET state='active' WHERE id='{owner_membership}'"),
+    (f"UPDATE suite.users SET state='suspended' WHERE id='{owner_user}'", f"UPDATE suite.users SET state='active' WHERE id='{owner_user}'"),
+    (f"UPDATE suite.workspaces SET state='suspended' WHERE id='{workspace_id}'", f"UPDATE suite.workspaces SET state='active' WHERE id='{workspace_id}'"),
+    (f"UPDATE suite.roles SET archived_at=now() WHERE id='{owner_role}'", f"UPDATE suite.roles SET archived_at=NULL WHERE id='{owner_role}'"),
+    (f"UPDATE suite.auth_identities SET disabled_at=now() WHERE user_id='{owner_user}'", f"UPDATE suite.auth_identities SET disabled_at=NULL WHERE user_id='{owner_user}'"),
+    (f"DELETE FROM suite.role_permissions WHERE role_id='{owner_role}' AND permission_key='workspace.read'", f"INSERT INTO suite.role_permissions(workspace_id,role_id,permission_key) VALUES('{workspace_id}','{owner_role}','workspace.read')"),
 ]:
     try:
         sql(deny)

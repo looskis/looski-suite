@@ -1,4 +1,5 @@
 <script lang="ts">
+  import TagPanel from '$lib/components/TagPanel.svelte';
   import ContactFields from '$lib/components/ContactFields.svelte';
   import type { PageData, ActionData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -167,3 +168,9 @@
     </form>
   </section>
 {/if}
+
+<TagPanel
+  panel={data.tags}
+  workspace={data.workspace.id}
+  version={data.contact.version}
+/>

@@ -82,6 +82,68 @@ struct RelationshipArgs {
     idempotency_key: String,
     relationship: crate::contacts::organizations::RelationshipInput,
 }
+#[derive(Deserialize, JsonSchema)]
+struct TagListArgs {
+    workspace_id: Uuid,
+    #[serde(flatten)]
+    query: crate::tags::ListTags,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TagGetArgs {
+    workspace_id: Uuid,
+    tag_id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TagCreateArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    tag: crate::tags::SaveTag,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TagEditArgs {
+    workspace_id: Uuid,
+    tag_id: Uuid,
+    idempotency_key: String,
+    tag: crate::tags::SaveTag,
+}
+#[derive(Deserialize, JsonSchema)]
+struct ContactTagsArgs {
+    workspace_id: Uuid,
+    contact_id: Uuid,
+    idempotency_key: String,
+    change: crate::contacts::tagging::SetTags,
+}
+#[derive(Deserialize, JsonSchema)]
+struct OrganizationTagsArgs {
+    workspace_id: Uuid,
+    organization_id: Uuid,
+    idempotency_key: String,
+    change: crate::contacts::tagging::SetTags,
+}
+#[derive(Deserialize, JsonSchema)]
+struct IntakeListArgs {
+    workspace_id: Uuid,
+    #[serde(flatten)]
+    query: crate::contacts::intake::ListIntakes,
+}
+#[derive(Deserialize, JsonSchema)]
+struct IntakeGetArgs {
+    workspace_id: Uuid,
+    intake_id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct IntakeSubmitArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    intake: crate::contacts::intake::SubmitIntake,
+}
+#[derive(Deserialize, JsonSchema)]
+struct IntakeResolveArgs {
+    workspace_id: Uuid,
+    intake_id: Uuid,
+    idempotency_key: String,
+    review: crate::contacts::intake::ResolveIntake,
+}
 fn business_result<T: serde::Serialize>(
     result: anyhow::Result<T>,
 ) -> Result<CallToolResult, ErrorData> {
@@ -109,8 +171,917 @@ pub struct McpServer {
     tool_router: ToolRouter<Self>,
 }
 
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct AccessPermissionsArgs {
+    workspace_id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct AccessRolesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::workspace_access::AccessQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct AccessRoleArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct AccessCreateRoleArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::workspace_access::SaveRole,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct AccessEditRoleArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::workspace_access::SaveRole,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct AccessMembersArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::workspace_access::AccessQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct AccessMemberArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct AccessEditMemberArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::workspace_access::EditMember,
+}
+
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmPipelinesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::configuration::DefinitionQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmPipelineArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmCreatePipelineArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::configuration::SaveDefinition,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmEditPipelineArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::configuration::SaveDefinition,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmStagesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::configuration::DefinitionQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmStageArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmCreateStageArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::configuration::SaveDefinition,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmEditStageArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::configuration::SaveDefinition,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmCategoriesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::configuration::DefinitionQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmCategoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmCreateCategoryArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::configuration::SaveDefinition,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmEditCategoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::configuration::SaveDefinition,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmStatusesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::configuration::DefinitionQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmStatusArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmCreateStatusArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::configuration::SaveDefinition,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmEditStatusArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::configuration::SaveDefinition,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmOpportunitiesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::OpportunityQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmOpportunityArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmCreateOpportunityArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::OpportunityInput,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmEditOpportunityArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::EditOpportunity,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmArchiveOpportunityArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::ArchiveRecord,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmOpportunityHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::HistoryQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmDealsArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::DealQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmDealArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmCreateDealArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::NewDeal,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmEditDealArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::EditDeal,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmArchiveDealArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::ArchiveRecord,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmDealHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::HistoryQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmModulesArgs {
+    workspace_id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmSetCrmArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::modules::SetModule,
+}
+
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "Pipelines in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_pipelines(
+        &self,
+        Parameters(input): Parameters<CrmPipelinesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_pipelines(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Pipeline in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_pipeline(
+        &self,
+        Parameters(input): Parameters<CrmPipelineArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.crm_pipeline(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Create pipeline in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_create_pipeline(
+        &self,
+        Parameters(input): Parameters<CrmCreatePipelineArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_pipeline(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Edit pipeline in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_edit_pipeline(
+        &self,
+        Parameters(input): Parameters<CrmEditPipelineArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_pipeline(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Stages in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_stages(
+        &self,
+        Parameters(input): Parameters<CrmStagesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_stages(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Stage in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_stage(
+        &self,
+        Parameters(input): Parameters<CrmStageArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.crm_stage(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Create stage in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_create_stage(
+        &self,
+        Parameters(input): Parameters<CrmCreateStageArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_stage(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Edit stage in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_edit_stage(
+        &self,
+        Parameters(input): Parameters<CrmEditStageArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_stage(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Categories in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_categories(
+        &self,
+        Parameters(input): Parameters<CrmCategoriesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_categories(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Category in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_category(
+        &self,
+        Parameters(input): Parameters<CrmCategoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.crm_category(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Create category in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_create_category(
+        &self,
+        Parameters(input): Parameters<CrmCreateCategoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_category(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Edit category in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_edit_category(
+        &self,
+        Parameters(input): Parameters<CrmEditCategoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_category(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Statuses in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_statuses(
+        &self,
+        Parameters(input): Parameters<CrmStatusesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_statuses(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Status in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_status(
+        &self,
+        Parameters(input): Parameters<CrmStatusArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.crm_status(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Create status in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_create_status(
+        &self,
+        Parameters(input): Parameters<CrmCreateStatusArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_status(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Edit status in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_edit_status(
+        &self,
+        Parameters(input): Parameters<CrmEditStatusArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_status(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Opportunities in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_opportunities(
+        &self,
+        Parameters(input): Parameters<CrmOpportunitiesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_opportunities(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Opportunity in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_opportunity(
+        &self,
+        Parameters(input): Parameters<CrmOpportunityArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_opportunity(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Create opportunity in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_create_opportunity(
+        &self,
+        Parameters(input): Parameters<CrmCreateOpportunityArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_opportunity(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Edit opportunity in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_edit_opportunity(
+        &self,
+        Parameters(input): Parameters<CrmEditOpportunityArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_opportunity(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Archive opportunity in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_archive_opportunity(
+        &self,
+        Parameters(input): Parameters<CrmArchiveOpportunityArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_archive_opportunity(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Opportunity history in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_opportunity_history(
+        &self,
+        Parameters(input): Parameters<CrmOpportunityHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_opportunity_history(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Deals in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_deals(
+        &self,
+        Parameters(input): Parameters<CrmDealsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deals(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Deal in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_deal(
+        &self,
+        Parameters(input): Parameters<CrmDealArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.crm_deal(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Create deal in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_create_deal(
+        &self,
+        Parameters(input): Parameters<CrmCreateDealArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_deal(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Edit deal in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_edit_deal(
+        &self,
+        Parameters(input): Parameters<CrmEditDealArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_deal(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Archive deal in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_archive_deal(
+        &self,
+        Parameters(input): Parameters<CrmArchiveDealArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_archive_deal(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Deal history in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_deal_history(
+        &self,
+        Parameters(input): Parameters<CrmDealHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deal_history(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Modules in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_modules(
+        &self,
+        Parameters(input): Parameters<CrmModulesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.crm_modules(input.workspace_id).await)
+    }
+    #[tool(
+        description = "Set crm in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
+    )]
+    async fn crm_set_crm(
+        &self,
+        Parameters(input): Parameters<CrmSetCrmArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_set_crm(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+
+    #[tool(
+        description = "List workspace permissions. Mutations require current administrative authority and preserve a final active administrator."
+    )]
+    async fn list_workspace_permissions(
+        &self,
+        Parameters(input): Parameters<AccessPermissionsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.access_permissions(input.workspace_id).await)
+    }
+    #[tool(
+        description = "List workspace roles. Mutations require current administrative authority and preserve a final active administrator."
+    )]
+    async fn list_workspace_roles(
+        &self,
+        Parameters(input): Parameters<AccessRolesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .access_roles(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Get workspace role. Mutations require current administrative authority and preserve a final active administrator."
+    )]
+    async fn get_workspace_role(
+        &self,
+        Parameters(input): Parameters<AccessRoleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.access_role(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Create workspace role. Mutations require current administrative authority and preserve a final active administrator."
+    )]
+    async fn create_workspace_role(
+        &self,
+        Parameters(input): Parameters<AccessCreateRoleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .access_create_role(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Update workspace role. Mutations require current administrative authority and preserve a final active administrator."
+    )]
+    async fn update_workspace_role(
+        &self,
+        Parameters(input): Parameters<AccessEditRoleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .access_edit_role(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "List workspace members. Mutations require current administrative authority and preserve a final active administrator."
+    )]
+    async fn list_workspace_members(
+        &self,
+        Parameters(input): Parameters<AccessMembersArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .access_members(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Get workspace member. Mutations require current administrative authority and preserve a final active administrator."
+    )]
+    async fn get_workspace_member(
+        &self,
+        Parameters(input): Parameters<AccessMemberArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .access_member(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Update workspace member. Mutations require current administrative authority and preserve a final active administrator."
+    )]
+    async fn update_workspace_member(
+        &self,
+        Parameters(input): Parameters<AccessEditMemberArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .access_edit_member(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+
+    #[tool(description = "List scoped intake evidence by state; pending items require review.")]
+    async fn list_contact_intakes(
+        &self,
+        Parameters(input): Parameters<IntakeListArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.intakes(input.workspace_id, &input.query).await)
+    }
+    #[tool(description = "Read permitted original intake evidence and resolution state.")]
+    async fn get_contact_intake(
+        &self,
+        Parameters(input): Parameters<IntakeGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .intake(input.workspace_id, input.intake_id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Resolve identifiers without overwriting trusted fields; preserve ambiguous input for review."
+    )]
+    async fn submit_contact_intake(
+        &self,
+        Parameters(input): Parameters<IntakeSubmitArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .submit_intake(input.workspace_id, &input.idempotency_key, &input.intake)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Explicitly link a permitted person, create a reviewed person, or dismiss a pending intake; requires expected version."
+    )]
+    async fn resolve_contact_intake(
+        &self,
+        Parameters(input): Parameters<IntakeResolveArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .resolve_intake(
+                    input.workspace_id,
+                    input.intake_id,
+                    &input.idempotency_key,
+                    &input.review,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "List up to 50 currently permitted candidate contacts for an intake; no hidden candidate counts."
+    )]
+    async fn list_intake_candidates(
+        &self,
+        Parameters(input): Parameters<IntakeGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .intake_candidates(input.workspace_id, input.intake_id)
+                .await,
+        )
+    }
+
+    #[tool(description = "List tags within the authorized workspace.")]
+    async fn list_tags(
+        &self,
+        Parameters(input): Parameters<TagListArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.tags(input.workspace_id, &input.query).await)
+    }
+    #[tool(description = "Get tag within the authorized workspace.")]
+    async fn get_tag(
+        &self,
+        Parameters(input): Parameters<TagGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.tag(input.workspace_id, input.tag_id).await)
+    }
+    #[tool(description = "Create tag within the authorized workspace.")]
+    async fn create_tag(
+        &self,
+        Parameters(input): Parameters<TagCreateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .create_tag(input.workspace_id, &input.idempotency_key, &input.tag)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Rename, color, archive or restore a tag; requires its expected version. Stable assignments are preserved."
+    )]
+    async fn update_tag(
+        &self,
+        Parameters(input): Parameters<TagEditArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .edit_tag(
+                    input.workspace_id,
+                    input.tag_id,
+                    &input.idempotency_key,
+                    &input.tag,
+                )
+                .await,
+        )
+    }
+    #[tool(description = "List contact tags within the authorized workspace.")]
+    async fn list_contact_tags(
+        &self,
+        Parameters(input): Parameters<ContactGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .contacts_tags(input.workspace_id, input.contact_id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Replace a contact tag set using its expected version and a retry key; tags do not grant access."
+    )]
+    async fn set_contact_tags(
+        &self,
+        Parameters(input): Parameters<ContactTagsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .set_contacts_tags(
+                    input.workspace_id,
+                    input.contact_id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(description = "List organization tags within the authorized workspace.")]
+    async fn list_organization_tags(
+        &self,
+        Parameters(input): Parameters<OrganizationGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .organizations_tags(input.workspace_id, input.organization_id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Replace organization tags with expected version and a retry key; tags do not grant access."
+    )]
+    async fn set_organization_tags(
+        &self,
+        Parameters(input): Parameters<OrganizationTagsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .set_organizations_tags(
+                    input.workspace_id,
+                    input.organization_id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+
     #[tool(
         description = "List workspaces allowed by the configured first-party session and current suite permissions."
     )]

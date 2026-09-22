@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Contacts business operations own matching, authorization and transactions.
 mod dao;
+pub mod intake;
 pub mod organizations;
+pub mod tagging;
 pub use crate::application::OperationError as Error;
 use crate::{access, application::ActorContext, reliability};
 use schemars::JsonSchema;
@@ -72,6 +74,7 @@ pub struct ListContacts {
     pub after: Option<Uuid>,
     pub archived: Option<bool>,
     pub search: Option<String>,
+    pub tag_id: Option<Uuid>,
 }
 #[derive(Deserialize, Serialize, JsonSchema, ToSchema)]
 pub struct ContactPage {
@@ -187,6 +190,9 @@ pub async fn list(
     }
     let mut tx = pool.begin().await?;
     let access = access::require(&mut tx, identity, workspace, "contacts.read").await?;
+    if let Some(tag) = query.tag_id {
+        crate::tags::definitions(&mut tx, actor, &[tag], false).await?;
+    }
     let mut items = dao::list(&mut tx, workspace, &access, &query, limit + 1).await?;
     let next_cursor = if items.len() > limit as usize {
         items.pop();
@@ -208,76 +214,168 @@ pub async fn get(pool: &PgPool, actor: &ActorContext<'_>, id: Uuid) -> Result<Co
     tx.commit().await?;
     Ok(contact)
 }
+struct CreationAccess {
+    write: access::Access,
+    read: access::Access,
+    owner: Uuid,
+}
+async fn creation_access(
+    db: &mut sqlx::PgConnection,
+    actor: &ActorContext<'_>,
+    input: &ContactInput,
+) -> Result<CreationAccess, Error> {
+    let write = access::require(db, actor.identity, actor.workspace, "contacts.create").await?;
+    let read = access::require(db, actor.identity, actor.workspace, "contacts.read").await?;
+    let owner = input.owner_membership_id.unwrap_or(write.membership_id);
+    if !write.permits_owner(owner) || !read.permits_owner(owner) {
+        return Err(Error::Forbidden);
+    }
+    if input.allow_shared {
+        let sharing = access::require(
+            db,
+            actor.identity,
+            actor.workspace,
+            "contacts.identifiers.share",
+        )
+        .await?;
+        if !sharing.permits_owner(owner) {
+            return Err(Error::Forbidden);
+        }
+    }
+    Ok(CreationAccess { write, read, owner })
+}
+async fn authorize_sharing(
+    db: &mut sqlx::PgConnection,
+    actor: &ActorContext<'_>,
+    owner: Uuid,
+) -> Result<(), Error> {
+    let sharing = access::require(
+        db,
+        actor.identity,
+        actor.workspace,
+        "contacts.identifiers.share",
+    )
+    .await?;
+    if !sharing.permits_owner(owner) {
+        return Err(Error::Forbidden);
+    }
+    Ok(())
+}
+/// Existing, readable associations are already known to the actor. Introducing
+/// identifiers under restricted visibility requires the same review regardless
+/// of whether another (possibly hidden) contact uses the identifier.
+async fn check_identifier_additions(
+    db: &mut sqlx::PgConnection,
+    actor: &ActorContext<'_>,
+    read: &access::Access,
+    owner: Uuid,
+    identifiers: &[Identifier],
+    known: &[&Contact],
+    allow_shared: bool,
+) -> Result<(), Error> {
+    if allow_shared {
+        return authorize_sharing(db, actor, owner).await;
+    }
+    let added: Vec<&Identifier> = identifiers
+        .iter()
+        .filter(|i| {
+            !known.iter().any(|c| {
+                c.identifiers
+                    .iter()
+                    .any(|old| old.kind == i.kind && old.normalized_value == i.normalized)
+            })
+        })
+        .collect();
+    if added.is_empty() {
+        return Ok(());
+    }
+    if !read.workspace_wide {
+        return Err(Error::Conflict(
+            "Identifier additions with restricted visibility require explicit sharing review",
+        ));
+    }
+    for identifier in added {
+        if !dao::matches(db, actor.workspace, std::slice::from_ref(identifier))
+            .await?
+            .is_empty()
+        {
+            return Err(Error::Conflict(
+                "Identifier match requires review; reuse a permitted contact or explicitly confirm a shared identifier",
+            ));
+        }
+    }
+    Ok(())
+}
+/// Called by intake within the same transaction; never opens a nested transaction.
+async fn create_in_transaction(
+    db: &mut sqlx::PgConnection,
+    actor: &ActorContext<'_>,
+    input: &ContactInput,
+) -> Result<Contact, Error> {
+    let identifiers = validate(input)?;
+    let authority = creation_access(db, actor, input).await?;
+    access::require_active_member(db, actor.workspace, authority.owner).await?;
+    dao::lock_identifiers(db, actor.workspace, &identifiers).await?;
+    check_identifier_additions(
+        db,
+        actor,
+        &authority.read,
+        authority.owner,
+        &identifiers,
+        &[],
+        input.allow_shared,
+    )
+    .await?;
+    let id = dao::insert(db, actor.workspace, authority.owner, input).await?;
+    dao::set_identifiers(db, actor.workspace, id, &identifiers).await?;
+    reliability::audit(
+        db,
+        actor,
+        &authority.write,
+        "contacts.created",
+        id,
+        serde_json::json!({}),
+    )
+    .await?;
+    dao::get(db, actor.workspace, id, &authority.read, false).await
+}
 pub async fn create(
     pool: &PgPool,
     actor: &ActorContext<'_>,
     key: &str,
     input: ContactInput,
 ) -> Result<Contact, Error> {
-    let (identity, workspace) = (actor.identity, actor.workspace);
-    let identifiers = validate(&input)?;
+    validate(&input)?;
     let mut tx = pool.begin().await?;
-    let access = access::require(&mut tx, identity, workspace, "contacts.create").await?;
-    let read = access::require(&mut tx, identity, workspace, "contacts.read").await?;
-    let owner = input.owner_membership_id.unwrap_or(access.membership_id);
-    if !access.permits_owner(owner) || !read.permits_owner(owner) {
-        return Err(Error::Forbidden);
-    }
-    if input.allow_shared {
-        let sharing =
-            access::require(&mut tx, identity, workspace, "contacts.identifiers.share").await?;
-        if !sharing.permits_owner(owner) {
-            return Err(Error::Forbidden);
-        }
-    }
+    let authority = creation_access(&mut tx, actor, &input).await?;
     let request = serde_json::to_value(&input).expect("contact input serializes");
     if let Some(saved) = reliability::replay::<Contact>(
         &mut tx,
-        workspace,
-        &access,
+        actor.workspace,
+        &authority.write,
         "contacts.create",
         key,
         &request,
     )
     .await?
     {
-        dao::get(&mut tx, workspace, saved.id, &access, false).await?;
-        dao::get(&mut tx, workspace, saved.id, &read, false).await?;
+        dao::get(&mut tx, actor.workspace, saved.id, &authority.write, false).await?;
+        dao::get(&mut tx, actor.workspace, saved.id, &authority.read, false).await?;
         return Ok(saved);
     }
-    access::require_active_member(&mut tx, workspace, owner).await?;
-    dao::lock_identifiers(&mut tx, workspace, &identifiers).await?;
-    let matches = dao::matches(&mut tx, workspace, &identifiers).await?;
-    if !matches.is_empty() && !input.allow_shared {
-        // Creation is deliberately not implicit resolution: intake gets a separate operation.
-        return Err(Error::Conflict(
-            "Identifier match requires review; reuse a permitted contact or explicitly confirm a shared identifier",
-        ));
-    }
-    let id = dao::insert(&mut tx, workspace, owner, &input).await?;
-    dao::set_identifiers(&mut tx, workspace, id, &identifiers).await?;
-    reliability::audit(
-        &mut tx,
-        actor,
-        &access,
-        "contacts.created",
-        id,
-        serde_json::json!({}),
-    )
-    .await?;
-    let contact = dao::get(&mut tx, workspace, id, &read, false).await?;
+    let result = create_in_transaction(&mut tx, actor, &input).await?;
     reliability::save_replay(
         &mut tx,
-        workspace,
-        &access,
+        actor.workspace,
+        &authority.write,
         "contacts.create",
         key,
         &request,
-        &contact,
+        &result,
     )
     .await?;
     tx.commit().await?;
-    Ok(contact)
+    Ok(result)
 }
 pub async fn edit(
     pool: &PgPool,
@@ -298,11 +396,15 @@ pub async fn edit(
             .await?
     {
         dao::get(&mut tx, workspace, saved.id, &access, false).await?;
-        dao::get(&mut tx, workspace, saved.id, &read, false).await?;
+        let current = dao::get(&mut tx, workspace, saved.id, &read, false).await?;
+        if input.contact.allow_shared {
+            authorize_sharing(&mut tx, actor, current.owner_membership_id).await?;
+        }
         return Ok(saved);
     }
     dao::lock_identifiers(&mut tx, workspace, &identifiers).await?;
     let existing = dao::get(&mut tx, workspace, id, &access, true).await?;
+    dao::get(&mut tx, workspace, id, &read, false).await?;
     if existing.version != input.expected_version || existing.merged_into_id.is_some() {
         return Err(Error::Conflict("Contact changed; reload before editing"));
     }
@@ -314,17 +416,16 @@ pub async fn edit(
         return Err(Error::Forbidden);
     }
     access::require_active_member(&mut tx, workspace, owner).await?;
-    let matches = dao::matches(&mut tx, workspace, &identifiers).await?;
-    if matches.iter().any(|other| *other != id) {
-        if !input.contact.allow_shared {
-            return Err(Error::Conflict("Shared identifier requires review"));
-        }
-        let sharing =
-            access::require(&mut tx, identity, workspace, "contacts.identifiers.share").await?;
-        if !sharing.permits_owner(owner) {
-            return Err(Error::Forbidden);
-        }
-    }
+    check_identifier_additions(
+        &mut tx,
+        actor,
+        &read,
+        owner,
+        &identifiers,
+        &[&existing],
+        input.contact.allow_shared,
+    )
+    .await?;
     dao::update(&mut tx, workspace, id, owner, &input.contact).await?;
     dao::set_identifiers(&mut tx, workspace, id, &identifiers).await?;
     reliability::audit(
@@ -430,7 +531,10 @@ pub async fn merge(
             dao::get(&mut tx, workspace, id, &access, false).await?;
             dao::get(&mut tx, workspace, id, &read, false).await?;
         }
-        dao::get(&mut tx, workspace, survivor, &update, false).await?;
+        let current = dao::get(&mut tx, workspace, survivor, &update, false).await?;
+        if input.resolved.allow_shared {
+            authorize_sharing(&mut tx, actor, current.owner_membership_id).await?;
+        }
         return Ok(saved);
     }
     dao::lock_merge(&mut tx, workspace).await?;
@@ -493,24 +597,19 @@ pub async fn merge(
         return Err(Error::Forbidden);
     }
     access::require_active_member(&mut tx, workspace, owner).await?;
-    if dao::matches(&mut tx, workspace, &identifiers)
-        .await?
-        .iter()
-        .any(|id| !ids.contains(id))
-    {
-        if !input.resolved.allow_shared {
-            return Err(Error::Conflict(
-                "Other contacts share these identifiers; explicit review is required",
-            ));
-        }
-        let sharing =
-            access::require(&mut tx, identity, workspace, "contacts.identifiers.share").await?;
-        if !sharing.permits_owner(owner) {
-            return Err(Error::Forbidden);
-        }
-    }
+    check_identifier_additions(
+        &mut tx,
+        actor,
+        &read,
+        owner,
+        &identifiers,
+        &[&source, &target],
+        input.resolved.allow_shared,
+    )
+    .await?;
     dao::update(&mut tx, workspace, survivor, owner, &input.resolved).await?;
     dao::set_identifiers(&mut tx, workspace, survivor, &identifiers).await?;
+    tagging::merge(&mut tx, workspace, input.source_id, survivor).await?;
     organizations::merge_relationships(&mut tx, workspace, input.source_id, survivor).await?;
     dao::merge_into(&mut tx, workspace, input.source_id, survivor).await?;
     reliability::audit(

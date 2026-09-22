@@ -3,18 +3,22 @@
   import type { PageData, ActionData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
   const nextPage = () =>
-    `?${new URLSearchParams({ search: data.search, archived: String(data.archived), after: data.page.next_cursor ?? '' })}`;
+    `?${new URLSearchParams({ search: data.search, ...(data.tagId ? { tag_id: data.tagId } : {}), archived: String(data.archived), after: data.page.next_cursor ?? '' })}`;
 </script>
 
 <svelte:head
   ><title>Contacts · {data.workspace.name} · Looski</title></svelte:head
 >
 <header>
+  <a href={`/workspaces/${data.workspace.id}/intakes`}>Intake review</a>
+  <a href={`/workspaces/${data.workspace.id}/tags`}>Tags</a>
   <a href="/workspaces">← Workspaces</a><span>{data.workspace.name}</span>
   <a href={`/workspaces/${data.workspace.id}/organizations`}>Organizations</a>
   <form method="POST" action="/logout">
     <button class="secondary">Sign out</button>
   </form>
+  <a href={`/workspaces/${data.workspace.id}/access`}>Workspace access</a>
+  <a href={`/workspaces/${data.workspace.id}/crm`}>Applications</a>
 </header>
 <h1>People behind the business.</h1>
 <p class="muted">
@@ -29,6 +33,9 @@
     >
   </div>
   <form method="GET" class="inline">
+    {#if data.tagId}<input type="hidden" name="tag_id" value={data.tagId} /><a
+        href="?">Clear tag filter</a
+      >{/if}
     <label
       >Find by name<input
         name="search"

@@ -55,7 +55,7 @@ pub(super) async fn list(
         get(db, workspace, cursor, access, false).await?;
     }
     let sql = format!(
-        "SELECT {COLUMNS} FROM contacts.organizations o WHERE o.workspace_id=$1 AND ($2 OR o.owner_membership_id=$3) AND (o.archived_at IS NOT NULL)=$4 AND ($5::uuid IS NULL OR (o.created_at,o.id)>(SELECT created_at,id FROM contacts.organizations WHERE workspace_id=$1 AND id=$5)) AND ($6::text IS NULL OR strpos(lower(o.name),lower($6))>0) ORDER BY o.created_at,o.id LIMIT $7"
+        "SELECT {COLUMNS} FROM contacts.organizations o WHERE o.workspace_id=$1 AND ($2 OR o.owner_membership_id=$3) AND (o.archived_at IS NOT NULL)=$4 AND ($5::uuid IS NULL OR (o.created_at,o.id)>(SELECT created_at,id FROM contacts.organizations WHERE workspace_id=$1 AND id=$5)) AND ($6::text IS NULL OR strpos(lower(o.name),lower($6))>0) AND ($8::uuid IS NULL OR EXISTS(SELECT 1 FROM contacts.organization_tags t WHERE t.workspace_id=o.workspace_id AND t.organization_id=o.id AND t.tag_id=$8)) ORDER BY o.created_at,o.id LIMIT $7"
     );
     sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
         .bind(workspace)
@@ -65,6 +65,7 @@ pub(super) async fn list(
         .bind(query.after)
         .bind(&query.search)
         .bind(limit)
+        .bind(query.tag_id)
         .fetch_all(db)
         .await?
         .into_iter()
@@ -185,5 +186,9 @@ pub(super) async fn merge(
     }
     // Recreate the combined current set, retaining all earlier rows as history.
     sqlx::query("WITH combined AS MATERIALIZED (SELECT organization_id,min(relationship_label) AS relationship_label,min(job_title) AS job_title,bool_or(is_primary) AS is_primary FROM contacts.contact_organizations WHERE workspace_id=$1 AND contact_id IN ($2,$3) AND ended_at IS NULL GROUP BY organization_id), ended AS (UPDATE contacts.contact_organizations SET ended_at=now() WHERE workspace_id=$1 AND contact_id IN ($2,$3) AND ended_at IS NULL RETURNING id) INSERT INTO contacts.contact_organizations(workspace_id,contact_id,organization_id,relationship_label,job_title,is_primary) SELECT $1,$3,organization_id,relationship_label,job_title,is_primary FROM combined WHERE (SELECT count(*) FROM ended)>=0").bind(workspace).bind(source).bind(survivor).execute(db).await?;
+    Ok(())
+}
+pub(super) async fn touch(db: &mut PgConnection, workspace: Uuid, id: Uuid) -> Result<(), Error> {
+    sqlx::query("UPDATE contacts.organizations SET version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2").bind(workspace).bind(id).execute(db).await?;
     Ok(())
 }

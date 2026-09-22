@@ -1,3 +1,4 @@
+import { tagPanel, saveTags } from '$lib/server/tag-panel';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 import { workspaceClient, requireSameOrigin } from '$lib/server/session';
@@ -51,7 +52,15 @@ export const load: PageServerLoad = async (event) => {
       organizations.response.status,
       organizations.error?.message ?? 'Organizations unavailable',
     );
+  const tags = await tagPanel(
+    client,
+    workspace.id,
+    result.data.id,
+    'contacts',
+    event.url.searchParams.get('tag_search') ?? '',
+  );
   return {
+    tags,
     workspace,
     contact: result.data,
     relationships: relationships.data ?? [],
@@ -64,6 +73,8 @@ export const load: PageServerLoad = async (event) => {
   };
 };
 export const actions: Actions = {
+  tags: (event) =>
+    saveTags(event, event.params.workspace, event.params.contact, 'contacts'),
   relate: async (event) => {
     requireSameOrigin(event);
     const { workspace, client } = await workspaceClient(

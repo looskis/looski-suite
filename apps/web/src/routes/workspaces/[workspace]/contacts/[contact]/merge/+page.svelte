@@ -31,6 +31,7 @@
       {#each [data.survivor, data.source] as contact, index}
         {@const relationships =
           index === 0 ? data.survivorRelationships : data.sourceRelationships}
+        {@const tags = index === 0 ? data.survivorTags : data.sourceTags}
         <div>
           <h3>{contact.display_name}</h3>
           <p>{contact.notes || 'No notes'}</p>
@@ -39,6 +40,12 @@
                 {identifier.kind}: {identifier.value}
               </li>{/each}
           </ul>
+          <h4>Tags</h4>
+          {#if tags}<ul>
+              {#each tags as tag}<li>
+                  {tag.name}{tag.archived ? ' · Archived' : ''}
+                </li>{:else}<li>No tags</li>{/each}
+            </ul>{:else}<p>Your role cannot preview tags.</p>{/if}
           <h4>Organization relationships</h4>
           {#if relationships}
             <ul>

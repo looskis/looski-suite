@@ -18,6 +18,28 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// CRM definitions, opportunities, deals and module selection. Mutations read JSON from stdin.
+    Crm {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: CrmCommand,
+    },
+    /// Staff roles and memberships. Mutations read JSON from stdin.
+    Access {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: AccessCommand,
+    },
     /// Provision the first owner locally; reads credentials as JSON from stdin.
     BootstrapOwner,
     /// List permitted workspaces using an access-token file.
@@ -49,6 +71,28 @@ enum Command {
         #[command(subcommand)]
         action: OrganizationCommand,
     },
+    /// Shared workspace tag definitions. Mutations read JSON from stdin.
+    Tags {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: TagCommand,
+    },
+    /// Retained contact intake and manual review. Mutations read JSON from stdin.
+    Intakes {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: IntakeCommand,
+    },
     /// Start the HTTP API. Requires the migrated development database.
     Api {
         #[arg(long, env = "LOOSKI_API_BIND", default_value = "127.0.0.1:58081")]
@@ -71,7 +115,227 @@ enum Command {
 }
 
 #[derive(Subcommand)]
+enum CrmCommand {
+    Pipelines {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        parent_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        archived: bool,
+    },
+    Pipeline {
+        id: uuid::Uuid,
+    },
+    CreatePipeline {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditPipeline {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Stages {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        parent_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        archived: bool,
+    },
+    Stage {
+        id: uuid::Uuid,
+    },
+    CreateStage {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditStage {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Categories {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        parent_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        archived: bool,
+    },
+    Category {
+        id: uuid::Uuid,
+    },
+    CreateCategory {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditCategory {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Statuses {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        parent_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        archived: bool,
+    },
+    Status {
+        id: uuid::Uuid,
+    },
+    CreateStatus {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditStatus {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Opportunities {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        search: Option<String>,
+        #[arg(long)]
+        archived: bool,
+        #[arg(long)]
+        pipeline_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        stage_id: Option<uuid::Uuid>,
+    },
+    Opportunity {
+        id: uuid::Uuid,
+    },
+    CreateOpportunity {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditOpportunity {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    ArchiveOpportunity {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    OpportunityHistory {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    Deals {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        search: Option<String>,
+        #[arg(long)]
+        archived: bool,
+        #[arg(long)]
+        category_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        status_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        originating_opportunity_id: Option<uuid::Uuid>,
+    },
+    Deal {
+        id: uuid::Uuid,
+    },
+    CreateDeal {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditDeal {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    ArchiveDeal {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    DealHistory {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    Modules,
+    SetCrm {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum AccessCommand {
+    Permissions,
+    Roles {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    Role {
+        id: uuid::Uuid,
+    },
+    CreateRole {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditRole {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Members {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    Member {
+        id: uuid::Uuid,
+    },
+    EditMember {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+}
+
+#[derive(Subcommand)]
 enum ContactCommand {
+    Tags {
+        id: uuid::Uuid,
+    },
+    SetTags {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
     Organizations {
         id: uuid::Uuid,
     },
@@ -93,6 +357,8 @@ enum ContactCommand {
         after: Option<uuid::Uuid>,
         #[arg(long)]
         search: Option<String>,
+        #[arg(long)]
+        tag_id: Option<uuid::Uuid>,
         #[arg(long)]
         archived: bool,
     },
@@ -121,6 +387,14 @@ enum ContactCommand {
 
 #[derive(Subcommand)]
 enum OrganizationCommand {
+    Tags {
+        id: uuid::Uuid,
+    },
+    SetTags {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
     List {
         #[arg(long, default_value_t = 50)]
         limit: i64,
@@ -128,6 +402,8 @@ enum OrganizationCommand {
         after: Option<uuid::Uuid>,
         #[arg(long)]
         search: Option<String>,
+        #[arg(long)]
+        tag_id: Option<uuid::Uuid>,
         #[arg(long)]
         archived: bool,
     },
@@ -154,6 +430,57 @@ enum OrganizationCommand {
     },
 }
 
+#[derive(Subcommand)]
+enum TagCommand {
+    List {
+        #[arg(long, default_value_t = 50)]
+        limit: i64,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        search: Option<String>,
+        #[arg(long)]
+        archived: bool,
+    },
+    Get {
+        id: uuid::Uuid,
+    },
+    Create {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Update {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+}
+#[derive(Subcommand)]
+enum IntakeCommand {
+    List {
+        #[arg(long, default_value_t = 50)]
+        limit: i64,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long, default_value = "pending")]
+        state: String,
+    },
+    Get {
+        id: uuid::Uuid,
+    },
+    Submit {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Resolve {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Candidates {
+        id: uuid::Uuid,
+    },
+}
 #[tokio::main]
 async fn main() {
     if let Err(error) = run().await {
@@ -236,10 +563,27 @@ async fn run() -> anyhow::Result<()> {
                         )
                         .await?,
                 )?,
+                ContactCommand::Tags { id } => {
+                    serde_json::to_value(client.contacts_tags(workspace, id).await?)?
+                }
+                ContactCommand::SetTags {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .set_contacts_tags(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
                 ContactCommand::List {
                     limit,
                     after,
                     search,
+                    tag_id,
                     archived,
                 } => serde_json::to_value(
                     client
@@ -250,6 +594,7 @@ async fn run() -> anyhow::Result<()> {
                                 after,
                                 search,
                                 archived: Some(archived),
+                                tag_id,
                             },
                         )
                         .await?,
@@ -308,10 +653,27 @@ async fn run() -> anyhow::Result<()> {
         } => {
             let client = ApiClient::new(&api_url)?.with_token_file(token_file);
             let result = match action {
+                OrganizationCommand::Tags { id } => {
+                    serde_json::to_value(client.organizations_tags(workspace, id).await?)?
+                }
+                OrganizationCommand::SetTags {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .set_organizations_tags(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
                 OrganizationCommand::List {
                     limit,
                     after,
                     search,
+                    tag_id,
                     archived,
                 } => serde_json::to_value(
                     client
@@ -322,6 +684,7 @@ async fn run() -> anyhow::Result<()> {
                                 after,
                                 search,
                                 archived: Some(archived),
+                                tag_id,
                             },
                         )
                         .await?,
@@ -366,6 +729,611 @@ async fn run() -> anyhow::Result<()> {
                                 expected_version,
                                 archived: !restore,
                             },
+                        )
+                        .await?,
+                )?,
+            };
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        Command::Access {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            match action {
+                AccessCommand::Permissions => println!(
+                    "{}",
+                    serde_json::to_string(&client.access_permissions(workspace).await?)?
+                ),
+                AccessCommand::Roles { limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .access_roles(
+                                workspace,
+                                &looski::workspace_access::AccessQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                AccessCommand::Role { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.access_role(workspace, id).await?)?
+                ),
+                AccessCommand::CreateRole { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .access_create_role(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                AccessCommand::EditRole {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .access_edit_role(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                AccessCommand::Members { limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .access_members(
+                                workspace,
+                                &looski::workspace_access::AccessQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                AccessCommand::Member { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.access_member(workspace, id).await?)?
+                ),
+                AccessCommand::EditMember {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .access_edit_member(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+            }
+        }
+        Command::Crm {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            match action {
+                CrmCommand::Pipelines {
+                    limit,
+                    after,
+                    parent_id,
+                    archived,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_pipelines(
+                                workspace,
+                                &looski::crm::configuration::DefinitionQuery {
+                                    limit,
+                                    after,
+                                    parent_id,
+                                    archived: Some(archived)
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Pipeline { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_pipeline(workspace, id).await?)?
+                ),
+                CrmCommand::CreatePipeline { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_pipeline(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditPipeline {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_pipeline(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Stages {
+                    limit,
+                    after,
+                    parent_id,
+                    archived,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_stages(
+                                workspace,
+                                &looski::crm::configuration::DefinitionQuery {
+                                    limit,
+                                    after,
+                                    parent_id,
+                                    archived: Some(archived)
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Stage { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_stage(workspace, id).await?)?
+                ),
+                CrmCommand::CreateStage { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_stage(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditStage {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_stage(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Categories {
+                    limit,
+                    after,
+                    parent_id,
+                    archived,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_categories(
+                                workspace,
+                                &looski::crm::configuration::DefinitionQuery {
+                                    limit,
+                                    after,
+                                    parent_id,
+                                    archived: Some(archived)
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Category { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_category(workspace, id).await?)?
+                ),
+                CrmCommand::CreateCategory { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_category(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditCategory {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_category(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Statuses {
+                    limit,
+                    after,
+                    parent_id,
+                    archived,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_statuses(
+                                workspace,
+                                &looski::crm::configuration::DefinitionQuery {
+                                    limit,
+                                    after,
+                                    parent_id,
+                                    archived: Some(archived)
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Status { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_status(workspace, id).await?)?
+                ),
+                CrmCommand::CreateStatus { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_status(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditStatus {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_status(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Opportunities {
+                    limit,
+                    after,
+                    search,
+                    archived,
+                    pipeline_id,
+                    stage_id,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_opportunities(
+                                workspace,
+                                &looski::crm::OpportunityQuery {
+                                    limit,
+                                    after,
+                                    search,
+                                    archived: Some(archived),
+                                    pipeline_id,
+                                    stage_id
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Opportunity { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_opportunity(workspace, id).await?)?
+                ),
+                CrmCommand::CreateOpportunity { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_opportunity(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditOpportunity {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_opportunity(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::ArchiveOpportunity {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_archive_opportunity(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::OpportunityHistory { id, limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_opportunity_history(
+                                workspace,
+                                id,
+                                &looski::crm::HistoryQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Deals {
+                    limit,
+                    after,
+                    search,
+                    archived,
+                    category_id,
+                    status_id,
+                    originating_opportunity_id,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_deals(
+                                workspace,
+                                &looski::crm::DealQuery {
+                                    limit,
+                                    after,
+                                    search,
+                                    archived: Some(archived),
+                                    category_id,
+                                    status_id,
+                                    originating_opportunity_id
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Deal { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_deal(workspace, id).await?)?
+                ),
+                CrmCommand::CreateDeal { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_deal(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditDeal {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_deal(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::ArchiveDeal {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_archive_deal(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::DealHistory { id, limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_deal_history(
+                                workspace,
+                                id,
+                                &looski::crm::HistoryQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::Modules => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_modules(workspace).await?)?
+                ),
+                CrmCommand::SetCrm { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_set_crm(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+            }
+        }
+        Command::Tags {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let result = match action {
+                TagCommand::List {
+                    limit,
+                    after,
+                    search,
+                    archived,
+                } => serde_json::to_value(
+                    client
+                        .tags(
+                            workspace,
+                            &looski::tags::ListTags {
+                                limit: Some(limit),
+                                after,
+                                search,
+                                archived: Some(archived),
+                            },
+                        )
+                        .await?,
+                )?,
+                TagCommand::Get { id } => serde_json::to_value(client.tag(workspace, id).await?)?,
+                TagCommand::Create { idempotency_key } => serde_json::to_value(
+                    client
+                        .create_tag(
+                            workspace,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                TagCommand::Update {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .edit_tag(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+            };
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        Command::Intakes {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let result = match action {
+                IntakeCommand::List {
+                    limit,
+                    after,
+                    state,
+                } => serde_json::to_value(
+                    client
+                        .intakes(
+                            workspace,
+                            &looski::contacts::intake::ListIntakes {
+                                limit: Some(limit),
+                                after,
+                                state: Some(state),
+                            },
+                        )
+                        .await?,
+                )?,
+                IntakeCommand::Get { id } => {
+                    serde_json::to_value(client.intake(workspace, id).await?)?
+                }
+                IntakeCommand::Candidates { id } => {
+                    serde_json::to_value(client.intake_candidates(workspace, id).await?)?
+                }
+                IntakeCommand::Submit { idempotency_key } => serde_json::to_value(
+                    client
+                        .submit_intake(
+                            workspace,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                IntakeCommand::Resolve {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .resolve_intake(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
                         )
                         .await?,
                 )?,

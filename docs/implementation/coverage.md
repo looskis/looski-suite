@@ -8,12 +8,16 @@ This is the implementation checklist for the October 12 build request. Accepted 
 - [x] Owner provisioning, password login, session refresh/logout, workspace discovery across interfaces.
 - [x] Contacts create/read/update with identifier validation, reviewed sharing, and concurrent matching safeguards.
 - [x] Organizations and temporal relationships, primary selection, preserved merge/archive history.
-- [ ] Automatic intake resolution and persistent review.
+- [x] Automatic intake resolution and persistent review.
 - [x] Scoped action authorization for workspace/assigned Contacts operations.
-- [ ] Role/member administration, invitations, teams, and module selection.
+- [x] Supported staff role/member administration and final-administrator protection.
+- [x] Optional CRM module selection, disable/re-enable preserving shared Contacts and CRM records.
+- [ ] Staff invitations; team policies remain unavailable until implemented.
 - [x] Transactional audit, request replay, optimistic edits, archive/restore, merge/aliases.
 - [ ] Controlled permanent deletion and detailed reference/erase policy.
-- [ ] Tags, opportunity pipelines/stages, deals/categories/statuses, participants, independent histories.
+- [x] Shared tag catalog and contact/organization assignments, filters, lifecycle and merge preservation.
+- [x] Opportunity pipelines/stages, deals/categories/statuses and independent histories across API/CLI/MCP/web.
+- [ ] CRM participants and tag assignments.
 - [ ] Shared Tasks, activities, coordination configuration/templates, safe template removal.
 - [x] Contacts API/OpenAPI, CLI, MCP, web journeys and pagination.
 - [ ] Broader CRM interface parity and export.

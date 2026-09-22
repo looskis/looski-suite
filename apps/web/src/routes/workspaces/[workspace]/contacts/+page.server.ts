@@ -10,6 +10,7 @@ export const load: PageServerLoad = async (event) => {
     event.params.workspace,
   );
   const search = event.url.searchParams.get('search') ?? '';
+  const tagId = event.url.searchParams.get('tag_id') ?? undefined;
   const archived = event.url.searchParams.get('archived') === 'true';
   const after = event.url.searchParams.get('after') ?? undefined;
   const result = await client.GET(
@@ -17,7 +18,7 @@ export const load: PageServerLoad = async (event) => {
     {
       params: {
         path: { workspace_id: workspace.id },
-        query: { search, archived, after, limit: 50 },
+        query: { search, archived, after, limit: 50, tag_id: tagId },
       },
     },
   );
@@ -29,6 +30,7 @@ export const load: PageServerLoad = async (event) => {
   return {
     workspace,
     page: result.data,
+    tagId,
     search,
     archived,
     idempotencyKey: randomUUID(),

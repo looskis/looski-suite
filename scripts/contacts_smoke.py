@@ -132,11 +132,11 @@ finally:
     sql('DROP TRIGGER contacts_probe_fail ON suite.audit_events; DROP FUNCTION suite.contacts_probe_fail();')
 call(path,'POST',fault,expected=201,key=fault_key)
 # Current permissions constrain replay, too.
-sql("UPDATE suite.role_permissions SET record_scope='assigned' WHERE permission_key='contacts.read'")
+sql("UPDATE suite.role_permissions SET record_scope='assigned' WHERE permission_key='contacts.read' AND role_id IN (SELECT id FROM suite.roles WHERE key='owner')")
 try:
     assert call(contact_path)['id']==created['id']
 finally:
-    sql("UPDATE suite.role_permissions SET record_scope='workspace' WHERE permission_key='contacts.read'")
+    sql("UPDATE suite.role_permissions SET record_scope='workspace' WHERE permission_key='contacts.read' AND role_id IN (SELECT id FROM suite.roles WHERE key='owner')")
 sql("UPDATE suite.memberships SET state='suspended'")
 try:
     call(path,expected=403)
@@ -146,19 +146,19 @@ finally:
 # Assignment scope never borrows the broader read action's scope.
 other_member=sql("WITH u AS (INSERT INTO suite.users(display_name) VALUES ('Scope fixture') RETURNING id) INSERT INTO suite.memberships(workspace_id,user_id) SELECT '"+workspace+"',id FROM u RETURNING id") .splitlines()[0]
 other=call(path,'POST',{'display_name':name+' restricted','owner_membership_id':other_member},expected=201,key=secrets.token_hex(16))
-sql("UPDATE suite.role_permissions SET record_scope='assigned' WHERE permission_key IN ('contacts.update','contacts.archive')")
+sql("UPDATE suite.role_permissions SET record_scope='assigned' WHERE permission_key IN ('contacts.update','contacts.archive') AND role_id IN (SELECT id FROM suite.roles WHERE key='owner')")
 try:
     assert call(path+'/'+other['id'])['id']==other['id']  # workspace-wide reads
     call(path+'/'+other['id'],'PATCH',{'display_name':'Denied','expected_version':1},expected=404,key=secrets.token_hex(16))
     call(path+'/'+other['id']+'/archive','POST',{'archived':True,'expected_version':1},expected=404,key=secrets.token_hex(16))
 finally:
-    sql("UPDATE suite.role_permissions SET record_scope='workspace' WHERE permission_key IN ('contacts.update','contacts.archive')")
-sql("UPDATE suite.role_permissions SET record_scope='assigned' WHERE permission_key='contacts.read'")
+    sql("UPDATE suite.role_permissions SET record_scope='workspace' WHERE permission_key IN ('contacts.update','contacts.archive') AND role_id IN (SELECT id FROM suite.roles WHERE key='owner')")
+sql("UPDATE suite.role_permissions SET record_scope='assigned' WHERE permission_key='contacts.read' AND role_id IN (SELECT id FROM suite.roles WHERE key='owner')")
 try:
     call(path+'/'+other['id'],expected=404)
     assert call(path+'?search='+name.replace(' ','%20')+'%20restricted&limit=1')['items']==[]
 finally:
-    sql("UPDATE suite.role_permissions SET record_scope='workspace' WHERE permission_key='contacts.read'")
+    sql("UPDATE suite.role_permissions SET record_scope='workspace' WHERE permission_key='contacts.read' AND role_id IN (SELECT id FROM suite.roles WHERE key='owner')")
 # Preserve identifiers/history, flatten aliases, reject stale merge previews.
 source=call(path,'POST',{'display_name':name+' duplicate','notes':'Original source notes','identifiers':[{'kind':'email','value':secrets.token_hex(10)+'@example.com'}]},expected=201,key=secrets.token_hex(16))
 merge={'source_id':source['id'],'source_version':source['version'],'survivor_version':restored['version'],'resolved':{'display_name':name+' merged','notes':'Resolved notes'}}

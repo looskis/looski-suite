@@ -14,10 +14,11 @@ pub async fn audit(
     action: &str,
     record: Uuid,
     details: serde_json::Value,
-) -> Result<(), Error> {
-    sqlx::query("INSERT INTO suite.audit_events(workspace_id,operation_id,actor_user_id,action,record_id,request_id,source_interface,details) VALUES($1,$2,$3,$4,$5,$6,$7,$8)")
-        .bind(actor.workspace).bind(Uuid::new_v4()).bind(access.user_id).bind(action).bind(record).bind(actor.request_id).bind(actor.source_interface).bind(Json(details)).execute(db).await?;
-    Ok(())
+) -> Result<Uuid, Error> {
+    let id = Uuid::new_v4();
+    sqlx::query("INSERT INTO suite.audit_events(id,workspace_id,operation_id,actor_user_id,action,record_id,request_id,source_interface,details) VALUES($9,$1,$2,$3,$4,$5,$6,$7,$8)")
+        .bind(actor.workspace).bind(Uuid::new_v4()).bind(access.user_id).bind(action).bind(record).bind(actor.request_id).bind(actor.source_interface).bind(Json(details)).bind(id).execute(db).await?;
+    Ok(id)
 }
 pub async fn replay<T: serde::de::DeserializeOwned>(
     db: &mut PgConnection,

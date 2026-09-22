@@ -60,7 +60,7 @@ pub(super) async fn list(
     let sql=format!("SELECT {COLUMNS} FROM contacts.contacts c WHERE c.workspace_id=$1 AND ($2 OR c.owner_membership_id=$3) AND (c.archived_at IS NOT NULL)=$4 AND c.merged_into_id IS NULL
      AND ($5::uuid IS NULL OR (c.created_at,c.id)>(SELECT created_at,id FROM contacts.contacts WHERE workspace_id=$1 AND id=$5))
      AND ($6::text IS NULL OR strpos(lower(c.display_name),lower($6))>0)
-     ORDER BY c.created_at,c.id LIMIT $7");
+     AND ($8::uuid IS NULL OR EXISTS(SELECT 1 FROM contacts.contact_tags t WHERE t.workspace_id=c.workspace_id AND t.contact_id=c.id AND t.tag_id=$8)) ORDER BY c.created_at,c.id LIMIT $7");
     sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
         .bind(workspace)
         .bind(access.workspace_wide)
@@ -69,6 +69,7 @@ pub(super) async fn list(
         .bind(query.after)
         .bind(&query.search)
         .bind(limit)
+        .bind(query.tag_id)
         .fetch_all(db)
         .await?
         .into_iter()
@@ -80,6 +81,25 @@ pub(super) async fn lock_identifiers(
     workspace: Uuid,
     ids: &[Identifier],
 ) -> Result<(), Error> {
+    // Suggestion decisions use the database's same lower() as candidate lookup.
+    // These locks serialize review decisions; exact registry identities stay case-sensitive.
+    let emails: Vec<&str> = ids
+        .iter()
+        .filter(|i| i.kind == "email")
+        .map(|i| i.normalized.as_str())
+        .collect();
+    let folded = sqlx::query_scalar::<_, String>(
+        "SELECT DISTINCT lower(value) FROM unnest($1::text[]) AS value ORDER BY 1",
+    )
+    .bind(emails)
+    .fetch_all(&mut *db)
+    .await?;
+    for key in folded {
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))")
+            .bind(format!("identifier-case:{workspace}:{key}"))
+            .execute(&mut *db)
+            .await?;
+    }
     // Shared namespace and sorted keys serialize even identifiers not inserted yet.
     for item in ids {
         sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))")
