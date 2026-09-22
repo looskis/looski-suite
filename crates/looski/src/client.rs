@@ -29,6 +29,155 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn tasks_types(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::tasks::configuration::TaskConfigurationQuery,
+    ) -> anyhow::Result<crate::tasks::configuration::TaskTypePage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/tasks/types"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn tasks_type(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::tasks::configuration::TaskType> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/tasks/types/{id}"),
+        )?)
+        .await
+    }
+    pub async fn tasks_create_type(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::tasks::configuration::SaveTaskType,
+    ) -> anyhow::Result<crate::tasks::configuration::TaskType> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/tasks/types"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn tasks_edit_type(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::tasks::configuration::SaveTaskType,
+    ) -> anyhow::Result<crate::tasks::configuration::TaskType> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/tasks/types/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn tasks_templates(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::tasks::configuration::TaskConfigurationQuery,
+    ) -> anyhow::Result<crate::tasks::configuration::TaskTemplatePage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/tasks/templates"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn tasks_template(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::tasks::configuration::TaskTemplate> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/tasks/templates/{id}"),
+        )?)
+        .await
+    }
+    pub async fn tasks_create_template(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::tasks::configuration::SaveTaskTemplate,
+    ) -> anyhow::Result<crate::tasks::configuration::TaskTemplate> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/tasks/templates"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn tasks_edit_template(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::tasks::configuration::SaveTaskTemplate,
+    ) -> anyhow::Result<crate::tasks::configuration::TaskTemplate> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/tasks/templates/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn tasks_template_revisions(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::tasks::configuration::TaskRevisionQuery,
+    ) -> anyhow::Result<crate::tasks::configuration::TaskRevisionPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/tasks/templates/{id}/revisions"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn tasks_instantiate_template(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::tasks::configuration::InstantiateTaskTemplate,
+    ) -> anyhow::Result<crate::tasks::Task> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/tasks/templates/{id}/instantiate"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
     pub async fn crm_activity_types(
         &self,
         workspace: uuid::Uuid,

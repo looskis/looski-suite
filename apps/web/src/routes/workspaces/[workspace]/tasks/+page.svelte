@@ -75,3 +75,11 @@
     >
   </form>
 </section>
+
+<section>
+  <h2>Task configuration</h2>
+  <a href={`/workspaces/${data.workspace.id}/tasks/types`}>Task types</a> ·
+  <a href={`/workspaces/${data.workspace.id}/tasks/templates`}
+    >Reusable templates</a
+  >
+</section>

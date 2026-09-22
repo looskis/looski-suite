@@ -2,6 +2,7 @@ import type { components } from '$lib/api/schema';
 type Task = components['schemas']['Task'];
 export function taskFields(task?: Task) {
   return {
+    type_id: task?.type_id ?? '',
     title: task?.title ?? '',
     notes: task?.notes ?? '',
     assigned_membership_id: task?.assigned_membership_id ?? '',
@@ -12,6 +13,7 @@ export function taskFields(task?: Task) {
 export function taskDraft(form: FormData) {
   const text = (key: string) => String(form.get(key) ?? '');
   return {
+    type_id: text('type_id'),
     title: text('title'),
     notes: text('notes'),
     assigned_membership_id: text('assigned_membership_id'),
@@ -34,6 +36,7 @@ export function taskInput(
   )
     return null;
   return {
+    type_id: draft.type_id || null,
     title: draft.title,
     notes: draft.notes,
     assigned_membership_id: draft.assigned_membership_id || null,

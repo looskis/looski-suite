@@ -5,6 +5,7 @@
   }: {
     creating?: boolean;
     fields: {
+      type_id?: string;
       title: string;
       notes: string;
       assigned_membership_id: string;
@@ -47,4 +48,11 @@
       >Cancelled</option
     >
   </select></label
+>
+
+<label
+  >Task type ID (optional)<input
+    name="type_id"
+    value={fields.type_id ?? ''}
+  /></label
 >

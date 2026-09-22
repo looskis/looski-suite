@@ -3,7 +3,7 @@ use super::{Task, TaskChange, TaskHistoryQuery, TaskInput, TaskQuery};
 use crate::{access::Access, application::OperationError as Error};
 use sqlx::{PgConnection, types::Json};
 use uuid::Uuid;
-const RECORD: &str = "SELECT jsonb_build_object('id',id,'title',title,'notes',notes,'assigned_membership_id',assigned_membership_id,'due_on',due_on::text,'status',status,'completed_at',completed_at::text,'archived',archived_at IS NOT NULL,'version',version,'created_at',created_at::text,'updated_at',updated_at::text) FROM tasks.tasks";
+const RECORD: &str = "SELECT jsonb_build_object('id',id,'type_id',type_id,'type_name',type_name,'source_template_revision_id',source_template_revision_id,'title',title,'notes',notes,'assigned_membership_id',assigned_membership_id,'due_on',due_on::text,'status',status,'completed_at',completed_at::text,'archived',archived_at IS NOT NULL,'version',version,'created_at',created_at::text,'updated_at',updated_at::text) FROM tasks.tasks";
 pub(super) async fn get(db: &mut PgConnection, workspace: Uuid, id: Uuid) -> Result<Task, Error> {
     let sql = format!("{RECORD} WHERE workspace_id=$1 AND id=$2");
     Ok(
@@ -45,18 +45,24 @@ pub(super) async fn list(
             .collect(),
     )
 }
+pub(super) struct TaskState {
+    pub assignee: Uuid,
+    pub type_id: Option<Uuid>,
+    pub type_name: Option<String>,
+    pub source_template_revision_id: Option<Uuid>,
+}
 pub(super) async fn save(
     db: &mut PgConnection,
     workspace: Uuid,
     id: Option<Uuid>,
-    assignee: Uuid,
     input: &TaskInput,
+    state: &TaskState,
 ) -> Result<Uuid, Error> {
     if let Some(id) = id {
-        sqlx::query("UPDATE tasks.tasks SET title=$3,notes=$4,assigned_membership_id=$5,due_on=$6::text::date,status=$7,completed_at=CASE WHEN $7='completed' THEN COALESCE(completed_at,now()) ELSE NULL END,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2").bind(workspace).bind(id).bind(input.title.trim()).bind(&input.notes).bind(assignee).bind(&input.due_on).bind(input.status.key()).execute(db).await?;
+        sqlx::query("UPDATE tasks.tasks SET type_id=$8,type_name=$9,title=$3,notes=$4,assigned_membership_id=$5,due_on=$6::text::date,status=$7,completed_at=CASE WHEN $7='completed' THEN COALESCE(completed_at,now()) ELSE NULL END,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2").bind(workspace).bind(id).bind(input.title.trim()).bind(&input.notes).bind(state.assignee).bind(&input.due_on).bind(input.status.key()).bind(state.type_id).bind(&state.type_name).execute(db).await?;
         Ok(id)
     } else {
-        Ok(sqlx::query_scalar("INSERT INTO tasks.tasks(workspace_id,title,notes,assigned_membership_id,due_on,status,completed_at) VALUES($1,$2,$3,$4,$5::text::date,$6,CASE WHEN $6='completed' THEN now() ELSE NULL END) RETURNING id").bind(workspace).bind(input.title.trim()).bind(&input.notes).bind(assignee).bind(&input.due_on).bind(input.status.key()).fetch_one(db).await?)
+        Ok(sqlx::query_scalar("INSERT INTO tasks.tasks(workspace_id,title,notes,assigned_membership_id,due_on,status,completed_at,type_id,type_name,source_template_revision_id) VALUES($1,$2,$3,$4,$5::text::date,$6,CASE WHEN $6='completed' THEN now() ELSE NULL END,$7,$8,$9) RETURNING id").bind(workspace).bind(input.title.trim()).bind(&input.notes).bind(state.assignee).bind(&input.due_on).bind(input.status.key()).bind(state.type_id).bind(&state.type_name).bind(state.source_template_revision_id).fetch_one(db).await?)
     }
 }
 pub(super) async fn archive(

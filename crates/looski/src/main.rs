@@ -127,6 +127,59 @@ enum Command {
 
 #[derive(Subcommand)]
 enum TasksCommand {
+    Types {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        archived: Option<bool>,
+    },
+    Type {
+        id: uuid::Uuid,
+    },
+    CreateType {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditType {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Templates {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        archived: Option<bool>,
+    },
+    Template {
+        id: uuid::Uuid,
+    },
+    CreateTemplate {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditTemplate {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    TemplateRevisions {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    InstantiateTemplate {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+
     List {
         #[arg(long)]
         limit: Option<i64>,
@@ -1146,6 +1199,110 @@ async fn run() -> anyhow::Result<()> {
         } => {
             let client = ApiClient::new(&api_url)?.with_token_file(token_file);
             let result = match action {
+                TasksCommand::Types {
+                    limit,
+                    after,
+                    archived,
+                } => serde_json::to_value(
+                    client
+                        .tasks_types(
+                            workspace,
+                            &looski::tasks::configuration::TaskConfigurationQuery {
+                                limit,
+                                after,
+                                archived,
+                            },
+                        )
+                        .await?,
+                )?,
+                TasksCommand::Type { id } => {
+                    serde_json::to_value(client.tasks_type(workspace, id).await?)?
+                }
+                TasksCommand::CreateType { idempotency_key } => serde_json::to_value(
+                    client
+                        .tasks_create_type(
+                            workspace,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                TasksCommand::EditType {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .tasks_edit_type(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                TasksCommand::Templates {
+                    limit,
+                    after,
+                    archived,
+                } => serde_json::to_value(
+                    client
+                        .tasks_templates(
+                            workspace,
+                            &looski::tasks::configuration::TaskConfigurationQuery {
+                                limit,
+                                after,
+                                archived,
+                            },
+                        )
+                        .await?,
+                )?,
+                TasksCommand::Template { id } => {
+                    serde_json::to_value(client.tasks_template(workspace, id).await?)?
+                }
+                TasksCommand::CreateTemplate { idempotency_key } => serde_json::to_value(
+                    client
+                        .tasks_create_template(
+                            workspace,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                TasksCommand::EditTemplate {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .tasks_edit_template(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                TasksCommand::TemplateRevisions { id, limit, after } => serde_json::to_value(
+                    client
+                        .tasks_template_revisions(
+                            workspace,
+                            id,
+                            &looski::tasks::configuration::TaskRevisionQuery { limit, after },
+                        )
+                        .await?,
+                )?,
+                TasksCommand::InstantiateTemplate {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .tasks_instantiate_template(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
                 TasksCommand::List {
                     limit,
                     after,

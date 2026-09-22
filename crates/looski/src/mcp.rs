@@ -723,8 +723,213 @@ struct CrmActivityHistoryArgs {
     query: crate::crm::activities::ActivityHistoryQuery,
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct TasksTypesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::tasks::configuration::TaskConfigurationQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksTypeArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksCreateTypeArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::tasks::configuration::SaveTaskType,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksEditTypeArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::tasks::configuration::SaveTaskType,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksTemplatesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::tasks::configuration::TaskConfigurationQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksTemplateArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksCreateTemplateArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::tasks::configuration::SaveTaskTemplate,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksEditTemplateArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::tasks::configuration::SaveTaskTemplate,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksTemplateRevisionsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::tasks::configuration::TaskRevisionQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksInstantiateTemplateArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::tasks::configuration::InstantiateTaskTemplate,
+}
+
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "Tasks types. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
+    )]
+    async fn tasks_types(
+        &self,
+        Parameters(input): Parameters<TasksTypesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_types(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks type. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
+    )]
+    async fn tasks_type(
+        &self,
+        Parameters(input): Parameters<TasksTypeArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.tasks_type(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Tasks create type. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
+    )]
+    async fn tasks_create_type(
+        &self,
+        Parameters(input): Parameters<TasksCreateTypeArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_create_type(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks edit type. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
+    )]
+    async fn tasks_edit_type(
+        &self,
+        Parameters(input): Parameters<TasksEditTypeArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_edit_type(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks templates. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
+    )]
+    async fn tasks_templates(
+        &self,
+        Parameters(input): Parameters<TasksTemplatesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_templates(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks template. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
+    )]
+    async fn tasks_template(
+        &self,
+        Parameters(input): Parameters<TasksTemplateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_template(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks create template. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
+    )]
+    async fn tasks_create_template(
+        &self,
+        Parameters(input): Parameters<TasksCreateTemplateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_create_template(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks edit template. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
+    )]
+    async fn tasks_edit_template(
+        &self,
+        Parameters(input): Parameters<TasksEditTemplateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_edit_template(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks template revisions. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
+    )]
+    async fn tasks_template_revisions(
+        &self,
+        Parameters(input): Parameters<TasksTemplateRevisionsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_template_revisions(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks instantiate template. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
+    )]
+    async fn tasks_instantiate_template(
+        &self,
+        Parameters(input): Parameters<TasksInstantiateTemplateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_instantiate_template(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+
     #[tool(
         description = "Crm activity types. Activity and anchor visibility are independently enforced; mutations need current authority and idempotency."
     )]

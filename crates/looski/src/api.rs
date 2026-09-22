@@ -1,6 +1,7 @@
 mod crm;
 mod crm_activities;
 mod crm_task_links;
+mod task_configuration;
 mod tasks;
 mod workspace_access;
 // SPDX-License-Identifier: AGPL-3.0-only
@@ -70,7 +71,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 17)
+        .is_ok_and(|version| version == 18)
     };
     let auth = async {
         state
@@ -206,6 +207,7 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .merge(crm_activities::routes())
         .merge(crm_task_links::routes())
         .merge(tasks::routes())
+        .merge(task_configuration::routes())
         .merge(intake::routes())
 }
 

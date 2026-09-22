@@ -20,6 +20,7 @@ This is the implementation checklist for the October 12 build request. Accepted 
 - [x] CRM tag assignments and filters with shared catalog lifecycle.
 - [x] CRM participants.
 - [x] Shared Tasks with independent assignment, lifecycle, history and four-interface parity.
+- [x] Shared task types, immutable template revisions and pinned instantiation with current assignment authority.
 - [x] CRM task links and atomic follow-up composition with independent Tasks scope.
 - [x] Configurable activity types and logged activities with typed anchors, scoped history and four-interface parity.
 - [ ] Combined timeline, coordination configuration/templates, safe template removal.

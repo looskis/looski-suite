@@ -11,6 +11,10 @@
   >
 </header>
 <h1>{data.task.title}</h1>
+{#if data.task.type_name}<p>Type: {data.task.type_name}</p>{/if}
+{#if data.task.source_template_revision_id}<p>
+    Created from template revision {data.task.source_template_revision_id}
+  </p>{/if}
 {#if data.task.completed_at}<p>Completed {data.task.completed_at}</p>{/if}
 {#if form?.message}<p role="alert" class="error">{form.message}</p>{/if}
 {#if form?.draft || form?.archiveDraft}<p>
@@ -67,6 +71,7 @@
         )}{change.snapshot.archived ? ' · archived' : ''}
         <p>Version {change.snapshot.version} · {change.occurred_at}</p>
         <p>{change.snapshot.notes}</p>
+        <p>Type: {change.snapshot.type_name ?? 'Unspecified'}</p>
         <p>
           Due: {change.snapshot.due_on ?? 'Unscheduled'} · Assignee: {change
             .snapshot.assigned_membership_id}
@@ -76,4 +81,12 @@
   {#if data.history.next_cursor}<a
       href={`?history_after=${data.history.next_cursor}`}>More history →</a
     >{/if}
+</section>
+
+<section>
+  <h2>Task configuration</h2>
+  <a href={`/workspaces/${data.workspace.id}/tasks/types`}>Task types</a> ·
+  <a href={`/workspaces/${data.workspace.id}/tasks/templates`}
+    >Reusable templates</a
+  >
 </section>

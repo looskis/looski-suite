@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Shared actionable work; no dependency on CRM or Projects lifecycle.
+pub mod configuration;
 mod dao;
 use crate::{
     access,
@@ -33,6 +34,9 @@ impl Status {
 #[derive(Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct Task {
     pub id: Uuid,
+    pub type_id: Option<Uuid>,
+    pub type_name: Option<String>,
+    pub source_template_revision_id: Option<Uuid>,
     pub title: String,
     pub notes: String,
     pub assigned_membership_id: Uuid,
@@ -47,6 +51,13 @@ pub struct Task {
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct TaskInput {
+    /// Omit to preserve the type on edit; null explicitly clears it.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "type_change"
+    )]
+    pub type_id: Option<Option<Uuid>>,
     pub title: String,
     #[serde(default)]
     pub notes: String,
@@ -54,6 +65,9 @@ pub struct TaskInput {
     pub due_on: Option<String>,
     #[serde(default)]
     pub status: Status,
+}
+fn type_change<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Option<Uuid>>, D::Error> {
+    Option::<Uuid>::deserialize(d).map(Some)
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct EditTask {
@@ -266,7 +280,7 @@ pub async fn save(
             .unwrap_or(write.membership_id)
     });
     assignment(&mut tx, actor, &write, &read_access, assignee).await?;
-    let result = persist(&mut tx, actor, &write, id, assignee, &input).await?;
+    let result = persist(&mut tx, actor, &write, id, assignee, &input, None).await?;
     reliability::save_replay(
         &mut tx,
         actor.workspace,
@@ -365,7 +379,7 @@ pub(crate) async fn create_in_transaction(
     let (write, read) = mutation(db, actor, "tasks.create").await?;
     let assignee = input.assigned_membership_id.unwrap_or(write.membership_id);
     assignment(db, actor, &write, &read, assignee).await?;
-    persist(db, actor, &write, None, assignee, &input).await
+    persist(db, actor, &write, None, assignee, &input, None).await
 }
 async fn assignment(
     db: &mut PgConnection,
@@ -386,8 +400,39 @@ async fn persist(
     id: Option<Uuid>,
     assignee: Uuid,
     input: &TaskInput,
+    source: Option<(Uuid, Option<String>)>,
 ) -> Result<Task, Error> {
-    let id = dao::save(db, actor.workspace, id, assignee, input).await?;
+    let current_type = if let Some(id) = id {
+        dao::get(db, actor.workspace, id).await?.type_id
+    } else {
+        None
+    };
+    let type_id = input.type_id.unwrap_or(current_type);
+    let type_name = if let Some(type_id) = type_id {
+        Some(
+            configuration::type_state(
+                db,
+                actor.workspace,
+                type_id,
+                id.is_some() && current_type == Some(type_id),
+            )
+            .await?
+            .name,
+        )
+    } else {
+        None
+    };
+    let (source_template_revision_id, type_name) = match source {
+        Some((id, snapshot_name)) => (Some(id), snapshot_name),
+        None => (None, type_name),
+    };
+    let state = dao::TaskState {
+        assignee,
+        type_id,
+        type_name,
+        source_template_revision_id,
+    };
+    let id = dao::save(db, actor.workspace, id, input, &state).await?;
     let result = dao::get(db, actor.workspace, id).await?;
     record(db, actor, write, "tasks.saved", &result).await?;
     Ok(result)
@@ -429,4 +474,27 @@ pub(crate) async fn project_many(
         .into_iter()
         .map(|task| (task.id, task))
         .collect())
+}
+
+async fn create_from_template(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    input: TaskInput,
+    revision: Uuid,
+    type_name: Option<String>,
+) -> Result<Task, Error> {
+    validate(&input)?;
+    let (write, read) = mutation(db, actor, "tasks.create").await?;
+    let assignee = input.assigned_membership_id.unwrap_or(write.membership_id);
+    assignment(db, actor, &write, &read, assignee).await?;
+    persist(
+        db,
+        actor,
+        &write,
+        None,
+        assignee,
+        &input,
+        Some((revision, type_name)),
+    )
+    .await
 }
