@@ -44,7 +44,7 @@ pub(super) async fn create_owner(
     .await?;
     let role_id = sqlx::query_scalar::<_, Uuid>("INSERT INTO suite.roles(workspace_id, key, name) VALUES ($1, 'owner', 'Owner') RETURNING id")
         .bind(workspace_id).fetch_one(&mut *connection).await?;
-    sqlx::query("INSERT INTO suite.role_permissions(workspace_id, role_id, permission_key) SELECT $1, $2, key FROM suite.permissions WHERE key IN ('workspace.read','contacts.read','contacts.create','contacts.update','contacts.archive','contacts.merge','contacts.identifiers.share','contacts.delete_permanently','contacts.export')")
+    sqlx::query("INSERT INTO suite.role_permissions(workspace_id, role_id, permission_key) SELECT $1, $2, key FROM suite.permissions WHERE key IN ('workspace.read','contacts.read','contacts.create','contacts.update','contacts.archive','contacts.merge','contacts.identifiers.share','contacts.delete_permanently','contacts.export','contacts.organizations.read','contacts.organizations.create','contacts.organizations.update','contacts.organizations.archive','contacts.relationships.manage')")
         .bind(workspace_id).bind(role_id).execute(&mut *connection).await?;
     sqlx::query("INSERT INTO suite.membership_roles(workspace_id, membership_id, role_id) VALUES ($1, $2, $3)")
         .bind(workspace_id).bind(membership_id).bind(role_id).execute(&mut *connection).await?;

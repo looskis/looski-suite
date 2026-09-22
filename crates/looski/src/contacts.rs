@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Contacts business operations own matching, authorization and transactions.
 mod dao;
+pub mod organizations;
 pub use crate::application::OperationError as Error;
 use crate::{access, application::ActorContext, reliability};
 use schemars::JsonSchema;
@@ -510,6 +511,7 @@ pub async fn merge(
     }
     dao::update(&mut tx, workspace, survivor, owner, &input.resolved).await?;
     dao::set_identifiers(&mut tx, workspace, survivor, &identifiers).await?;
+    organizations::merge_relationships(&mut tx, workspace, input.source_id, survivor).await?;
     dao::merge_into(&mut tx, workspace, input.source_id, survivor).await?;
     reliability::audit(
         &mut tx,

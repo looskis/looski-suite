@@ -7,7 +7,8 @@ This is the implementation checklist for the October 12 build request. Accepted 
 - [x] Local Supabase, migration runner, Rust API, SvelteKit SSR, gateway.
 - [x] Owner provisioning, password login, session refresh/logout, workspace discovery across interfaces.
 - [x] Contacts create/read/update with identifier validation, reviewed sharing, and concurrent matching safeguards.
-- [ ] Organizations and relationships, automatic intake resolution and persistent review.
+- [x] Organizations and temporal relationships, primary selection, preserved merge/archive history.
+- [ ] Automatic intake resolution and persistent review.
 - [x] Scoped action authorization for workspace/assigned Contacts operations.
 - [ ] Role/member administration, invitations, teams, and module selection.
 - [x] Transactional audit, request replay, optimistic edits, archive/restore, merge/aliases.

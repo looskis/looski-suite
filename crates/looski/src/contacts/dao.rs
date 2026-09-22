@@ -170,3 +170,8 @@ pub(super) async fn merge_into(
     sqlx::query("UPDATE contacts.contacts SET merged_into_id=$3,archived_at=COALESCE(archived_at,now()),version=version+1,updated_at=now() WHERE workspace_id=$1 AND (id=$2 OR merged_into_id=$2)").bind(workspace).bind(source).bind(survivor).execute(db).await?;
     Ok(())
 }
+
+pub(super) async fn touch(db: &mut PgConnection, workspace: Uuid, id: Uuid) -> Result<(), Error> {
+    sqlx::query("UPDATE contacts.contacts SET version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2").bind(workspace).bind(id).execute(db).await?;
+    Ok(())
+}

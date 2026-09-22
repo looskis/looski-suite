@@ -21,9 +21,37 @@ export const load: PageServerLoad = async (event) => {
     return result.data;
   };
   const survivor = await get(event.params.contact);
+  if (survivor.id !== event.params.contact)
+    redirect(
+      303,
+      `/workspaces/${workspace.id}/contacts/${survivor.id}/merge${event.url.search}`,
+    );
   const sourceId = event.url.searchParams.get('source');
   const source = sourceId ? await get(sourceId) : null;
-  return { workspace, survivor, source, idempotencyKey: randomUUID() };
+  const relationships = async (id: string) => {
+    const result = await client.GET(
+      '/api/v1/workspaces/{workspace_id}/contacts/{contact_id}/organizations',
+      {
+        params: { path: { workspace_id: workspace.id, contact_id: id } },
+      },
+    );
+    if (!result.data && result.response.status !== 403)
+      error(
+        result.response.status,
+        result.error?.message ?? 'Relationships unavailable',
+      );
+    return result.data ?? null;
+  };
+  const survivorRelationships = await relationships(survivor.id);
+  const sourceRelationships = source ? await relationships(source.id) : null;
+  return {
+    workspace,
+    survivor,
+    source,
+    survivorRelationships,
+    sourceRelationships,
+    idempotencyKey: randomUUID(),
+  };
 };
 export const actions: Actions = {
   default: async (event) => {

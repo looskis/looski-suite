@@ -28,7 +28,9 @@
   <section>
     <h2>Compare records</h2>
     <div class="columns">
-      {#each [data.survivor, data.source] as contact}
+      {#each [data.survivor, data.source] as contact, index}
+        {@const relationships =
+          index === 0 ? data.survivorRelationships : data.sourceRelationships}
         <div>
           <h3>{contact.display_name}</h3>
           <p>{contact.notes || 'No notes'}</p>
@@ -37,12 +39,30 @@
                 {identifier.kind}: {identifier.value}
               </li>{/each}
           </ul>
+          <h4>Organization relationships</h4>
+          {#if relationships}
+            <ul>
+              {#each relationships as relationship}<li>
+                  {relationship.organization_name}: {relationship.relationship_label ||
+                    'No label'}
+                  {relationship.job_title ? ` · ${relationship.job_title}` : ''}
+                  {relationship.is_primary ? ' · Primary' : ''}
+                </li>{:else}<li>No visible relationships</li>{/each}
+            </ul>
+          {:else}<p>
+              Your role cannot preview organization relationships.
+            </p>{/if}
+          <a href={`/workspaces/${data.workspace.id}/contacts/${contact.id}`}
+            >Review or resolve relationships</a
+          >
         </div>
       {/each}
     </div>
     <p>
       Identifiers and history are retained. Old contact links resolve to the
-      survivor. Login identities and access do not change.
+      survivor. Resolve conflicting organization labels, titles, or primary
+      choices using the links above, then reload this preview. Login identities
+      and access do not change.
     </p>
   </section>
   <section>

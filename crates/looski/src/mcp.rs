@@ -49,6 +49,39 @@ struct ContactMergeArgs {
     idempotency_key: String,
     merge: crate::contacts::MergeContacts,
 }
+#[derive(Deserialize, JsonSchema)]
+struct OrganizationGetArgs {
+    workspace_id: Uuid,
+    organization_id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct OrganizationCreateArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    organization: crate::contacts::organizations::OrganizationInput,
+}
+#[derive(Deserialize, JsonSchema)]
+struct OrganizationEditArgs {
+    workspace_id: Uuid,
+    organization_id: Uuid,
+    idempotency_key: String,
+    edit: crate::contacts::organizations::EditOrganization,
+}
+#[derive(Deserialize, JsonSchema)]
+struct OrganizationArchiveArgs {
+    workspace_id: Uuid,
+    organization_id: Uuid,
+    idempotency_key: String,
+    change: crate::contacts::ArchiveContact,
+}
+#[derive(Deserialize, JsonSchema)]
+struct RelationshipArgs {
+    workspace_id: Uuid,
+    contact_id: Uuid,
+    organization_id: Uuid,
+    idempotency_key: String,
+    relationship: crate::contacts::organizations::RelationshipInput,
+}
 fn business_result<T: serde::Serialize>(
     result: anyhow::Result<T>,
 ) -> Result<CallToolResult, ErrorData> {
@@ -175,6 +208,111 @@ impl McpServer {
                     args.survivor_id,
                     &args.idempotency_key,
                     &args.merge,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "List permitted organizations with bounded cursor pagination and name search."
+    )]
+    async fn list_organizations(
+        &self,
+        Parameters(args): Parameters<ContactListArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .organizations(args.workspace_id, &args.query)
+                .await,
+        )
+    }
+    #[tool(description = "Read a permitted organization by ID.")]
+    async fn get_organization(
+        &self,
+        Parameters(args): Parameters<OrganizationGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .organization(args.workspace_id, args.organization_id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Create an organization with an idempotency key. Name or website is not unique identity."
+    )]
+    async fn create_organization(
+        &self,
+        Parameters(args): Parameters<OrganizationCreateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .create_organization(args.workspace_id, &args.idempotency_key, &args.organization)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Replace editable organization fields using expected_version and an idempotency key."
+    )]
+    async fn update_organization(
+        &self,
+        Parameters(args): Parameters<OrganizationEditArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .edit_organization(
+                    args.workspace_id,
+                    args.organization_id,
+                    &args.idempotency_key,
+                    &args.edit,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Archive or restore an organization without deleting relationships or history."
+    )]
+    async fn archive_organization(
+        &self,
+        Parameters(args): Parameters<OrganizationArchiveArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .archive_organization(
+                    args.workspace_id,
+                    args.organization_id,
+                    &args.idempotency_key,
+                    &args.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "List up to 100 current organization relationships for a permitted contact. Each organization must also be permitted."
+    )]
+    async fn list_contact_organizations(
+        &self,
+        Parameters(args): Parameters<ContactGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .contact_organizations(args.workspace_id, args.contact_id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Create, replace, or end a contact organization relationship. Requires expected_contact_version and idempotency key; preserves history and at most one primary organization."
+    )]
+    async fn set_contact_organization(
+        &self,
+        Parameters(args): Parameters<RelationshipArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .set_contact_organization(
+                    args.workspace_id,
+                    args.contact_id,
+                    args.organization_id,
+                    &args.idempotency_key,
+                    &args.relationship,
                 )
                 .await,
         )

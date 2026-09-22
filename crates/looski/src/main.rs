@@ -38,6 +38,17 @@ enum Command {
         #[command(subcommand)]
         action: ContactCommand,
     },
+    /// Workspace organization directory. Mutations read JSON from stdin.
+    Organizations {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: OrganizationCommand,
+    },
     /// Start the HTTP API. Requires the migrated development database.
     Api {
         #[arg(long, env = "LOOSKI_API_BIND", default_value = "127.0.0.1:58081")]
@@ -61,11 +72,55 @@ enum Command {
 
 #[derive(Subcommand)]
 enum ContactCommand {
+    Organizations {
+        id: uuid::Uuid,
+    },
+    SetOrganization {
+        id: uuid::Uuid,
+        organization: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
     Merge {
         survivor: uuid::Uuid,
         #[arg(long)]
         idempotency_key: String,
     },
+    List {
+        #[arg(long, default_value_t = 50)]
+        limit: i64,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        search: Option<String>,
+        #[arg(long)]
+        archived: bool,
+    },
+    Get {
+        id: uuid::Uuid,
+    },
+    Create {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Update {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Archive {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+        #[arg(long)]
+        expected_version: i64,
+        #[arg(long)]
+        restore: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum OrganizationCommand {
     List {
         #[arg(long, default_value_t = 50)]
         limit: i64,
@@ -150,6 +205,24 @@ async fn run() -> anyhow::Result<()> {
         } => {
             let client = ApiClient::new(&api_url)?.with_token_file(token_file);
             let result = match action {
+                ContactCommand::Organizations { id } => {
+                    serde_json::to_value(client.contact_organizations(workspace, id).await?)?
+                }
+                ContactCommand::SetOrganization {
+                    id,
+                    organization,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .set_contact_organization(
+                            workspace,
+                            id,
+                            organization,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
                 ContactCommand::Merge {
                     survivor,
                     idempotency_key,
@@ -214,6 +287,78 @@ async fn run() -> anyhow::Result<()> {
                 } => serde_json::to_value(
                     client
                         .archive_contact(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &looski::contacts::ArchiveContact {
+                                expected_version,
+                                archived: !restore,
+                            },
+                        )
+                        .await?,
+                )?,
+            };
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        Command::Organizations {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let result = match action {
+                OrganizationCommand::List {
+                    limit,
+                    after,
+                    search,
+                    archived,
+                } => serde_json::to_value(
+                    client
+                        .organizations(
+                            workspace,
+                            &looski::contacts::ListContacts {
+                                limit: Some(limit),
+                                after,
+                                search,
+                                archived: Some(archived),
+                            },
+                        )
+                        .await?,
+                )?,
+                OrganizationCommand::Get { id } => {
+                    serde_json::to_value(client.organization(workspace, id).await?)?
+                }
+                OrganizationCommand::Create { idempotency_key } => serde_json::to_value(
+                    client
+                        .create_organization(
+                            workspace,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                OrganizationCommand::Update {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .edit_organization(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                OrganizationCommand::Archive {
+                    id,
+                    idempotency_key,
+                    expected_version,
+                    restore,
+                } => serde_json::to_value(
+                    client
+                        .archive_organization(
                             workspace,
                             id,
                             &idempotency_key,

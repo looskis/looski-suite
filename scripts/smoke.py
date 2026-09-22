@@ -70,7 +70,7 @@ with tempfile.TemporaryFile() as errors:
         assert initialized['serverInfo']['name'] == 'looski-suite'
         assert initialized['serverInfo']['version'] == system['version']
         rpc('notifications/initialized')
-        assert {tool['name'] for tool in rpc('tools/list', {}, 2)['tools']} == {'system_status', 'list_workspaces', 'list_contacts', 'get_contact', 'create_contact', 'update_contact', 'archive_contact', 'merge_contacts'}
+        assert {tool['name'] for tool in rpc('tools/list', {}, 2)['tools']} == {'system_status', 'list_workspaces', 'list_contacts', 'get_contact', 'create_contact', 'update_contact', 'archive_contact', 'merge_contacts', 'list_organizations', 'get_organization', 'create_organization', 'update_organization', 'archive_organization', 'list_contact_organizations', 'set_contact_organization'}
         result = rpc('tools/call', {'name': 'system_status', 'arguments': {}}, 3)
         assert not result.get('isError')
         assert json.loads(result['content'][0]['text']) == system

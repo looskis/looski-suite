@@ -22,7 +22,7 @@ impl From<contacts::Error> for Failure {
                 "forbidden",
                 "This operation is not permitted",
             ),
-            contacts::Error::NotFound => (StatusCode::NOT_FOUND, "not_found", "Contact not found"),
+            contacts::Error::NotFound => (StatusCode::NOT_FOUND, "not_found", "Record not found"),
             contacts::Error::Conflict(message) => (StatusCode::CONFLICT, "conflict", message),
             contacts::Error::Database(error) => {
                 // Avoid SQL bind values/customer data in diagnostics.

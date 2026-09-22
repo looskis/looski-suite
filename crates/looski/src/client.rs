@@ -187,6 +187,112 @@ impl ApiClient {
         )
         .await
     }
+    pub async fn organizations(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::contacts::ListContacts,
+    ) -> anyhow::Result<crate::contacts::organizations::OrganizationPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/organizations"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn organization(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::contacts::organizations::Organization> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/organizations/{id}"),
+        )?)
+        .await
+    }
+    pub async fn create_organization(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::contacts::organizations::OrganizationInput,
+    ) -> anyhow::Result<crate::contacts::organizations::Organization> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/organizations"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn edit_organization(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::contacts::organizations::EditOrganization,
+    ) -> anyhow::Result<crate::contacts::organizations::Organization> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/organizations/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn archive_organization(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::contacts::ArchiveContact,
+    ) -> anyhow::Result<crate::contacts::organizations::Organization> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/organizations/{id}/archive"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn contact_organizations(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<Vec<crate::contacts::organizations::Relationship>> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/contacts/{id}/organizations"),
+        )?)
+        .await
+    }
+    pub async fn set_contact_organization(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        organization: uuid::Uuid,
+        key: &str,
+        input: &crate::contacts::organizations::RelationshipInput,
+    ) -> anyhow::Result<crate::contacts::organizations::Relationship> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PUT,
+                &format!(
+                    "/api/v1/workspaces/{workspace}/contacts/{id}/organizations/{organization}"
+                ),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
     async fn business<T: serde::de::DeserializeOwned>(
         &self,
         request: reqwest::RequestBuilder,

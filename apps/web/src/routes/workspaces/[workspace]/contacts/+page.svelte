@@ -11,6 +11,7 @@
 >
 <header>
   <a href="/workspaces">← Workspaces</a><span>{data.workspace.name}</span>
+  <a href={`/workspaces/${data.workspace.id}/organizations`}>Organizations</a>
   <form method="POST" action="/logout">
     <button class="secondary">Sign out</button>
   </form>

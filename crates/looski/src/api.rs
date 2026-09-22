@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 mod contacts;
+mod organizations;
 use axum::{
     Json, Router,
     extract::State,
@@ -62,7 +63,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 5)
+        .is_ok_and(|version| version == 6)
     };
     let auth = async {
         state
@@ -191,6 +192,7 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(ready))
         .routes(routes!(workspaces))
         .merge(contacts::routes())
+        .merge(organizations::routes())
 }
 
 pub fn openapi() -> utoipa::openapi::OpenApi {
@@ -273,6 +275,20 @@ mod tests {
                 .unwrap();
             assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
+    }
+
+    #[tokio::test]
+    async fn organization_directory_requires_identity() {
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/workspaces/00000000-0000-0000-0000-000000000001/organizations")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
