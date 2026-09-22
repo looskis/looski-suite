@@ -774,8 +774,469 @@ async fn set_deal_tags(
     ))
 }
 
+use crate::crm::participants;
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/contacts",operation_id="crm_opportunity_contacts",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),participants::ParticipantQuery),responses((status=200,body=participants::ParticipantPage),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn opportunity_contacts(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Query(query): Query<participants::ParticipantQuery>,
+) -> Result<Json<participants::ParticipantPage>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::list(
+            &state.db,
+            &actor,
+            participants::Target::OpportunityContact,
+            id,
+            query,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(post,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/contacts",operation_id="crm_add_opportunity_contact",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=participants::NewParticipant,responses((status=201,body=participants::Participant),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn add_opportunity_contact(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<participants::NewParticipant>,
+) -> Result<(StatusCode, Json<participants::Participant>), Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok((
+        StatusCode::CREATED,
+        Json(
+            participants::create(
+                &state.db,
+                &actor,
+                participants::Target::OpportunityContact,
+                id,
+                key(&headers)?,
+                input,
+            )
+            .await?,
+        ),
+    ))
+}
+#[utoipa::path(patch,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/contacts/{association_id}",operation_id="crm_edit_opportunity_contact",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("association_id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=participants::EditParticipant,responses((status=200,body=participants::Participant),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn edit_opportunity_contact(
+    State(state): State<AppState>,
+    Path((workspace, id, association_id)): Path<(Uuid, Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<participants::EditParticipant>,
+) -> Result<Json<participants::Participant>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::edit(
+            &state.db,
+            &actor,
+            participants::Target::OpportunityContact,
+            id,
+            association_id,
+            key(&headers)?,
+            input,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/contacts/{association_id}/history",operation_id="crm_opportunity_contact_history",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("association_id"=Uuid,Path),HistoryQuery),responses((status=200,body=participants::ParticipantHistory),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn opportunity_contact_history(
+    State(state): State<AppState>,
+    Path((workspace, id, association_id)): Path<(Uuid, Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Query(query): Query<HistoryQuery>,
+) -> Result<Json<participants::ParticipantHistory>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::history(
+            &state.db,
+            &actor,
+            participants::Target::OpportunityContact,
+            id,
+            association_id,
+            query,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/organizations",operation_id="crm_opportunity_organizations",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),participants::ParticipantQuery),responses((status=200,body=participants::ParticipantPage),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn opportunity_organizations(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Query(query): Query<participants::ParticipantQuery>,
+) -> Result<Json<participants::ParticipantPage>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::list(
+            &state.db,
+            &actor,
+            participants::Target::OpportunityOrganization,
+            id,
+            query,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(post,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/organizations",operation_id="crm_add_opportunity_organization",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=participants::NewParticipant,responses((status=201,body=participants::Participant),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn add_opportunity_organization(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<participants::NewParticipant>,
+) -> Result<(StatusCode, Json<participants::Participant>), Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok((
+        StatusCode::CREATED,
+        Json(
+            participants::create(
+                &state.db,
+                &actor,
+                participants::Target::OpportunityOrganization,
+                id,
+                key(&headers)?,
+                input,
+            )
+            .await?,
+        ),
+    ))
+}
+#[utoipa::path(patch,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/organizations/{association_id}",operation_id="crm_edit_opportunity_organization",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("association_id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=participants::EditParticipant,responses((status=200,body=participants::Participant),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn edit_opportunity_organization(
+    State(state): State<AppState>,
+    Path((workspace, id, association_id)): Path<(Uuid, Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<participants::EditParticipant>,
+) -> Result<Json<participants::Participant>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::edit(
+            &state.db,
+            &actor,
+            participants::Target::OpportunityOrganization,
+            id,
+            association_id,
+            key(&headers)?,
+            input,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/organizations/{association_id}/history",operation_id="crm_opportunity_organization_history",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("association_id"=Uuid,Path),HistoryQuery),responses((status=200,body=participants::ParticipantHistory),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn opportunity_organization_history(
+    State(state): State<AppState>,
+    Path((workspace, id, association_id)): Path<(Uuid, Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Query(query): Query<HistoryQuery>,
+) -> Result<Json<participants::ParticipantHistory>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::history(
+            &state.db,
+            &actor,
+            participants::Target::OpportunityOrganization,
+            id,
+            association_id,
+            query,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/deals/{id}/contacts",operation_id="crm_deal_contacts",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),participants::ParticipantQuery),responses((status=200,body=participants::ParticipantPage),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn deal_contacts(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Query(query): Query<participants::ParticipantQuery>,
+) -> Result<Json<participants::ParticipantPage>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::list(
+            &state.db,
+            &actor,
+            participants::Target::DealContact,
+            id,
+            query,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(post,path="/api/v1/workspaces/{workspace_id}/crm/deals/{id}/contacts",operation_id="crm_add_deal_contact",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=participants::NewParticipant,responses((status=201,body=participants::Participant),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn add_deal_contact(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<participants::NewParticipant>,
+) -> Result<(StatusCode, Json<participants::Participant>), Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok((
+        StatusCode::CREATED,
+        Json(
+            participants::create(
+                &state.db,
+                &actor,
+                participants::Target::DealContact,
+                id,
+                key(&headers)?,
+                input,
+            )
+            .await?,
+        ),
+    ))
+}
+#[utoipa::path(patch,path="/api/v1/workspaces/{workspace_id}/crm/deals/{id}/contacts/{association_id}",operation_id="crm_edit_deal_contact",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("association_id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=participants::EditParticipant,responses((status=200,body=participants::Participant),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn edit_deal_contact(
+    State(state): State<AppState>,
+    Path((workspace, id, association_id)): Path<(Uuid, Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<participants::EditParticipant>,
+) -> Result<Json<participants::Participant>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::edit(
+            &state.db,
+            &actor,
+            participants::Target::DealContact,
+            id,
+            association_id,
+            key(&headers)?,
+            input,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/deals/{id}/contacts/{association_id}/history",operation_id="crm_deal_contact_history",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("association_id"=Uuid,Path),HistoryQuery),responses((status=200,body=participants::ParticipantHistory),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn deal_contact_history(
+    State(state): State<AppState>,
+    Path((workspace, id, association_id)): Path<(Uuid, Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Query(query): Query<HistoryQuery>,
+) -> Result<Json<participants::ParticipantHistory>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::history(
+            &state.db,
+            &actor,
+            participants::Target::DealContact,
+            id,
+            association_id,
+            query,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/deals/{id}/organizations",operation_id="crm_deal_organizations",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),participants::ParticipantQuery),responses((status=200,body=participants::ParticipantPage),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn deal_organizations(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Query(query): Query<participants::ParticipantQuery>,
+) -> Result<Json<participants::ParticipantPage>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::list(
+            &state.db,
+            &actor,
+            participants::Target::DealOrganization,
+            id,
+            query,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(post,path="/api/v1/workspaces/{workspace_id}/crm/deals/{id}/organizations",operation_id="crm_add_deal_organization",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=participants::NewParticipant,responses((status=201,body=participants::Participant),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn add_deal_organization(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<participants::NewParticipant>,
+) -> Result<(StatusCode, Json<participants::Participant>), Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok((
+        StatusCode::CREATED,
+        Json(
+            participants::create(
+                &state.db,
+                &actor,
+                participants::Target::DealOrganization,
+                id,
+                key(&headers)?,
+                input,
+            )
+            .await?,
+        ),
+    ))
+}
+#[utoipa::path(patch,path="/api/v1/workspaces/{workspace_id}/crm/deals/{id}/organizations/{association_id}",operation_id="crm_edit_deal_organization",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("association_id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=participants::EditParticipant,responses((status=200,body=participants::Participant),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn edit_deal_organization(
+    State(state): State<AppState>,
+    Path((workspace, id, association_id)): Path<(Uuid, Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<participants::EditParticipant>,
+) -> Result<Json<participants::Participant>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::edit(
+            &state.db,
+            &actor,
+            participants::Target::DealOrganization,
+            id,
+            association_id,
+            key(&headers)?,
+            input,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/deals/{id}/organizations/{association_id}/history",operation_id="crm_deal_organization_history",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("association_id"=Uuid,Path),HistoryQuery),responses((status=200,body=participants::ParticipantHistory),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn deal_organization_history(
+    State(state): State<AppState>,
+    Path((workspace, id, association_id)): Path<(Uuid, Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Query(query): Query<HistoryQuery>,
+) -> Result<Json<participants::ParticipantHistory>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        participants::history(
+            &state.db,
+            &actor,
+            participants::Target::DealOrganization,
+            id,
+            association_id,
+            query,
+        )
+        .await?,
+    ))
+}
+
 pub(super) fn routes() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
+        .routes(routes!(opportunity_contacts, add_opportunity_contact))
+        .routes(routes!(edit_opportunity_contact))
+        .routes(routes!(opportunity_contact_history))
+        .routes(routes!(
+            opportunity_organizations,
+            add_opportunity_organization
+        ))
+        .routes(routes!(edit_opportunity_organization))
+        .routes(routes!(opportunity_organization_history))
+        .routes(routes!(deal_contacts, add_deal_contact))
+        .routes(routes!(edit_deal_contact))
+        .routes(routes!(deal_contact_history))
+        .routes(routes!(deal_organizations, add_deal_organization))
+        .routes(routes!(edit_deal_organization))
+        .routes(routes!(deal_organization_history))
         .routes(routes!(opportunity_tags, set_opportunity_tags))
         .routes(routes!(deal_tags, set_deal_tags))
         .routes(routes!(pipelines, create_pipeline))

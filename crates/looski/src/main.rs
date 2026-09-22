@@ -116,6 +116,119 @@ enum Command {
 
 #[derive(Subcommand)]
 enum CrmCommand {
+    OpportunityContacts {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        ended: bool,
+    },
+    AddOpportunityContact {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditOpportunityContact {
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    OpportunityContactHistory {
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    OpportunityOrganizations {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        ended: bool,
+    },
+    AddOpportunityOrganization {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditOpportunityOrganization {
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    OpportunityOrganizationHistory {
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    DealContacts {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        ended: bool,
+    },
+    AddDealContact {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditDealContact {
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    DealContactHistory {
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    DealOrganizations {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        ended: bool,
+    },
+    AddDealOrganization {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditDealOrganization {
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    DealOrganizationHistory {
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+
     OpportunityTags {
         id: uuid::Uuid,
     },
@@ -888,6 +1001,298 @@ async fn run() -> anyhow::Result<()> {
                                 id,
                                 &idempotency_key,
                                 &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::OpportunityContacts {
+                    id,
+                    limit,
+                    after,
+                    ended,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_opportunity_contacts(
+                                workspace,
+                                id,
+                                &looski::crm::participants::ParticipantQuery {
+                                    limit,
+                                    after,
+                                    ended: Some(ended)
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::AddOpportunityContact {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_add_opportunity_contact(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditOpportunityContact {
+                    id,
+                    association_id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_opportunity_contact(
+                                workspace,
+                                id,
+                                association_id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::OpportunityContactHistory {
+                    id,
+                    association_id,
+                    limit,
+                    after,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_opportunity_contact_history(
+                                workspace,
+                                id,
+                                association_id,
+                                &looski::crm::HistoryQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::OpportunityOrganizations {
+                    id,
+                    limit,
+                    after,
+                    ended,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_opportunity_organizations(
+                                workspace,
+                                id,
+                                &looski::crm::participants::ParticipantQuery {
+                                    limit,
+                                    after,
+                                    ended: Some(ended)
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::AddOpportunityOrganization {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_add_opportunity_organization(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditOpportunityOrganization {
+                    id,
+                    association_id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_opportunity_organization(
+                                workspace,
+                                id,
+                                association_id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::OpportunityOrganizationHistory {
+                    id,
+                    association_id,
+                    limit,
+                    after,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_opportunity_organization_history(
+                                workspace,
+                                id,
+                                association_id,
+                                &looski::crm::HistoryQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::DealContacts {
+                    id,
+                    limit,
+                    after,
+                    ended,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_deal_contacts(
+                                workspace,
+                                id,
+                                &looski::crm::participants::ParticipantQuery {
+                                    limit,
+                                    after,
+                                    ended: Some(ended)
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::AddDealContact {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_add_deal_contact(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditDealContact {
+                    id,
+                    association_id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_deal_contact(
+                                workspace,
+                                id,
+                                association_id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::DealContactHistory {
+                    id,
+                    association_id,
+                    limit,
+                    after,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_deal_contact_history(
+                                workspace,
+                                id,
+                                association_id,
+                                &looski::crm::HistoryQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::DealOrganizations {
+                    id,
+                    limit,
+                    after,
+                    ended,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_deal_organizations(
+                                workspace,
+                                id,
+                                &looski::crm::participants::ParticipantQuery {
+                                    limit,
+                                    after,
+                                    ended: Some(ended)
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::AddDealOrganization {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_add_deal_organization(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditDealOrganization {
+                    id,
+                    association_id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_deal_organization(
+                                workspace,
+                                id,
+                                association_id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::DealOrganizationHistory {
+                    id,
+                    association_id,
+                    limit,
+                    after,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_deal_organization_history(
+                                workspace,
+                                id,
+                                association_id,
+                                &looski::crm::HistoryQuery { limit, after }
                             )
                             .await?
                     )?

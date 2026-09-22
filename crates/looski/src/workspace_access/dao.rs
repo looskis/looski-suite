@@ -6,7 +6,7 @@ use uuid::Uuid;
 const MEMBER_SELECT: &str = "SELECT jsonb_build_object('id',m.id,'user_id',m.user_id,'display_name',u.display_name,'state',m.state,'version',m.version,'roles',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',r.id,'name',r.name,'archived',r.archived_at IS NOT NULL) ORDER BY r.id) FROM suite.membership_roles mr JOIN suite.roles r ON (r.workspace_id,r.id)=(mr.workspace_id,mr.role_id) WHERE mr.workspace_id=m.workspace_id AND mr.membership_id=m.id),'[]'::jsonb)) FROM suite.memberships m JOIN suite.users u ON u.id=m.user_id";
 const ROLE_SELECT: &str = "SELECT jsonb_build_object('id',r.id,'name',r.name,'archived',r.archived_at IS NOT NULL,'version',r.version,'grants',COALESCE((SELECT jsonb_agg(jsonb_build_object('action',permission_key,'scope',record_scope) ORDER BY permission_key,record_scope) FROM suite.role_permissions WHERE workspace_id=r.workspace_id AND role_id=r.id),'[]'::jsonb)) FROM suite.roles r";
 pub(super) async fn lock(db: &mut PgConnection, workspace: Uuid) -> Result<(), Error> {
-    sqlx::query("SELECT id FROM suite.workspaces WHERE id=$1 FOR UPDATE")
+    sqlx::query("SELECT id FROM suite.workspaces WHERE id=$1 FOR NO KEY UPDATE")
         .bind(workspace)
         .fetch_optional(db)
         .await?

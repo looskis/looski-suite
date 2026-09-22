@@ -29,6 +29,229 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn crm_opportunity_contacts(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::participants::ParticipantQuery,
+    ) -> anyhow::Result<crate::crm::participants::ParticipantPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/contacts"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_add_opportunity_contact(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::participants::NewParticipant,
+    ) -> anyhow::Result<crate::crm::participants::Participant> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/contacts"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_opportunity_contact(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::participants::EditParticipant,
+    ) -> anyhow::Result<crate::crm::participants::Participant> {
+        self.business(self.authenticated(reqwest::Method::PATCH,&format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/contacts/{association_id}"))?.header("Idempotency-Key",key).json(input)).await
+    }
+    pub async fn crm_opportunity_contact_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        query: &crate::crm::HistoryQuery,
+    ) -> anyhow::Result<crate::crm::participants::ParticipantHistory> {
+        self.business(self.authenticated(reqwest::Method::GET,&format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/contacts/{association_id}/history"))?.query(query)).await
+    }
+    pub async fn crm_opportunity_organizations(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::participants::ParticipantQuery,
+    ) -> anyhow::Result<crate::crm::participants::ParticipantPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/organizations"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_add_opportunity_organization(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::participants::NewParticipant,
+    ) -> anyhow::Result<crate::crm::participants::Participant> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/organizations"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_opportunity_organization(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::participants::EditParticipant,
+    ) -> anyhow::Result<crate::crm::participants::Participant> {
+        self.business(self.authenticated(reqwest::Method::PATCH,&format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/organizations/{association_id}"))?.header("Idempotency-Key",key).json(input)).await
+    }
+    pub async fn crm_opportunity_organization_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        query: &crate::crm::HistoryQuery,
+    ) -> anyhow::Result<crate::crm::participants::ParticipantHistory> {
+        self.business(self.authenticated(reqwest::Method::GET,&format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/organizations/{association_id}/history"))?.query(query)).await
+    }
+    pub async fn crm_deal_contacts(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::participants::ParticipantQuery,
+    ) -> anyhow::Result<crate::crm::participants::ParticipantPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/contacts"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_add_deal_contact(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::participants::NewParticipant,
+    ) -> anyhow::Result<crate::crm::participants::Participant> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/contacts"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_deal_contact(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::participants::EditParticipant,
+    ) -> anyhow::Result<crate::crm::participants::Participant> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/contacts/{association_id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_deal_contact_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        query: &crate::crm::HistoryQuery,
+    ) -> anyhow::Result<crate::crm::participants::ParticipantHistory> {
+        self.business(self.authenticated(reqwest::Method::GET,&format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/contacts/{association_id}/history"))?.query(query)).await
+    }
+    pub async fn crm_deal_organizations(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::participants::ParticipantQuery,
+    ) -> anyhow::Result<crate::crm::participants::ParticipantPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/organizations"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_add_deal_organization(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::participants::NewParticipant,
+    ) -> anyhow::Result<crate::crm::participants::Participant> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/organizations"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_deal_organization(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::participants::EditParticipant,
+    ) -> anyhow::Result<crate::crm::participants::Participant> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!(
+                    "/api/v1/workspaces/{workspace}/crm/deals/{id}/organizations/{association_id}"
+                ),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_deal_organization_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        association_id: uuid::Uuid,
+        query: &crate::crm::HistoryQuery,
+    ) -> anyhow::Result<crate::crm::participants::ParticipantHistory> {
+        self.business(self.authenticated(reqwest::Method::GET,&format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/organizations/{association_id}/history"))?.query(query)).await
+    }
+
     pub async fn crm_opportunity_tags(
         &self,
         workspace: uuid::Uuid,

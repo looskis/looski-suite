@@ -3,6 +3,7 @@
 mod dao;
 pub mod intake;
 pub mod organizations;
+pub(crate) mod references;
 pub mod tagging;
 pub use crate::application::OperationError as Error;
 use crate::{access, application::ActorContext, reliability};

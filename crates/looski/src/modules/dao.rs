@@ -22,7 +22,7 @@ pub(super) async fn set(
     Ok(())
 }
 pub(super) async fn lock(db: &mut PgConnection, workspace: Uuid) -> Result<(), Error> {
-    sqlx::query("SELECT id FROM suite.workspaces WHERE id=$1 FOR UPDATE")
+    sqlx::query("SELECT id FROM suite.workspaces WHERE id=$1 FOR NO KEY UPDATE")
         .bind(workspace)
         .fetch_optional(db)
         .await?

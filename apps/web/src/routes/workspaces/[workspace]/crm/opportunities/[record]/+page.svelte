@@ -102,3 +102,18 @@
   workspace={data.workspace.id}
   version={data.record.version}
 />
+
+<section>
+  <h2>Participants</h2>
+  <p>
+    <a
+      href={`/workspaces/${data.workspace.id}/crm/opportunities/${data.record.id}/participants/contacts`}
+      >Contact participants</a
+    >
+    ·
+    <a
+      href={`/workspaces/${data.workspace.id}/crm/opportunities/${data.record.id}/participants/organizations`}
+      >Organization participants</a
+    >
+  </p>
+</section>

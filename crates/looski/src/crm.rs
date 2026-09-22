@@ -2,6 +2,7 @@
 //! Sales pursuit and concrete transactions have distinct records and histories.
 pub mod configuration;
 mod dao;
+pub mod participants;
 pub mod tagging;
 use crate::{
     access,

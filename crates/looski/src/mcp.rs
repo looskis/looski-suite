@@ -426,8 +426,402 @@ struct CrmSetDealTagsArgs {
     change: crate::tags::SetTags,
 }
 
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmOpportunityContactsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::participants::ParticipantQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmAddOpportunityContactArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::participants::NewParticipant,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmEditOpportunityContactArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    association_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::participants::EditParticipant,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmOpportunityContactHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    association_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::HistoryQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmOpportunityOrganizationsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::participants::ParticipantQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmAddOpportunityOrganizationArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::participants::NewParticipant,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmEditOpportunityOrganizationArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    association_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::participants::EditParticipant,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmOpportunityOrganizationHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    association_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::HistoryQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmDealContactsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::participants::ParticipantQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmAddDealContactArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::participants::NewParticipant,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmEditDealContactArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    association_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::participants::EditParticipant,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmDealContactHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    association_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::HistoryQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmDealOrganizationsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::participants::ParticipantQuery,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmAddDealOrganizationArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::participants::NewParticipant,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmEditDealOrganizationArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    association_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::participants::EditParticipant,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmDealOrganizationHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    association_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::HistoryQuery,
+}
+
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "Opportunity contacts with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_opportunity_contacts(
+        &self,
+        Parameters(input): Parameters<CrmOpportunityContactsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_opportunity_contacts(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Add opportunity contact with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_add_opportunity_contact(
+        &self,
+        Parameters(input): Parameters<CrmAddOpportunityContactArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_add_opportunity_contact(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Edit opportunity contact with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_edit_opportunity_contact(
+        &self,
+        Parameters(input): Parameters<CrmEditOpportunityContactArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_opportunity_contact(
+                    input.workspace_id,
+                    input.id,
+                    input.association_id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Opportunity contact history with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_opportunity_contact_history(
+        &self,
+        Parameters(input): Parameters<CrmOpportunityContactHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_opportunity_contact_history(
+                    input.workspace_id,
+                    input.id,
+                    input.association_id,
+                    &input.query,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Opportunity organizations with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_opportunity_organizations(
+        &self,
+        Parameters(input): Parameters<CrmOpportunityOrganizationsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_opportunity_organizations(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Add opportunity organization with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_add_opportunity_organization(
+        &self,
+        Parameters(input): Parameters<CrmAddOpportunityOrganizationArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_add_opportunity_organization(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Edit opportunity organization with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_edit_opportunity_organization(
+        &self,
+        Parameters(input): Parameters<CrmEditOpportunityOrganizationArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_opportunity_organization(
+                    input.workspace_id,
+                    input.id,
+                    input.association_id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Opportunity organization history with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_opportunity_organization_history(
+        &self,
+        Parameters(input): Parameters<CrmOpportunityOrganizationHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_opportunity_organization_history(
+                    input.workspace_id,
+                    input.id,
+                    input.association_id,
+                    &input.query,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Deal contacts with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_deal_contacts(
+        &self,
+        Parameters(input): Parameters<CrmDealContactsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deal_contacts(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Add deal contact with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_add_deal_contact(
+        &self,
+        Parameters(input): Parameters<CrmAddDealContactArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_add_deal_contact(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Edit deal contact with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_edit_deal_contact(
+        &self,
+        Parameters(input): Parameters<CrmEditDealContactArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_deal_contact(
+                    input.workspace_id,
+                    input.id,
+                    input.association_id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Deal contact history with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_deal_contact_history(
+        &self,
+        Parameters(input): Parameters<CrmDealContactHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deal_contact_history(
+                    input.workspace_id,
+                    input.id,
+                    input.association_id,
+                    &input.query,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Deal organizations with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_deal_organizations(
+        &self,
+        Parameters(input): Parameters<CrmDealOrganizationsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deal_organizations(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Add deal organization with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_add_deal_organization(
+        &self,
+        Parameters(input): Parameters<CrmAddDealOrganizationArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_add_deal_organization(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Edit deal organization with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_edit_deal_organization(
+        &self,
+        Parameters(input): Parameters<CrmEditDealOrganizationArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_deal_organization(
+                    input.workspace_id,
+                    input.id,
+                    input.association_id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Deal organization history with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
+    )]
+    async fn crm_deal_organization_history(
+        &self,
+        Parameters(input): Parameters<CrmDealOrganizationHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deal_organization_history(
+                    input.workspace_id,
+                    input.id,
+                    input.association_id,
+                    &input.query,
+                )
+                .await,
+        )
+    }
+
     #[tool(
         description = "Read tags on a permitted opportunity. CRM must be enabled; mutations use expected_version and an idempotency key."
     )]
