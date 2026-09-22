@@ -37,6 +37,7 @@
       its existing records.
     </p>
     <nav>
+      <a href={`${root}/coordination-templates`}>Coordination templates</a> ·
       <a href={`${root}/activity-types`}>Activity types</a> ·
       <a href={`${root}/configuration/pipelines`}>Pipelines</a> ·
       <a href={`${root}/configuration/stages`}>Stages</a>

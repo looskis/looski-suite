@@ -224,6 +224,50 @@ enum TasksCommand {
 
 #[derive(Subcommand)]
 enum CrmCommand {
+    CoordinationTemplates {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        archived: Option<bool>,
+    },
+    CoordinationTemplate {
+        id: uuid::Uuid,
+    },
+    CreateCoordinationTemplate {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditCoordinationTemplate {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    CoordinationRevisions {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    DealCoordination {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    DealCoordinationInstance {
+        id: uuid::Uuid,
+        instance_id: uuid::Uuid,
+    },
+    ApplyCoordination {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+
     ActivityTypes {
         #[arg(long)]
         limit: Option<i64>,
@@ -1699,6 +1743,105 @@ async fn run() -> anyhow::Result<()> {
                                 workspace,
                                 id,
                                 &looski::crm::activities::ActivityHistoryQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::CoordinationTemplates {
+                    limit,
+                    after,
+                    archived,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_coordination_templates(
+                                workspace,
+                                &looski::crm::coordination::CoordinationQuery {
+                                    limit,
+                                    after,
+                                    archived
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::CoordinationTemplate { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_coordination_template(workspace, id).await?)?
+                ),
+                CrmCommand::CreateCoordinationTemplate { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_coordination_template(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditCoordinationTemplate {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_coordination_template(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::CoordinationRevisions { id, limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_coordination_revisions(
+                                workspace,
+                                id,
+                                &looski::crm::coordination::CoordinationPageQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::DealCoordination { id, limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_deal_coordination(
+                                workspace,
+                                id,
+                                &looski::crm::coordination::CoordinationPageQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::DealCoordinationInstance { id, instance_id } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_deal_coordination_instance(workspace, id, instance_id)
+                            .await?
+                    )?
+                ),
+                CrmCommand::ApplyCoordination {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_apply_coordination(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
                             )
                             .await?
                     )?

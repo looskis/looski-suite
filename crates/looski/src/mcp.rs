@@ -786,8 +786,179 @@ struct TasksInstantiateTemplateArgs {
     change: crate::tasks::configuration::InstantiateTaskTemplate,
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct CrmCoordinationTemplatesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::coordination::CoordinationQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmCoordinationTemplateArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmCreateCoordinationTemplateArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::coordination::SaveCoordinationTemplate,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmEditCoordinationTemplateArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::coordination::SaveCoordinationTemplate,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmCoordinationRevisionsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::coordination::CoordinationPageQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmDealCoordinationArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::coordination::CoordinationPageQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmDealCoordinationInstanceArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    instance_id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmApplyCoordinationArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::coordination::ApplyCoordination,
+}
+
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "Crm coordination templates. Pinned task checklist with independent parent, configuration and Tasks permissions."
+    )]
+    async fn crm_coordination_templates(
+        &self,
+        Parameters(input): Parameters<CrmCoordinationTemplatesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_coordination_templates(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm coordination template. Pinned task checklist with independent parent, configuration and Tasks permissions."
+    )]
+    async fn crm_coordination_template(
+        &self,
+        Parameters(input): Parameters<CrmCoordinationTemplateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_coordination_template(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm create coordination template. Pinned task checklist with independent parent, configuration and Tasks permissions."
+    )]
+    async fn crm_create_coordination_template(
+        &self,
+        Parameters(input): Parameters<CrmCreateCoordinationTemplateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_coordination_template(
+                    input.workspace_id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm edit coordination template. Pinned task checklist with independent parent, configuration and Tasks permissions."
+    )]
+    async fn crm_edit_coordination_template(
+        &self,
+        Parameters(input): Parameters<CrmEditCoordinationTemplateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_coordination_template(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm coordination revisions. Pinned task checklist with independent parent, configuration and Tasks permissions."
+    )]
+    async fn crm_coordination_revisions(
+        &self,
+        Parameters(input): Parameters<CrmCoordinationRevisionsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_coordination_revisions(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm deal coordination. Pinned task checklist with independent parent, configuration and Tasks permissions."
+    )]
+    async fn crm_deal_coordination(
+        &self,
+        Parameters(input): Parameters<CrmDealCoordinationArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deal_coordination(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm deal coordination instance. Pinned task checklist with independent parent, configuration and Tasks permissions."
+    )]
+    async fn crm_deal_coordination_instance(
+        &self,
+        Parameters(input): Parameters<CrmDealCoordinationInstanceArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deal_coordination_instance(input.workspace_id, input.id, input.instance_id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm apply coordination. Pinned task checklist with independent parent, configuration and Tasks permissions."
+    )]
+    async fn crm_apply_coordination(
+        &self,
+        Parameters(input): Parameters<CrmApplyCoordinationArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_apply_coordination(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+
     #[tool(
         description = "Tasks types. Shared task configuration; instantiation independently checks current Tasks authority and pinned revision."
     )]

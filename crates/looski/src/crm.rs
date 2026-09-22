@@ -2,6 +2,7 @@
 //! Sales pursuit and concrete transactions have distinct records and histories.
 pub mod activities;
 pub mod configuration;
+pub mod coordination;
 mod dao;
 pub mod participants;
 pub mod tagging;

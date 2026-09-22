@@ -29,6 +29,126 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn crm_coordination_templates(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::coordination::CoordinationQuery,
+    ) -> anyhow::Result<crate::crm::coordination::CoordinationTemplatePage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/coordination-templates"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_coordination_template(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::coordination::CoordinationTemplate> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/coordination-templates/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_create_coordination_template(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::coordination::SaveCoordinationTemplate,
+    ) -> anyhow::Result<crate::crm::coordination::CoordinationTemplate> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/coordination-templates"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_coordination_template(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::coordination::SaveCoordinationTemplate,
+    ) -> anyhow::Result<crate::crm::coordination::CoordinationTemplate> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/coordination-templates/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_coordination_revisions(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::coordination::CoordinationPageQuery,
+    ) -> anyhow::Result<crate::crm::coordination::CoordinationRevisionPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!(
+                    "/api/v1/workspaces/{workspace}/crm/coordination-templates/{id}/revisions"
+                ),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_deal_coordination(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::coordination::CoordinationPageQuery,
+    ) -> anyhow::Result<crate::crm::coordination::CoordinationInstancePage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/coordination"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_deal_coordination_instance(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        instance_id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::coordination::CoordinationInstance> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/coordination/{instance_id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_apply_coordination(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::coordination::ApplyCoordination,
+    ) -> anyhow::Result<crate::crm::coordination::CoordinationInstance> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/coordination"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
     pub async fn tasks_types(
         &self,
         workspace: uuid::Uuid,

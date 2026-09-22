@@ -128,3 +128,11 @@
     >View and record activities</a
   >
 </section>
+
+<section>
+  <h2>Coordination</h2>
+  <a
+    href={`/workspaces/${data.workspace.id}/crm/deals/${data.record.id}/coordination`}
+    >View and apply checklists</a
+  >
+</section>

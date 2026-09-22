@@ -432,3 +432,31 @@ pub async fn history(
         next_cursor,
     })
 }
+
+/// Composition retains CRM link authority, task visibility and link audit/history.
+/// The caller owns the surrounding transaction and retry boundary.
+pub(super) async fn attach_created(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    deal: Uuid,
+    task_id: Uuid,
+) -> Result<TaskLink, Error> {
+    let (write, _, archived) = guards(db, actor, Target::Deal, deal).await?;
+    let task = tasks::read(db, actor, task_id).await?;
+    if archived || task.archived {
+        return Err(Error::Conflict(
+            "Archived records cannot receive task links",
+        ));
+    }
+    let row = dao::insert(
+        db,
+        actor.workspace,
+        Target::Deal,
+        deal,
+        task_id,
+        write.membership_id,
+    )
+    .await?;
+    audit(db, actor, &write, Target::Deal, deal, &row).await?;
+    project(db, actor, row).await
+}

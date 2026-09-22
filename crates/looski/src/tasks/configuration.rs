@@ -484,3 +484,34 @@ pub(crate) async fn instantiate_revision(
     )
     .await
 }
+
+pub(crate) async fn require_read(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+) -> Result<(), Error> {
+    require(db, actor, "tasks.configuration.read").await?;
+    Ok(())
+}
+/// Validate a bounded set of pinned task specifications for a composing template.
+pub(crate) async fn validate_revisions(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    ids: &[Uuid],
+) -> Result<(), Error> {
+    require_read(db, actor).await?;
+    if ids.len() > 25 {
+        return Err(Error::Invalid(
+            "At most 25 task specifications are supported",
+        ));
+    }
+    for id in ids {
+        let revision = dao::revision(db, actor.workspace, *id).await?;
+        let template = dao::template(db, actor.workspace, revision.template_id).await?;
+        if template.archived {
+            return Err(Error::Conflict(
+                "Archived task templates cannot receive new coordination references",
+            ));
+        }
+    }
+    Ok(())
+}
