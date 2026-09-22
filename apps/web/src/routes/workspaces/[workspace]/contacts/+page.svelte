@@ -9,17 +9,7 @@
 <svelte:head
   ><title>Contacts · {data.workspace.name} · Looski</title></svelte:head
 >
-<header>
-  <a href={`/workspaces/${data.workspace.id}/intakes`}>Intake review</a>
-  <a href={`/workspaces/${data.workspace.id}/tags`}>Tags</a>
-  <a href="/workspaces">← Workspaces</a><span>{data.workspace.name}</span>
-  <a href={`/workspaces/${data.workspace.id}/organizations`}>Organizations</a>
-  <form method="POST" action="/logout">
-    <button class="secondary">Sign out</button>
-  </form>
-  <a href={`/workspaces/${data.workspace.id}/access`}>Workspace access</a>
-  <a href={`/workspaces/${data.workspace.id}/crm`}>Applications</a>
-</header>
+
 <h1>People behind the business.</h1>
 <p class="muted">
   Keep relationships in one place. Contacts work independently of your sales
@@ -49,7 +39,7 @@
     /><button>Search</button>
   </form>
   <div class="table-wrap">
-    <table>
+    <table class="contacts-table">
       <thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead><tbody>
         {#each data.page.items as contact (contact.id)}
           <tr
@@ -93,3 +83,21 @@
     /><ContactFields contact={form?.input} /><button>Create contact</button>
   </form>
 </section>
+
+<style>
+  .contacts-table {
+    table-layout: fixed;
+  }
+  .contacts-table th:first-child {
+    width: 30%;
+  }
+  .contacts-table th:nth-child(2) {
+    width: 45%;
+  }
+  .contacts-table th:nth-child(3) {
+    width: 25%;
+  }
+  .contacts-table:has(tbody td:not([colspan])) {
+    min-width: 620px;
+  }
+</style>

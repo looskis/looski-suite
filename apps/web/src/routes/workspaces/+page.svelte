@@ -6,11 +6,13 @@
 <svelte:head><title>Your workspaces · Looski Suite</title></svelte:head>
 <main>
   <header>
-    <a href="/">LOOSKI SUITE</a>
-    <form method="POST" action="/logout"><button>Sign out</button></form>
+    <a class="brand" href="/"><span class="brand-mark">l</span>looski</a>
+    <form method="POST" action="/logout">
+      <button class="secondary">Sign out</button>
+    </form>
   </header>
   <p class="eyebrow">YOUR BUSINESS, TOGETHER</p>
-  <h1>Your workspaces.</h1>
+  <h1>Your workspaces</h1>
   {#if data.pendingInvitation}<p>
       <a href="/invitations/accept"
         >Review your pending workspace invitation →</a
@@ -19,18 +21,22 @@
   <p class="intro">A home for your team and the work ahead.</p>
   {#each data.workspaces as workspace (workspace.id)}
     <article>
-      <span class="icon" aria-hidden="true">⌂</span>
+      <span class="icon" aria-hidden="true"
+        >{workspace.name.slice(0, 1).toUpperCase()}</span
+      >
       <div>
         <h2>{workspace.name}</h2>
         <p>Keep your business relationships in one place.</p>
       </div>
-      <a class="badge" href={`/workspaces/${workspace.id}/contacts`}
-        >Open Contacts →</a
-      ><a href={`/workspaces/${workspace.id}/tasks`}>Tasks →</a><a
-        href={`/workspaces/${workspace.id}/jobs`}>Background work →</a
-      ><a href={`/workspaces/${workspace.id}/exports`}>Export data →</a><a
-        href={`/workspaces/${workspace.id}/files`}>Files →</a
-      >
+      <div class="workspace-actions">
+        <a class="badge" href={`/workspaces/${workspace.id}/contacts`}
+          >Open Contacts →</a
+        ><a href={`/workspaces/${workspace.id}/tasks`}>Tasks →</a><a
+          href={`/workspaces/${workspace.id}/jobs`}>Background work →</a
+        ><a href={`/workspaces/${workspace.id}/exports`}>Export data →</a><a
+          href={`/workspaces/${workspace.id}/files`}>Files →</a
+        >
+      </div>
     </article>
   {:else}
     <article>
@@ -46,93 +52,107 @@
 </main>
 
 <style>
-  :global(body) {
-    margin: 0;
-    background: #f4f3ee;
-    color: #183e35;
-    font-family: ui-sans-serif, system-ui, sans-serif;
-  }
   main {
-    max-width: 960px;
+    max-width: 1080px;
+    padding: 0 40px 80px;
     margin: auto;
-    padding: 40px 24px;
   }
   header {
+    min-height: 96px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 90px;
-  }
-  header a {
-    color: inherit;
-    text-decoration: none;
-    font-size: 12px;
-    letter-spacing: 0.2em;
-    font-weight: 750;
-  }
-  button {
-    background: transparent;
-    color: #183e35;
-    border: 1px solid #aabcae;
-    padding: 10px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  .eyebrow {
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    color: #526b61;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 56px;
   }
   h1 {
-    font-size: clamp(38px, 6vw, 60px);
-    letter-spacing: -0.05em;
-    font-weight: 500;
-    margin: 18px 0;
+    font-size: 38px;
+    margin: 12px 0;
   }
   .intro {
-    color: #526b61;
-    font-size: 18px;
-    margin-bottom: 40px;
+    color: var(--muted);
+    font-size: 15px;
+    margin-bottom: 32px;
   }
   article {
-    display: flex;
-    align-items: center;
-    gap: 22px;
-    background: #fafbf6;
-    border: 1px solid #cdd8cb;
-    border-radius: 14px;
-    padding: 28px;
-    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 16px 20px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 26px;
+    margin: 18px 0;
+    box-shadow: var(--shadow);
   }
   .icon {
-    font-size: 32px;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border: 1px solid #dae8df;
+    border-radius: 10px;
+    background: var(--tint);
+    color: var(--accent);
+    font-size: 20px;
+    font-weight: 600;
   }
   h2 {
-    font-size: 22px;
-    margin: 0;
-    font-weight: 550;
+    margin: 2px 0 6px;
     overflow-wrap: anywhere;
   }
   article p {
-    color: #526b61;
-    line-height: 1.6;
-    margin-bottom: 0;
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0;
+  }
+  .workspace-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 24px;
+    grid-column: 2;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+  .workspace-actions a {
+    font-size: 12px;
+    text-decoration: none;
+  }
+  .workspace-actions a:hover {
+    text-decoration: underline;
   }
   .badge {
-    margin-left: auto;
-    border-radius: 20px;
-    background: #e2edde;
-    padding: 6px 12px;
-    font-size: 12px;
+    background: var(--accent);
+    color: white;
+    padding: 10px 14px;
+    border-radius: 7px;
+    font-weight: 600;
   }
-  @media (max-width: 500px) {
-    article {
-      align-items: flex-start;
-      padding: 20px;
+  @media (max-width: 600px) {
+    main {
+      padding: 0 20px 60px;
     }
-    .icon,
-    .badge {
-      display: none;
+    header {
+      min-height: 80px;
+      margin-bottom: 36px;
+    }
+    h1 {
+      font-size: 30px;
+    }
+    article {
+      padding: 20px;
+      grid-template-columns: 36px 1fr;
+      gap: 14px;
+    }
+    .icon {
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
+    }
+    .workspace-actions {
+      grid-column: 1 / -1;
+      gap: 16px;
     }
   }
 </style>

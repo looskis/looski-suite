@@ -1,0 +1,239 @@
+:root {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  color: #202c30;
+  background: #f6f7f9;
+  font-synthesis: none;
+  --canvas: #f6f7f9;
+  --surface: #fff;
+  --ink: #202c30;
+  --muted: #657277;
+  --line: #e1e6e8;
+  --accent: #176b56;
+  --accent-hover: #105340;
+  --tint: #edf6f1;
+  --radius: 12px;
+  --shadow: 0 2px 5px #182c3504, 0 12px 28px #182c3504;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+a {
+  color: var(--accent);
+  text-underline-offset: 4px;
+}
+a:hover {
+  color: var(--accent-hover);
+}
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 10px 17px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background 140ms,
+    border-color 140ms,
+    box-shadow 140ms;
+}
+button:hover,
+.button:hover {
+  background: var(--accent-hover);
+  color: white;
+  box-shadow: 0 3px 8px #153d2514;
+}
+button.secondary,
+.button.secondary {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+button.secondary:hover,
+.button.secondary:hover {
+  background: #f0f3f4;
+  border-color: #b8c3c7;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+:focus-visible {
+  outline: 3px solid #539c89;
+  outline-offset: 4px;
+}
+input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+select,
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  margin-top: 7px;
+  border: 1px solid #ccd5d9;
+  border-radius: 7px;
+  background: white;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  transition:
+    border-color 140ms,
+    box-shadow 140ms;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #7b878c;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px #176b5610;
+}
+textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+input[type='file']::file-selector-button {
+  border: 0;
+  border-radius: 4px;
+  background: var(--tint);
+  color: var(--accent);
+  padding: 6px 10px;
+  margin-right: 12px;
+  font: inherit;
+  cursor: pointer;
+}
+label {
+  display: block;
+  margin: 18px 0;
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+h1,
+h2,
+h3 {
+  color: var(--ink);
+  text-wrap: balance;
+}
+h1 {
+  font-size: clamp(28px, 3vw, 36px);
+  letter-spacing: -0.035em;
+  font-weight: 650;
+  line-height: 1.2;
+}
+h2 {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+h3 {
+  font-size: 15px;
+  font-weight: 650;
+}
+p {
+  line-height: 1.65;
+}
+small,
+.muted {
+  color: var(--muted);
+}
+.error,
+[role='alert'] {
+  border: 1px solid #edc9c5;
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #fff4f2;
+  color: #953b31;
+  font-size: 14px;
+}
+.eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+}
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  color: white;
+  background: var(--accent);
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: -0.1em;
+  padding-right: 2px;
+}
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  transform: translateY(-160%);
+  z-index: 100;
+  background: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+}
+.skip-link:focus {
+  transform: none;
+}
+::selection {
+  background: #c5e6d9;
+  color: #153c30;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
