@@ -888,8 +888,91 @@ struct CrmEditCoordinationRuleArgs {
     change: crate::crm::status_jobs::SaveCoordinationRule,
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct CrmStarterPackagesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::starter::StarterQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmStarterPackageArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmInstallStarterArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::starter::InstallStarter,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmRemoveStarterArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::starter::RemoveStarter,
+}
+
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "List the available CRM starter package and bounded installation history."
+    )]
+    async fn crm_starter_packages(
+        &self,
+        Parameters(input): Parameters<CrmStarterPackagesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_starter_packages(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Read copied definitions and removal decisions for a CRM starter installation."
+    )]
+    async fn crm_starter_package(
+        &self,
+        Parameters(input): Parameters<CrmStarterPackageArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_starter_package(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Atomically install editable General CRM defaults. Requires CRM and Tasks configuration read/manage; one active installation per workspace."
+    )]
+    async fn crm_install_starter(
+        &self,
+        Parameters(input): Parameters<CrmInstallStarterArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_install_starter(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Remove a CRM starter package by archiving unchanged defaults, retaining customized dependencies and all business records. Requires current configuration authority and expected version."
+    )]
+    async fn crm_remove_starter(
+        &self,
+        Parameters(input): Parameters<CrmRemoveStarterArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_remove_starter(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+
     #[tool(
         description = "Jobs list. Durable work retains initiating authority; operator actions require current workspace grants."
     )]

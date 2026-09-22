@@ -124,11 +124,34 @@ pub async fn get(
     id: Uuid,
 ) -> Result<Definition, Error> {
     let mut tx = pool.begin().await?;
-    access(&mut tx, actor, "crm.configuration.read").await?;
-    dao::get(&mut tx, actor.workspace, kind, id).await
+    let result = get_in_transaction(&mut tx, actor, kind, id).await?;
+    Ok(result)
 }
+pub(crate) async fn get_in_transaction(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    kind: Kind,
+    id: Uuid,
+) -> Result<Definition, Error> {
+    access(db, actor, "crm.configuration.read").await?;
+    dao::get(db, actor.workspace, kind, id).await
+}
+
 pub async fn save(
     pool: &PgPool,
+    actor: &ActorContext<'_>,
+    kind: Kind,
+    id: Option<Uuid>,
+    key: &str,
+    input: SaveDefinition,
+) -> Result<Definition, Error> {
+    let mut tx = pool.begin().await?;
+    let result = save_in_transaction(&mut tx, actor, kind, id, key, input).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+pub(crate) async fn save_in_transaction(
+    db: &mut PgConnection,
     actor: &ActorContext<'_>,
     kind: Kind,
     id: Option<Uuid>,
@@ -153,11 +176,10 @@ pub async fn save(
             "This definition does not support that parent or outcome",
         ));
     }
-    let mut tx = pool.begin().await?;
-    access(&mut tx, actor, "crm.configuration.manage").await?;
-    modules::lock_workspace(&mut tx, actor.workspace).await?;
-    let a = access(&mut tx, actor, "crm.configuration.manage").await?;
-    access(&mut tx, actor, "crm.configuration.read").await?;
+    access(db, actor, "crm.configuration.manage").await?;
+    modules::lock_workspace(db, actor.workspace).await?;
+    let a = access(db, actor, "crm.configuration.manage").await?;
+    access(db, actor, "crm.configuration.read").await?;
     let operation = format!(
         "crm.{}.save:{}",
         kind.key(),
@@ -165,12 +187,12 @@ pub async fn save(
     );
     let request = serde_json::to_value(&input).expect("definition serializes");
     if let Some(saved) =
-        reliability::replay(&mut tx, actor.workspace, &a, &operation, key, &request).await?
+        reliability::replay(db, actor.workspace, &a, &operation, key, &request).await?
     {
         return Ok(saved);
     }
     let current = if let Some(id) = id {
-        let c = dao::get(&mut tx, actor.workspace, kind, id).await?;
+        let c = dao::get(db, actor.workspace, kind, id).await?;
         if Some(c.version) != input.expected_version {
             return Err(Error::Conflict("Definition changed; reload before editing"));
         }
@@ -194,7 +216,7 @@ pub async fn save(
         let parent = input
             .parent_id
             .ok_or(Error::Invalid("Parent definition is required"))?;
-        let definition = dao::get(&mut tx, actor.workspace, parent_kind, parent).await?;
+        let definition = dao::get(db, actor.workspace, parent_kind, parent).await?;
         if definition.archived && (current.is_none() || input.archived == Some(false)) {
             return Err(Error::Conflict(
                 "An archived parent cannot receive active definitions",
@@ -204,9 +226,9 @@ pub async fn save(
     if matches!(kind, Kind::Stage) && input.outcome.is_none() {
         return Err(Error::Invalid("Opportunity stage outcome is required"));
     }
-    let id = dao::save(&mut tx, actor.workspace, kind, id, &input).await?;
+    let id = dao::save(db, actor.workspace, kind, id, &input).await?;
     reliability::audit(
-        &mut tx,
+        db,
         actor,
         &a,
         &format!("crm.{}.saved", kind.key()),
@@ -214,20 +236,11 @@ pub async fn save(
         serde_json::json!({}),
     )
     .await?;
-    let result = dao::get(&mut tx, actor.workspace, kind, id).await?;
-    reliability::save_replay(
-        &mut tx,
-        actor.workspace,
-        &a,
-        &operation,
-        key,
-        &request,
-        &result,
-    )
-    .await?;
-    tx.commit().await?;
+    let result = dao::get(db, actor.workspace, kind, id).await?;
+    reliability::save_replay(db, actor.workspace, &a, &operation, key, &request, &result).await?;
     Ok(result)
 }
+
 /// CRM record operations already enforce their read/write authority. Definitions
 /// are part of their permitted record's state, not a route to other sales records.
 pub(super) async fn state(

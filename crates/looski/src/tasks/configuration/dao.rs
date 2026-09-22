@@ -180,3 +180,11 @@ pub(super) async fn revision(
             .0,
     )
 }
+
+pub(super) async fn active_templates_for_type(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    id: Uuid,
+) -> Result<bool, Error> {
+    Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tasks.templates t JOIN tasks.template_revisions r ON (r.workspace_id,r.template_id)=(t.workspace_id,t.id) WHERE t.workspace_id=$1 AND t.archived_at IS NULL AND r.type_id=$2)").bind(workspace).bind(id).fetch_one(db).await?)
+}

@@ -792,3 +792,5 @@ pub async fn archive_deal(
 pub mod task_links;
 
 pub mod status_jobs;
+
+pub mod starter;

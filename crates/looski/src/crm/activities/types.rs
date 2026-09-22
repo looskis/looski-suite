@@ -83,11 +83,32 @@ pub async fn list(
 }
 pub async fn get(pool: &PgPool, actor: &ActorContext<'_>, id: Uuid) -> Result<ActivityType, Error> {
     let mut tx = pool.begin().await?;
-    access(&mut tx, actor, "crm.configuration.read").await?;
-    dao::get(&mut tx, actor.workspace, id).await
+    let result = get_in_transaction(&mut tx, actor, id).await?;
+    Ok(result)
 }
+pub(crate) async fn get_in_transaction(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    id: Uuid,
+) -> Result<ActivityType, Error> {
+    access(db, actor, "crm.configuration.read").await?;
+    dao::get(db, actor.workspace, id).await
+}
+
 pub async fn save(
     pool: &PgPool,
+    actor: &ActorContext<'_>,
+    id: Option<Uuid>,
+    key: &str,
+    input: SaveActivityType,
+) -> Result<ActivityType, Error> {
+    let mut tx = pool.begin().await?;
+    let result = save_in_transaction(&mut tx, actor, id, key, input).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+pub(crate) async fn save_in_transaction(
+    db: &mut PgConnection,
     actor: &ActorContext<'_>,
     id: Option<Uuid>,
     key: &str,
@@ -106,23 +127,20 @@ pub async fn save(
             "Updates require expected_version; creation must omit it",
         ));
     }
-    let mut tx = pool.begin().await?;
-    access(&mut tx, actor, "crm.configuration.manage").await?;
-    modules::lock_workspace(&mut tx, actor.workspace).await?;
-    let a = access(&mut tx, actor, "crm.configuration.manage").await?;
-    access(&mut tx, actor, "crm.configuration.read").await?;
+    access(db, actor, "crm.configuration.manage").await?;
+    modules::lock_workspace(db, actor.workspace).await?;
+    let a = access(db, actor, "crm.configuration.manage").await?;
+    access(db, actor, "crm.configuration.read").await?;
     let op = format!(
         "crm.activity_types.save:{}",
         id.map(|i| i.to_string()).unwrap_or_else(|| "new".into())
     );
     let request = serde_json::to_value(&input).expect("type serializes");
-    if let Some(saved) =
-        reliability::replay(&mut tx, actor.workspace, &a, &op, key, &request).await?
-    {
+    if let Some(saved) = reliability::replay(db, actor.workspace, &a, &op, key, &request).await? {
         return Ok(saved);
     }
     if let Some(id) = id {
-        let old = dao::get(&mut tx, actor.workspace, id).await?;
+        let old = dao::get(db, actor.workspace, id).await?;
         if Some(old.version) != input.expected_version {
             return Err(Error::Conflict(
                 "Activity type changed; reload before editing",
@@ -134,9 +152,9 @@ pub async fn save(
             ));
         }
     }
-    let id = dao::save(&mut tx, actor.workspace, id, &input).await?;
+    let id = dao::save(db, actor.workspace, id, &input).await?;
     reliability::audit(
-        &mut tx,
+        db,
         actor,
         &a,
         "crm.activity_type.saved",
@@ -144,11 +162,11 @@ pub async fn save(
         serde_json::json!({}),
     )
     .await?;
-    let result = dao::get(&mut tx, actor.workspace, id).await?;
-    reliability::save_replay(&mut tx, actor.workspace, &a, &op, key, &request, &result).await?;
-    tx.commit().await?;
+    let result = dao::get(db, actor.workspace, id).await?;
+    reliability::save_replay(db, actor.workspace, &a, &op, key, &request, &result).await?;
     Ok(result)
 }
+
 pub(super) async fn state(
     db: &mut PgConnection,
     workspace: Uuid,

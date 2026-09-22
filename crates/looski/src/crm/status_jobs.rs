@@ -79,11 +79,32 @@ pub async fn get(
     id: Uuid,
 ) -> Result<CoordinationRule, Error> {
     let mut tx = pool.begin().await?;
-    require(&mut tx, actor, "crm.configuration.read").await?;
-    dao::get(&mut tx, actor.workspace, id).await
+    let result = get_in_transaction(&mut tx, actor, id).await?;
+    Ok(result)
 }
+pub(crate) async fn get_in_transaction(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    id: Uuid,
+) -> Result<CoordinationRule, Error> {
+    require(db, actor, "crm.configuration.read").await?;
+    dao::get(db, actor.workspace, id).await
+}
+
 pub async fn save(
     pool: &PgPool,
+    actor: &ActorContext<'_>,
+    id: Option<Uuid>,
+    key: &str,
+    input: SaveCoordinationRule,
+) -> Result<CoordinationRule, Error> {
+    let mut tx = pool.begin().await?;
+    let result = save_in_transaction(&mut tx, actor, id, key, input).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+pub(crate) async fn save_in_transaction(
+    db: &mut PgConnection,
     actor: &ActorContext<'_>,
     id: Option<Uuid>,
     key: &str,
@@ -102,22 +123,21 @@ pub async fn save(
             "Updates require expected_version; creation must omit it",
         ));
     }
-    let mut tx = pool.begin().await?;
-    require(&mut tx, actor, "crm.configuration.manage").await?;
-    modules::lock_workspace(&mut tx, actor.workspace).await?;
-    let a = require(&mut tx, actor, "crm.configuration.manage").await?;
-    require(&mut tx, actor, "crm.configuration.read").await?;
+    require(db, actor, "crm.configuration.manage").await?;
+    modules::lock_workspace(db, actor.workspace).await?;
+    let a = require(db, actor, "crm.configuration.manage").await?;
+    require(db, actor, "crm.configuration.read").await?;
     let operation = format!(
         "crm.coordination_rule.save:{}",
         id.map(|i| i.to_string()).unwrap_or_else(|| "new".into())
     );
     if let Some(saved) =
-        reliability::replay(&mut tx, actor.workspace, &a, &operation, key, &request).await?
+        reliability::replay(db, actor.workspace, &a, &operation, key, &request).await?
     {
         return Ok(saved);
     }
     let current = if let Some(id) = id {
-        let r = dao::get(&mut tx, actor.workspace, id).await?;
+        let r = dao::get(db, actor.workspace, id).await?;
         if Some(r.version) != input.expected_version {
             return Err(Error::Conflict("Rule changed; reload before editing"));
         }
@@ -134,39 +154,22 @@ pub async fn save(
             .as_ref()
             .is_none_or(|r| r.revision_id != input.revision_id || r.status_id != input.status_id)
     {
-        super::coordination::require_active_revision(&mut tx, actor, input.revision_id).await?;
-        dao::active_status(&mut tx, actor.workspace, input.status_id).await?;
+        super::coordination::require_active_revision(db, actor, input.revision_id).await?;
+        dao::active_status(db, actor.workspace, input.status_id).await?;
     }
-    if !archived && dao::conflicting(&mut tx, actor.workspace, id, input.status_id).await? {
+    if !archived && dao::conflicting(db, actor.workspace, id, input.status_id).await? {
         return Err(Error::Conflict(
             "This status already has an active coordination rule",
         ));
     }
     let id = id.unwrap_or_else(Uuid::new_v4);
-    dao::save(
-        &mut tx,
-        actor.workspace,
-        id,
-        &input,
-        archived,
-        current.is_none(),
-    )
-    .await?;
-    reliability::audit(&mut tx,actor,&a,"crm.coordination_rule.saved",id,serde_json::json!({"status_id":input.status_id,"revision_id":input.revision_id,"archived":archived})).await?;
-    let result = dao::get(&mut tx, actor.workspace, id).await?;
-    reliability::save_replay(
-        &mut tx,
-        actor.workspace,
-        &a,
-        &operation,
-        key,
-        &request,
-        &result,
-    )
-    .await?;
-    tx.commit().await?;
+    dao::save(db, actor.workspace, id, &input, archived, current.is_none()).await?;
+    reliability::audit(db,actor,&a,"crm.coordination_rule.saved",id,serde_json::json!({"status_id":input.status_id,"revision_id":input.revision_id,"archived":archived})).await?;
+    let result = dao::get(db, actor.workspace, id).await?;
+    reliability::save_replay(db, actor.workspace, &a, &operation, key, &request, &result).await?;
     Ok(result)
 }
+
 pub(super) async fn schedule(
     db: &mut PgConnection,
     actor: &ActorContext<'_>,

@@ -38,6 +38,8 @@ Next: verified Supabase identity, bootstrap/login, workspace membership and auth
 
 The [durable jobs checkpoint](implementation/status-jobs-slice.md) now implements worker execution, retries, fenced crash recovery and explicit module resume.
 
+The [starter package checkpoint](implementation/starter-package-slice.md) adds explicit editable defaults and safe retirement; upgrades never reinstall them.
+
 Still pending: migration-content checksum drift rejection, an upgrade from a previous application release, backup/restore, hosted Supabase overlay, callback/SMTP/Cloudflare testing, collector ingestion/redaction/retention, resource measurements, vulnerability/dependency license checks, corresponding-source delivery, and trademark policy. The GitHub Actions workflow is authored but has not run on GitHub.
 
 The initial database probe uncovered two integration errors (a missing upstream role dependency and execution of a bind-mounted shell sentinel); both were corrected in the scaffold. The failed probe volumes contained no user/business data. A test runtime credential emitted by upstream statement logging was replaced, and password-setting statements now suppress that logging. Setup never automatically resets volumes or rotates existing secrets.

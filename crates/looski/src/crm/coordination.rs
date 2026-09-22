@@ -154,9 +154,18 @@ pub async fn template(
     id: Uuid,
 ) -> Result<CoordinationTemplate, Error> {
     let mut tx = pool.begin().await?;
-    config(&mut tx, actor, "crm.configuration.read").await?;
-    dao::template(&mut tx, actor.workspace, id).await
+    let result = template_in_transaction(&mut tx, actor, id).await?;
+    Ok(result)
 }
+pub(crate) async fn template_in_transaction(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    id: Uuid,
+) -> Result<CoordinationTemplate, Error> {
+    config(db, actor, "crm.configuration.read").await?;
+    dao::template(db, actor.workspace, id).await
+}
+
 pub async fn revisions(
     pool: &PgPool,
     actor: &ActorContext<'_>,
@@ -178,6 +187,18 @@ pub async fn revisions(
 }
 pub async fn save(
     pool: &PgPool,
+    actor: &ActorContext<'_>,
+    id: Option<Uuid>,
+    key: &str,
+    input: SaveCoordinationTemplate,
+) -> Result<CoordinationTemplate, Error> {
+    let mut tx = pool.begin().await?;
+    let result = save_in_transaction(&mut tx, actor, id, key, input).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+pub(crate) async fn save_in_transaction(
+    db: &mut PgConnection,
     actor: &ActorContext<'_>,
     id: Option<Uuid>,
     key: &str,
@@ -211,22 +232,21 @@ pub async fn save(
             "Updates require expected_version; creation must omit it",
         ));
     }
-    let mut tx = pool.begin().await?;
-    config(&mut tx, actor, "crm.configuration.manage").await?;
-    modules::lock_workspace(&mut tx, actor.workspace).await?;
-    let a = config(&mut tx, actor, "crm.configuration.manage").await?;
-    config(&mut tx, actor, "crm.configuration.read").await?;
+    config(db, actor, "crm.configuration.manage").await?;
+    modules::lock_workspace(db, actor.workspace).await?;
+    let a = config(db, actor, "crm.configuration.manage").await?;
+    config(db, actor, "crm.configuration.read").await?;
     let operation = format!(
         "crm.coordination.save:{}",
         id.map(|i| i.to_string()).unwrap_or_else(|| "new".into())
     );
     if let Some(saved) =
-        reliability::replay(&mut tx, actor.workspace, &a, &operation, key, &request).await?
+        reliability::replay(db, actor.workspace, &a, &operation, key, &request).await?
     {
         return Ok(saved);
     }
     let current = if let Some(id) = id {
-        let t = dao::template(&mut tx, actor.workspace, id).await?;
+        let t = dao::template(db, actor.workspace, id).await?;
         if Some(t.version) != input.expected_version {
             return Err(Error::Conflict(
                 "Coordination template changed; reload before editing",
@@ -246,7 +266,7 @@ pub async fn save(
     });
     if changed {
         tasks::configuration::validate_revisions(
-            &mut tx,
+            db,
             actor,
             &input
                 .items
@@ -262,7 +282,7 @@ pub async fn save(
         .map(|t| t.revision.number + i64::from(changed))
         .unwrap_or(1);
     let audit = reliability::audit(
-        &mut tx,
+        db,
         actor,
         &a,
         "crm.coordination_template.saved",
@@ -270,32 +290,15 @@ pub async fn save(
         serde_json::json!({"revision":number,"new_revision":changed}),
     )
     .await?;
-    dao::save(
-        &mut tx,
-        actor.workspace,
-        id,
-        &input,
-        number,
-        current.is_none(),
-    )
-    .await?;
+    dao::save(db, actor.workspace, id, &input, number, current.is_none()).await?;
     if changed {
-        dao::insert_revision(&mut tx, actor.workspace, id, number, &input, audit).await?;
+        dao::insert_revision(db, actor.workspace, id, number, &input, audit).await?;
     }
-    let result = dao::template(&mut tx, actor.workspace, id).await?;
-    reliability::save_replay(
-        &mut tx,
-        actor.workspace,
-        &a,
-        &operation,
-        key,
-        &request,
-        &result,
-    )
-    .await?;
-    tx.commit().await?;
+    let result = dao::template(db, actor.workspace, id).await?;
+    reliability::save_replay(db, actor.workspace, &a, &operation, key, &request, &result).await?;
     Ok(result)
 }
+
 async fn project_rows(
     db: &mut PgConnection,
     actor: &ActorContext<'_>,

@@ -29,6 +29,65 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn crm_starter_packages(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::starter::StarterQuery,
+    ) -> anyhow::Result<crate::crm::starter::StarterPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/starter-packages"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_starter_package(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::starter::StarterInstallation> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/starter-packages/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_install_starter(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::starter::InstallStarter,
+    ) -> anyhow::Result<crate::crm::starter::StarterInstallation> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/starter-packages"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_remove_starter(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::starter::RemoveStarter,
+    ) -> anyhow::Result<crate::crm::starter::StarterInstallation> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/starter-packages/{id}/remove"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
     pub async fn jobs_list(
         &self,
         workspace: uuid::Uuid,

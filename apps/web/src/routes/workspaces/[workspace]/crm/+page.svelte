@@ -40,6 +40,7 @@
       its existing records.
     </p>
     <nav>
+      <a href={`${root}/starter-packages`}>Starter package</a> ·
       <a href={`${root}/coordination-templates`}>Coordination templates</a> ·
       <a href={`${root}/activity-types`}>Activity types</a> ·
       <a href={`${root}/configuration/pipelines`}>Pipelines</a> ·

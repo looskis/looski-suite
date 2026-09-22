@@ -267,6 +267,25 @@ enum TasksCommand {
 
 #[derive(Subcommand)]
 enum CrmCommand {
+    StarterPackages {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    StarterPackage {
+        id: uuid::Uuid,
+    },
+    InstallStarter {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    RemoveStarter {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+
     CoordinationRules {
         #[arg(long)]
         limit: Option<i64>,
@@ -2007,6 +2026,49 @@ async fn run() -> anyhow::Result<()> {
                             .await?
                     )?
                 ),
+                CrmCommand::StarterPackages { limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_starter_packages(
+                                workspace,
+                                &looski::crm::starter::StarterQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::StarterPackage { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_starter_package(workspace, id).await?)?
+                ),
+                CrmCommand::InstallStarter { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_install_starter(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::RemoveStarter {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_remove_starter(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
                 CrmCommand::OpportunityTags { id } => println!(
                     "{}",
                     serde_json::to_string(&client.crm_opportunity_tags(workspace, id).await?)?
@@ -2895,7 +2957,7 @@ async fn run() -> anyhow::Result<()> {
                 )
                 .fetch_one(&db)
                 .await?
-                    == 21,
+                    == 22,
                 "Worker requires current schema"
             );
             loop {
