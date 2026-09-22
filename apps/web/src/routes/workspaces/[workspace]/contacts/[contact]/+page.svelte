@@ -187,3 +187,10 @@
     >View and record activities</a
   >
 </section>
+
+{#if data.contact.archived}<p>
+    <a
+      href={`/workspaces/${data.workspace.id}/contacts/${data.contact.id}/delete`}
+      >Review permanent deletion</a
+    >
+  </p>{/if}

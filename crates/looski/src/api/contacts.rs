@@ -24,6 +24,11 @@ impl From<contacts::Error> for Failure {
             ),
             contacts::Error::NotFound => (StatusCode::NOT_FOUND, "not_found", "Record not found"),
             contacts::Error::Conflict(message) => (StatusCode::CONFLICT, "conflict", message),
+            contacts::Error::Unavailable => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "unavailable",
+                "The service is temporarily unavailable",
+            ),
             contacts::Error::Database(error) => {
                 // Avoid SQL bind values/customer data in diagnostics.
                 tracing::error!(database_code=?error.as_database_error().and_then(|e|e.code()),"Contact operation failed");
@@ -123,6 +128,25 @@ async fn edit(
         contacts::edit(&state.db, &actor, id, key(&headers)?, input).await?,
     ))
 }
+#[utoipa::path(post,path="/api/v1/workspaces/{workspace_id}/contacts/{contact_id}/delete-permanently",operation_id="deleteContactPermanently",tag="contacts",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("contact_id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=contacts::deletion::DeleteContact,responses((status=200,body=contacts::deletion::DeletedContact),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn delete_permanently(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<super::RequestId>,
+    Json(input): Json<contacts::deletion::DeleteContact>,
+) -> Result<Json<contacts::deletion::DeletedContact>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = crate::application::ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: super::source_interface(&headers),
+    };
+    Ok(Json(
+        contacts::deletion::delete(&state.db, &actor, id, key(&headers)?, input).await?,
+    ))
+}
 #[utoipa::path(post,path="/api/v1/workspaces/{workspace_id}/contacts/{contact_id}/archive",operation_id="archiveContact",tag="contacts",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("contact_id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=ArchiveContact,responses((status=200,body=Contact),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
 async fn archive(
     State(state): State<AppState>,
@@ -166,5 +190,6 @@ pub(super) fn routes() -> OpenApiRouter<AppState> {
         .routes(routes!(list, create))
         .routes(routes!(get, edit))
         .routes(routes!(archive))
+        .routes(routes!(delete_permanently))
         .routes(routes!(merge))
 }

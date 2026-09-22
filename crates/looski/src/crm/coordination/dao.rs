@@ -151,6 +151,7 @@ pub(super) struct InstanceRow {
 }
 const SUMMARY: &str = "'id',i.id,'deal_id',i.deal_id,'revision_id',i.revision_id,'template_name',r.name,'base_on',i.base_on::text,'created_at',i.created_at::text";
 const INSTANCES: &str = "FROM crm.deal_coordination_instances i JOIN crm.coordination_revisions r ON (r.workspace_id,r.id)=(i.workspace_id,i.revision_id)";
+const FULL_INSTANCE: &str = "SELECT jsonb_build_object({SUMMARY},'items',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',ci.id,'label',s.label,'task_id',ci.task_id,'link_id',l.id,'link_ended',l.ended_at IS NOT NULL) ORDER BY s.position) FROM crm.deal_coordination_items ci JOIN crm.coordination_steps s ON (s.workspace_id,s.revision_id,s.id)=(ci.workspace_id,ci.revision_id,ci.step_id) JOIN crm.deal_tasks l ON (l.workspace_id,l.deal_id,l.task_id)=(ci.workspace_id,ci.deal_id,ci.task_id) WHERE ci.workspace_id=i.workspace_id AND ci.instance_id=i.id),'[]'::jsonb))";
 pub(super) async fn instance(
     db: &mut PgConnection,
     workspace: Uuid,
@@ -158,7 +159,8 @@ pub(super) async fn instance(
     id: Uuid,
 ) -> Result<InstanceRow, Error> {
     let sql = format!(
-        "SELECT jsonb_build_object({SUMMARY},'items',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',ci.id,'label',s.label,'task_id',ci.task_id,'link_id',l.id,'link_ended',l.ended_at IS NOT NULL) ORDER BY s.position) FROM crm.deal_coordination_items ci JOIN crm.coordination_steps s ON (s.workspace_id,s.revision_id,s.id)=(ci.workspace_id,ci.revision_id,ci.step_id) JOIN crm.deal_tasks l ON (l.workspace_id,l.deal_id,l.task_id)=(ci.workspace_id,ci.deal_id,ci.task_id) WHERE ci.workspace_id=i.workspace_id AND ci.instance_id=i.id),'[]'::jsonb)) {INSTANCES} WHERE i.workspace_id=$1 AND i.deal_id=$2 AND i.id=$3"
+        "{} {INSTANCES} WHERE i.workspace_id=$1 AND i.deal_id=$2 AND i.id=$3",
+        FULL_INSTANCE.replace("{SUMMARY}", SUMMARY)
     );
     Ok(
         sqlx::query_scalar::<_, Json<InstanceRow>>(sqlx::AssertSqlSafe(sql.as_str()))
@@ -220,4 +222,27 @@ pub(super) async fn insert_item(
 ) -> Result<(), Error> {
     sqlx::query("INSERT INTO crm.deal_coordination_items(workspace_id,instance_id,deal_id,revision_id,step_id,task_id) VALUES($1,$2,$3,$4,$5,$6)").bind(workspace).bind(instance).bind(deal).bind(revision).bind(step).bind(task).execute(db).await?;
     Ok(())
+}
+
+pub(super) async fn instance_batch(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    deal: Uuid,
+    ids: &[Uuid],
+) -> Result<Vec<InstanceRow>, Error> {
+    let sql = format!(
+        "{} {INSTANCES} WHERE i.workspace_id=$1 AND i.deal_id=$2 AND i.id=ANY($3) ORDER BY i.created_at,i.id",
+        FULL_INSTANCE.replace("{SUMMARY}", SUMMARY)
+    );
+    Ok(
+        sqlx::query_scalar::<_, Json<InstanceRow>>(sqlx::AssertSqlSafe(sql.as_str()))
+            .bind(workspace)
+            .bind(deal)
+            .bind(ids)
+            .fetch_all(db)
+            .await?
+            .into_iter()
+            .map(|r| r.0)
+            .collect(),
+    )
 }

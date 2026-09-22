@@ -14,7 +14,7 @@ def create(path,body):return call(base+path,'POST',body,expected=201,key=key())
 def compose(*args,**kwargs):return subprocess.run(['docker','compose',*args],cwd=ROOT,env=f.environment,check=True,**kwargs)
 # Run deterministic worker commands in the API container while the daemon is stopped.
 def once():
- command=['docker','compose','exec','-T','--user','10001','-e','LOOSKI_DATABASE_URL_FILE=/run/looski/database_url','api','looski','worker','--once']
+ command=['docker','compose','exec','-T','--user','10001','-e','LOOSKI_DATABASE_URL_FILE=/run/looski/database_url','-e','LOOSKI_JWT_SECRET_FILE=/run/looski/jwt_secret','-e','LOOSKI_INVITATION_KEY_FILE=/run/looski/invitation_key','api','looski','worker','--once']
  return subprocess.run(command,cwd=ROOT,env=f.environment,check=True,capture_output=True,text=True)
 def queued():return f.sql("SELECT id FROM suite.jobs WHERE workspace_id='"+f.workspace+"' ORDER BY created_at DESC,id DESC LIMIT 1")
 def wake(job):f.sql("SELECT pgmq.set_vt('looski_jobs',message_id,0) FROM suite.jobs WHERE id='"+job+"'")
@@ -116,7 +116,7 @@ try:
   deadline=time.monotonic()+8
   while not predicate():
    assert time.monotonic()<deadline,'Timed out waiting for isolated worker state';time.sleep(.05)
- worker_command=['docker','compose','exec','-T','--user','10001','-e','LOOSKI_DATABASE_URL_FILE=/run/looski/database_url','api','looski','worker','--once']
+ worker_command=['docker','compose','exec','-T','--user','10001','-e','LOOSKI_DATABASE_URL_FILE=/run/looski/database_url','-e','LOOSKI_JWT_SECRET_FILE=/run/looski/jwt_secret','-e','LOOSKI_INVITATION_KEY_FILE=/run/looski/invitation_key','api','looski','worker','--once']
  workers=[]
  try:
   wait_for(lambda:f.sql("SELECT count(*) FROM pg_stat_activity WHERE application_name='looski-job-fence-fixture' AND wait_event='PgSleep'")=='1')
@@ -145,7 +145,7 @@ try:
    lock_process=subprocess.Popen(['docker','compose','exec','-T','db','psql','-U','postgres','-d','postgres','-At','-v','ON_ERROR_STOP=1'],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,text=True,cwd=ROOT,env=f.environment)
    lock_process.stdin.write("SET application_name='"+marker+"'; BEGIN; SELECT id FROM suite.workspaces WHERE id='"+f.workspace+"' FOR NO KEY UPDATE; SELECT pg_sleep(30); COMMIT;");lock_process.stdin.close()
    wait_for(lambda:f.sql("SELECT count(*) FROM pg_stat_activity WHERE application_name='"+marker+"' AND wait_event='PgSleep'")=='1')
-  crash_command=['docker','compose','exec','-T','--user','10001','-e','LOOSKI_DATABASE_URL_FILE=/run/looski/database_url','api','sh','-c','echo $$ > /tmp/'+marker+'.pid; exec looski worker --once']
+  crash_command=['docker','compose','exec','-T','--user','10001','-e','LOOSKI_DATABASE_URL_FILE=/run/looski/database_url','-e','LOOSKI_JWT_SECRET_FILE=/run/looski/jwt_secret','-e','LOOSKI_INVITATION_KEY_FILE=/run/looski/invitation_key','api','sh','-c','echo $$ > /tmp/'+marker+'.pid; exec looski worker --once']
   process=subprocess.Popen(crash_command,cwd=ROOT,env=f.environment,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
   try:
    wait_for(lambda:f.sql("SELECT attempts FROM suite.jobs WHERE id='"+crash_job+"'")=='1')

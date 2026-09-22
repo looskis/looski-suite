@@ -24,3 +24,9 @@ pub mod tasks;
 pub mod jobs;
 
 pub(crate) mod history;
+
+pub mod exports;
+
+pub mod files;
+
+pub mod diagnostics;

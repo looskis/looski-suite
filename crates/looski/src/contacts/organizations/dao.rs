@@ -192,3 +192,29 @@ pub(super) async fn touch(db: &mut PgConnection, workspace: Uuid, id: Uuid) -> R
     sqlx::query("UPDATE contacts.organizations SET version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2").bind(workspace).bind(id).execute(db).await?;
     Ok(())
 }
+
+pub(super) async fn relationship_page(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    contacts: &[Uuid],
+    access: &Access,
+    query: &super::RelationshipQuery,
+    limit: i64,
+) -> Result<Vec<Relationship>, Error> {
+    let sql = format!(
+        "SELECT {RELATION_COLUMNS} FROM contacts.contact_organizations r JOIN contacts.organizations o ON (o.workspace_id,o.id)=(r.workspace_id,r.organization_id) WHERE r.workspace_id=$1 AND r.contact_id=ANY($2) AND ($3 OR o.owner_membership_id=$4) AND (r.ended_at IS NOT NULL)=$5 AND ($6::uuid IS NULL OR r.id>$6) ORDER BY r.id LIMIT $7"
+    );
+    sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
+        .bind(workspace)
+        .bind(contacts)
+        .bind(access.workspace_wide)
+        .bind(access.membership_id)
+        .bind(query.ended.unwrap_or(false))
+        .bind(query.after)
+        .bind(limit)
+        .fetch_all(db)
+        .await?
+        .into_iter()
+        .map(decode_relation)
+        .collect()
+}

@@ -499,3 +499,61 @@ pub(super) async fn touch_for_tags(
 ) -> Result<(), Error> {
     dao::touch(db, workspace, id).await
 }
+
+/// Bounded relationship history for portable exports; ordinary current relationships are unchanged.
+#[derive(Default, Deserialize, Serialize)]
+pub struct RelationshipQuery {
+    pub limit: Option<i64>,
+    pub after: Option<Uuid>,
+    pub ended: Option<bool>,
+}
+#[derive(Serialize)]
+pub struct RelationshipPage {
+    pub items: Vec<Relationship>,
+    pub next_cursor: Option<Uuid>,
+}
+pub async fn relationship_page(
+    pool: &PgPool,
+    actor: &ActorContext<'_>,
+    contact: Uuid,
+    query: RelationshipQuery,
+) -> Result<RelationshipPage, Error> {
+    let limit = query.limit.unwrap_or(25);
+    if !(1..=100).contains(&limit) {
+        return Err(Error::Invalid("Limit must be 1–100"));
+    }
+    let mut tx = pool.begin().await?;
+    let read = access::require(&mut tx, actor.identity, actor.workspace, "contacts.read").await?;
+    let contact = super::dao::get(&mut tx, actor.workspace, contact, &read, false).await?;
+    let contact = if let Some(id) = contact.merged_into_id {
+        super::dao::get(&mut tx, actor.workspace, id, &read, false).await?
+    } else {
+        contact
+    };
+    let organizations = access::require(
+        &mut tx,
+        actor.identity,
+        actor.workspace,
+        "contacts.organizations.read",
+    )
+    .await?;
+    // Merges retain rows on original contacts. Include only independently visible aliases,
+    // preserving their original contact_id instead of making history unreachable.
+    let family = super::references::contact_family(&mut tx, actor, contact.id).await?;
+    let mut items = dao::relationship_page(
+        &mut tx,
+        actor.workspace,
+        &family,
+        &organizations,
+        &query,
+        limit + 1,
+    )
+    .await?;
+    let next_cursor = if items.len() > limit as usize {
+        items.pop();
+        items.last().map(|r| r.id)
+    } else {
+        None
+    };
+    Ok(RelationshipPage { items, next_cursor })
+}

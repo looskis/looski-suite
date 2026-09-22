@@ -12,6 +12,94 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use uuid::Uuid;
 #[derive(Deserialize, JsonSchema)]
+struct FilesListArgs {
+    workspace_id: Uuid,
+    query: crate::files::FileQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct FilesGetArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct FilesContentArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct FilesUploadArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::files::UploadFile,
+}
+#[derive(Deserialize, JsonSchema)]
+struct FilesEditArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::files::EditFile,
+}
+#[derive(Deserialize, JsonSchema)]
+struct FilesArchiveArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::files::ArchiveFile,
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct ExportArgs {
+    workspace_id: Uuid,
+    selection: crate::exports::ExportRequest,
+}
+#[derive(Deserialize, JsonSchema)]
+struct ExportCatalogArgs {
+    workspace_id: Uuid,
+}
+#[derive(Deserialize, schemars::JsonSchema)]
+struct InvitationPreviewArgs {
+    workspace_id: uuid::Uuid,
+    id: uuid::Uuid,
+    query: crate::workspace_access::invitations::PreviewInvitation,
+}
+#[derive(Deserialize, schemars::JsonSchema)]
+struct InvitationListArgs {
+    workspace_id: uuid::Uuid,
+    query: crate::workspace_access::AccessQuery,
+}
+#[derive(Deserialize, schemars::JsonSchema)]
+struct InvitationGetArgs {
+    workspace_id: uuid::Uuid,
+    id: uuid::Uuid,
+}
+#[derive(Deserialize, schemars::JsonSchema)]
+struct InvitationCreateArgs {
+    workspace_id: uuid::Uuid,
+    idempotency_key: String,
+    change: crate::workspace_access::invitations::CreateInvitation,
+}
+#[derive(Deserialize, schemars::JsonSchema)]
+struct InvitationSendArgs {
+    workspace_id: uuid::Uuid,
+    id: uuid::Uuid,
+    idempotency_key: String,
+    change: crate::workspace_access::invitations::delivery::SendInvitation,
+}
+#[derive(Deserialize, schemars::JsonSchema)]
+struct InvitationRevokeArgs {
+    workspace_id: uuid::Uuid,
+    id: uuid::Uuid,
+    idempotency_key: String,
+    change: crate::workspace_access::invitations::RevokeInvitation,
+}
+#[derive(Deserialize, schemars::JsonSchema)]
+struct InvitationAcceptArgs {
+    workspace_id: uuid::Uuid,
+    id: uuid::Uuid,
+    idempotency_key: String,
+    change: crate::workspace_access::invitations::AcceptInvitation,
+}
+#[derive(Deserialize, JsonSchema)]
 struct ContactListArgs {
     workspace_id: Uuid,
     #[serde(flatten)]
@@ -34,6 +122,13 @@ struct ContactEditArgs {
     contact_id: Uuid,
     idempotency_key: String,
     edit: crate::contacts::EditContact,
+}
+#[derive(Deserialize, JsonSchema)]
+struct ContactDeleteArgs {
+    workspace_id: Uuid,
+    contact_id: Uuid,
+    idempotency_key: String,
+    change: crate::contacts::deletion::DeleteContact,
 }
 #[derive(Deserialize, JsonSchema)]
 struct ContactArchiveArgs {
@@ -920,6 +1015,106 @@ struct CrmTimelineArgs {
 }
 #[tool_router]
 impl McpServer {
+    #[tool(description = "List scoped file metadata. Content is retrieved separately.")]
+    async fn files_list(
+        &self,
+        Parameters(input): Parameters<FilesListArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .files_list(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(description = "Read scoped file metadata.")]
+    async fn files_get(
+        &self,
+        Parameters(input): Parameters<FilesGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.files_get(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Read immutable file content as base64 with size and SHA256. Maximum 8 MiB decoded."
+    )]
+    async fn files_content(
+        &self,
+        Parameters(input): Parameters<FilesContentArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .files_content(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Upload an immutable file up to 8 MiB using canonical base64; requires files.create and files.read."
+    )]
+    async fn files_upload(
+        &self,
+        Parameters(input): Parameters<FilesUploadArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .files_upload(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(description = "Edit file metadata with current version; content is immutable.")]
+    async fn files_edit(
+        &self,
+        Parameters(input): Parameters<FilesEditArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .files_edit(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(description = "Archive or restore a file with current version. Content is retained.")]
+    async fn files_archive(
+        &self,
+        Parameters(input): Parameters<FilesArchiveArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .files_archive(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+
+    #[tool(
+        description = "List documented business export collections. Export permission never expands resource read visibility."
+    )]
+    async fn export_collections(
+        &self,
+        Parameters(input): Parameters<ExportCatalogArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.export_collections(input.workspace_id).await)
+    }
+    #[tool(
+        description = "Export one authorized JSON business page with a manifest and continuation. This is a live read, not a consistent backup. Follow every returned continuation and retain the manifest."
+    )]
+    async fn export_page(
+        &self,
+        Parameters(input): Parameters<ExportArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .export_page(input.workspace_id, &input.selection)
+                .await,
+        )
+    }
+
     #[tool(
         description = "Read a contact, opportunity or deal timeline. Activities, task events and status changes retain independent current permissions; continuation cursors are reauthorized."
     )]
@@ -2507,6 +2702,112 @@ impl McpServer {
     }
 
     #[tool(
+        description = "Preview an invitation as its currently verified recipient without granting membership. Token is private."
+    )]
+    async fn preview_staff_invitation(
+        &self,
+        Parameters(input): Parameters<InvitationPreviewArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .invitation_preview(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "List staff invitation. Membership requires current verified recipient identity, invitation validity and current grant authority. Treat pending invitation links as private."
+    )]
+    async fn list_staff_invitations(
+        &self,
+        Parameters(input): Parameters<InvitationListArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .invitation_list(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Get staff invitation. Membership requires current verified recipient identity, invitation validity and current grant authority. Treat pending invitation links as private."
+    )]
+    async fn get_staff_invitation(
+        &self,
+        Parameters(input): Parameters<InvitationGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .invitation_get(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Create staff invitation. Membership requires current verified recipient identity, invitation validity and current grant authority. Treat pending invitation links as private."
+    )]
+    async fn create_staff_invitation(
+        &self,
+        Parameters(input): Parameters<InvitationCreateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .invitation_create(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Queue an invitation email and controlled identity setup. Recipient consent still grants membership separately. Delivery may retry; use a stable idempotency key."
+    )]
+    async fn send_staff_invitation(
+        &self,
+        Parameters(input): Parameters<InvitationSendArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .invitation_send(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Revoke staff invitation. Membership requires current verified recipient identity, invitation validity and current grant authority. Treat pending invitation links as private."
+    )]
+    async fn revoke_staff_invitation(
+        &self,
+        Parameters(input): Parameters<InvitationRevokeArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .invitation_revoke(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Accept staff invitation. Membership requires current verified recipient identity, invitation validity and current grant authority. Treat pending invitation links as private."
+    )]
+    async fn accept_staff_invitation(
+        &self,
+        Parameters(input): Parameters<InvitationAcceptArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .invitation_accept(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
         description = "List workspace permissions. Mutations require current administrative authority and preserve a final active administrator."
     )]
     async fn list_workspace_permissions(
@@ -2839,6 +3140,24 @@ impl McpServer {
                     args.contact_id,
                     &args.idempotency_key,
                     &args.edit,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Permanently delete an archived, unmerged, unreferenced contact. Requires separate current delete permission, exact version and confirm_id. Does not erase related business history or prior backups."
+    )]
+    async fn delete_contact_permanently(
+        &self,
+        Parameters(args): Parameters<ContactDeleteArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .delete_contact_permanently(
+                    args.workspace_id,
+                    args.contact_id,
+                    &args.idempotency_key,
+                    &args.change,
                 )
                 .await,
         )

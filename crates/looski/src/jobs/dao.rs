@@ -79,10 +79,11 @@ pub(super) async fn enqueue(
     actor: &ActorContext<'_>,
     a: &Access,
     dedup: &str,
+    kind: &str,
 ) -> Result<Uuid, Error> {
     let id = Uuid::new_v4();
     let message = send(db, id).await?;
-    sqlx::query("INSERT INTO suite.jobs(id,workspace_id,kind,deduplication_key,actor_user_id,actor_membership_id,actor_issuer,actor_subject,message_id) VALUES($1,$2,'crm.coordination',$3,$4,$5,$6,$7,$8)").bind(id).bind(actor.workspace).bind(dedup).bind(a.user_id).bind(a.membership_id).bind(actor.identity.issuer()).bind(actor.identity.subject()).bind(message).execute(&mut *db).await?;
+    sqlx::query("INSERT INTO suite.jobs(id,workspace_id,kind,deduplication_key,actor_user_id,actor_membership_id,actor_issuer,actor_subject,message_id) VALUES($1,$2,$9,$3,$4,$5,$6,$7,$8)").bind(id).bind(actor.workspace).bind(dedup).bind(a.user_id).bind(a.membership_id).bind(actor.identity.issuer()).bind(actor.identity.subject()).bind(message).bind(kind).execute(&mut *db).await?;
     event(db, actor.workspace, id).await?;
     Ok(id)
 }
@@ -132,6 +133,7 @@ pub(super) async fn notification(pool: &PgPool) -> Result<Option<Notification>, 
     }))
 }
 pub(super) struct Claim {
+    pub kind: String,
     pub id: Uuid,
     pub workspace: Uuid,
     pub token: Uuid,
@@ -145,7 +147,7 @@ pub(super) async fn claim(
     notification: Notification,
 ) -> Result<Option<Claim>, Error> {
     let mut tx = pool.begin().await?;
-    let row=sqlx::query("SELECT workspace_id,state,attempts,message_id,lease_until>clock_timestamp() AS leased,actor_issuer,actor_subject,actor_user_id,actor_membership_id FROM suite.jobs WHERE id=$1 FOR UPDATE").bind(notification.id).fetch_optional(&mut *tx).await?;
+    let row=sqlx::query("SELECT kind,workspace_id,state,attempts,message_id,lease_until>clock_timestamp() AS leased,actor_issuer,actor_subject,actor_user_id,actor_membership_id FROM suite.jobs WHERE id=$1 FOR UPDATE").bind(notification.id).fetch_optional(&mut *tx).await?;
     let Some(row) = row else {
         sqlx::query("SELECT pgmq.delete('looski_jobs',$1)")
             .bind(notification.message)
@@ -181,6 +183,7 @@ pub(super) async fn claim(
     event(&mut tx, ws, id).await?;
     tx.commit().await?;
     Ok(Some(Claim {
+        kind: row.try_get("kind")?,
         id,
         workspace: ws,
         token,
@@ -214,7 +217,7 @@ pub(super) async fn failure(
         return Ok(());
     }
     if retry && c.attempt < 5 {
-        sqlx::query("SELECT pgmq.set_vt('looski_jobs',message_id,$3) FROM suite.jobs WHERE workspace_id=$1 AND id=$2").bind(c.workspace).bind(c.id).bind(1_i32<<c.attempt).execute(&mut *tx).await?;
+        sqlx::query("SELECT pgmq.set_vt('looski_jobs',message_id,$3) FROM suite.jobs WHERE workspace_id=$1 AND id=$2").bind(c.workspace).bind(c.id).bind(if c.kind=="workspace.invitation_email" {30_i32<<c.attempt} else {1_i32<<c.attempt}).execute(&mut *tx).await?;
         sqlx::query("UPDATE suite.jobs SET state='queued',lease_token=NULL,lease_until=NULL,error_code=$3,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2").bind(c.workspace).bind(c.id).bind(code).execute(&mut *tx).await?;
         event(&mut tx, c.workspace, c.id).await?;
     } else {
@@ -229,4 +232,12 @@ pub(super) async fn failure(
     }
     tx.commit().await?;
     Ok(())
+}
+
+pub(super) async fn pending(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    ids: &[Uuid],
+) -> Result<bool, Error> {
+    Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM suite.jobs WHERE workspace_id=$1 AND id=ANY($2) AND state IN ('queued','running'))").bind(workspace).bind(ids).fetch_one(db).await?)
 }

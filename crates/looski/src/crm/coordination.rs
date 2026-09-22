@@ -494,3 +494,34 @@ pub(super) async fn require_active_revision(
     }
     Ok(())
 }
+
+#[derive(Serialize)]
+pub struct CoordinationExportPage {
+    pub items: Vec<CoordinationInstance>,
+    pub next_cursor: Option<Uuid>,
+}
+/// Export checklist details in one owning transaction with batched task visibility.
+pub async fn export_instances(
+    pool: &PgPool,
+    actor: &ActorContext<'_>,
+    deal: Uuid,
+    q: CoordinationPageQuery,
+) -> Result<CoordinationExportPage, Error> {
+    let n = limit(q.limit)?;
+    let mut tx = pool.begin().await?;
+    super::read_deal(&mut tx, actor, deal).await?;
+    access::require(&mut tx, actor.identity, actor.workspace, "tasks.read").await?;
+    let mut summaries = dao::instances(&mut tx, actor.workspace, deal, &q, n + 1).await?;
+    let next_cursor = if summaries.len() > n as usize {
+        summaries.pop();
+        summaries.last().map(|r| r.id)
+    } else {
+        None
+    };
+    let ids = summaries.iter().map(|r| r.id).collect::<Vec<_>>();
+    let rows = dao::instance_batch(&mut tx, actor.workspace, deal, &ids).await?;
+    Ok(CoordinationExportPage {
+        items: project_rows(&mut tx, actor, rows).await?,
+        next_cursor,
+    })
+}

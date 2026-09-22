@@ -11,6 +11,11 @@
   </header>
   <p class="eyebrow">YOUR BUSINESS, TOGETHER</p>
   <h1>Your workspaces.</h1>
+  {#if data.pendingInvitation}<p>
+      <a href="/invitations/accept"
+        >Review your pending workspace invitation →</a
+      >
+    </p>{/if}
   <p class="intro">A home for your team and the work ahead.</p>
   {#each data.workspaces as workspace (workspace.id)}
     <article>
@@ -23,6 +28,8 @@
         >Open Contacts →</a
       ><a href={`/workspaces/${workspace.id}/tasks`}>Tasks →</a><a
         href={`/workspaces/${workspace.id}/jobs`}>Background work →</a
+      ><a href={`/workspaces/${workspace.id}/exports`}>Export data →</a><a
+        href={`/workspaces/${workspace.id}/files`}>Files →</a
       >
     </article>
   {:else}

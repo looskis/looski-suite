@@ -10,7 +10,10 @@ mod tasks;
 mod workspace_access;
 // SPDX-License-Identifier: AGPL-3.0-only
 mod contacts;
+mod exports;
+mod files;
 mod intake;
+mod invitations;
 mod organizations;
 mod tags;
 use axum::{
@@ -27,10 +30,12 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 
 #[derive(Clone)]
 pub struct AppState {
+    pub auth_mail_enabled: bool,
     pub db: PgPool,
     pub http: reqwest::Client,
     pub auth_url: String,
     pub verifier: crate::identity::Verifier,
+    pub invitation_tokens: crate::workspace_access::invitations::TokenIssuer,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -75,7 +80,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 23)
+        .is_ok_and(|version| version == 28)
     };
     let auth = async {
         state
@@ -112,7 +117,7 @@ async fn workspaces(
         .await
         .map(Json)
         .map_err(|error| {
-            tracing::error!(error = %error, "Workspace query failed");
+            tracing::error!(database_code=?error.as_database_error().and_then(|e|e.code()), "Workspace query failed");
             (
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(ApiError {
@@ -169,12 +174,14 @@ pub(super) async fn verified_identity(
     #[derive(Deserialize)]
     struct User {
         id: String,
+        email: Option<String>,
+        email_confirmed_at: Option<String>,
     }
     let user: User = response.json().await.map_err(|_| unavailable())?;
     if user.id != identity.subject() {
         return Err(denied());
     }
-    Ok(identity)
+    Ok(identity.bind_confirmed_email(user.email.filter(|_| user.email_confirmed_at.is_some())))
 }
 
 async fn not_found() -> impl IntoResponse {
@@ -207,6 +214,9 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .merge(organizations::routes())
         .merge(tags::routes())
         .merge(workspace_access::routes())
+        .merge(invitations::routes())
+        .merge(exports::routes())
+        .merge(files::routes())
         .merge(crm::routes())
         .merge(crm_timeline::routes())
         .merge(crm_starter::routes())
@@ -224,12 +234,22 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
 }
 
 pub fn router(state: AppState) -> Router {
+    router_with_diagnostics(state, crate::diagnostics::Diagnostics::default())
+}
+
+pub fn router_with_diagnostics(
+    state: AppState,
+    diagnostics: crate::diagnostics::Diagnostics,
+) -> Router {
     let (router, spec) = documented_routes().split_for_parts();
     router
         .route("/health/live", get(live))
         .route("/api/v1/openapi.json", get(move || async { Json(spec) }))
         .fallback(not_found)
-        .layer(axum::middleware::from_fn(request_context))
+        .layer(axum::middleware::from_fn_with_state(
+            diagnostics,
+            request_context,
+        ))
         .with_state(state)
 }
 
@@ -242,6 +262,10 @@ mod tests {
 
     fn app() -> Router {
         router(AppState {
+            auth_mail_enabled: false,
+            invitation_tokens: crate::workspace_access::invitations::TokenIssuer::new(
+                b"test-invitation-key-with-32-bytes!",
+            ),
             db: PgPoolOptions::new()
                 .acquire_timeout(std::time::Duration::from_millis(50))
                 .connect_lazy("postgres://unused:unused@127.0.0.1:1/unused")
@@ -256,6 +280,34 @@ mod tests {
                 "http://localhost/auth/v1".into(),
             ),
         })
+    }
+
+    #[tokio::test]
+    async fn file_upload_rejects_missing_identity_without_reading_body() {
+        struct UnreadBody;
+        impl axum::body::HttpBody for UnreadBody {
+            type Data = axum::body::Bytes;
+            type Error = std::io::Error;
+            fn poll_frame(
+                self: std::pin::Pin<&mut Self>,
+                _: &mut std::task::Context<'_>,
+            ) -> std::task::Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>>
+            {
+                panic!("Unauthenticated upload body must not be polled");
+            }
+        }
+        let response = app()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/workspaces/00000000-0000-0000-0000-000000000001/files")
+                    .header("content-type", "application/json")
+                    .body(Body::new(UnreadBody))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
@@ -276,6 +328,16 @@ mod tests {
     async fn contact_operations_require_bearer_identity_before_database_access() {
         for (method, path, body) in [
             (
+                "POST",
+                "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/exports/page",
+                r#"{"collection":"contacts"}"#,
+            ),
+            (
+                "GET",
+                "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/exports/collections",
+                "",
+            ),
+            (
                 "GET",
                 "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/contacts",
                 "",
@@ -284,6 +346,11 @@ mod tests {
                 "POST",
                 "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/contacts",
                 r#"{"display_name":"Alex"}"#,
+            ),
+            (
+                "POST",
+                "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/contacts/00000000-0000-0000-0000-000000000002/delete-permanently",
+                r#"{"expected_version":2,"confirm_id":"00000000-0000-0000-0000-000000000002"}"#,
             ),
         ] {
             let response = app()
@@ -420,10 +487,17 @@ mod tests {
 #[derive(Clone, Copy)]
 pub(super) struct RequestId(pub uuid::Uuid);
 async fn request_context(
+    State(diagnostics): State<crate::diagnostics::Diagnostics>,
     mut request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> axum::response::Response {
     use tracing::Instrument;
+    let started = std::time::Instant::now();
+    let method = request.method().clone();
+    let route = request
+        .extensions()
+        .get::<axum::extract::MatchedPath>()
+        .map(|p| p.as_str().to_owned());
     let id = uuid::Uuid::new_v4();
     request.extensions_mut().insert(RequestId(id));
     let span = tracing::info_span!("request",request_id=%id,method=%request.method());
@@ -450,6 +524,13 @@ async fn request_context(
     response.headers_mut().insert(
         "cache-control",
         axum::http::HeaderValue::from_static("no-store"),
+    );
+    diagnostics.request(
+        id,
+        method.as_str(),
+        route.as_deref(),
+        response.status().as_u16(),
+        started.elapsed(),
     );
     response
 }

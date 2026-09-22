@@ -1,6 +1,6 @@
 # Local backup and recovery proposal
 
-Status: proposed design, October 4, 2026. No backup implementation exists yet. Tested recovery is already a release requirement; the mechanism, schedule, retention, destination, and recovery targets below need acceptance and implementation evidence. This procedure covers restoring a local installation. Moving to hosted Supabase is a separate migration.
+Status: historical proposal, October 4, 2026. Manual encrypted recovery is now implemented; see [current operator instructions](recovery.md) and [implementation evidence](implementation/recovery-slice.md). Tested recovery is already a release requirement; the mechanism, schedule, retention, destination, and recovery targets below need acceptance and implementation evidence. This procedure covers restoring a local installation. Moving to hosted Supabase is a separate migration.
 
 ## What local storage provides
 

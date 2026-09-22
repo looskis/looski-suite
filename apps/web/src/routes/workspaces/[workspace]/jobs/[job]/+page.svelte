@@ -14,8 +14,8 @@
     Reason: {data.job.error_code.replaceAll('_', ' ')}
   </p>{/if}
 <p>
-  Task and deal content remain subject to their own permissions. A resumed job
-  uses its original initiating user and checklist revision. Exhausted work
+  Business details remain subject to their own permissions. A resumed job uses
+  its original initiating user and current authorization checks. Exhausted work
   starts a new retry run; prior attempts remain in history.
 </p>
 {#if form?.message}<p role="alert" class="error">{form.message}</p>
@@ -61,4 +61,11 @@
         href={`/workspaces/${data.workspace.id}/crm/deals/${data.job.context.deal_id}/coordination/${data.job.context.instance_id}`}
         >View created checklist</a
       >{/if}
+  </p>{/if}
+
+{#if data.job.invitation_context}<p>
+    <a
+      href={`/workspaces/${data.workspace.id}/access/invitations/${data.job.invitation_context.invitation_id}`}
+      >Invitation for {data.job.invitation_context.email}</a
+    >
   </p>{/if}

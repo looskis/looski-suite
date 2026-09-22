@@ -7,4 +7,6 @@ flock -x 9
 mkdir -p /tmp/migrations-work
 cp -R /work/supabase /tmp/migrations-work/
 cd /tmp/migrations-work
+python3 /work/migration_integrity.py prepare
 supabase migration up --db-url "$(cat /run/secrets/migration_url)" --yes
+python3 /work/migration_integrity.py record

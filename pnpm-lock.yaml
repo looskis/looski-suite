@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  cookie@0.6.0: 0.7.2
+
 importers:
 
   .:
@@ -25,10 +28,10 @@ importers:
     devDependencies:
       '@sveltejs/adapter-node':
         specifier: 5.5.4
-        version: 5.5.4(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)))(svelte@5.57.1)(typescript@5.9.3)(vite@8.3.2(@types/node@26.6.4)))
+        version: 5.5.4(@sveltejs/kit@2.70.2(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)))(svelte@5.57.1)(typescript@5.9.3)(vite@8.3.2(@types/node@26.6.4)))
       '@sveltejs/kit':
-        specifier: 2.62.0
-        version: 2.62.0(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)))(svelte@5.57.1)(typescript@5.9.3)(vite@8.3.2(@types/node@26.6.4))
+        specifier: 2.70.2
+        version: 2.70.2(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)))(svelte@5.57.1)(typescript@5.9.3)(vite@8.3.2(@types/node@26.6.4))
       '@sveltejs/vite-plugin-svelte':
         specifier: 7.3.1
         version: 7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4))
@@ -386,8 +389,8 @@ packages:
     peerDependencies:
       '@sveltejs/kit': ^2.4.0
 
-  '@sveltejs/kit@2.62.0':
-    resolution: {integrity: sha512-4JlkXGRJ3kW15dL4LCHV3Mu5aSTTtmH8EBNE4QjJl+KLY77dClgAsZg8aebpwFcDXemNP1z9az8EatD2UNWAcQ==}
+  '@sveltejs/kit@2.70.2':
+    resolution: {integrity: sha512-RzRoRpuR2KXqc5yMO0akQHDZeT4AslOlznGITURsqHaVbtyYP4Wn3eE3gxj9JcDyNYO0crkxhdwFHc+2vkVm6w==}
     engines: {node: '>=18.13'}
     hasBin: true
     peerDependencies:
@@ -472,8 +475,8 @@ packages:
   commondir@1.0.1:
     resolution: {integrity: sha512-W9pAhw0ja1Edb5GVdIF1mjZw/ASI0AlShXM83UUGe2DVr5TdAPEA1OA8m/g8zWp9x6On7gqufY+FatDbC3MDQg==}
 
-  cookie@0.6.0:
-    resolution: {integrity: sha512-U71cyTamuh1CRNCfpGY6to28lxvNwPG4Guz/EVjgf3Jmzv0vlDp1atT9eS5dDjMYHucpHbWns6Lwf3BKz6svdw==}
+  cookie@0.7.2:
+    resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
   debug@4.4.3:
@@ -1095,22 +1098,22 @@ snapshots:
     dependencies:
       acorn: 8.18.0
 
-  '@sveltejs/adapter-node@5.5.4(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)))(svelte@5.57.1)(typescript@5.9.3)(vite@8.3.2(@types/node@26.6.4)))':
+  '@sveltejs/adapter-node@5.5.4(@sveltejs/kit@2.70.2(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)))(svelte@5.57.1)(typescript@5.9.3)(vite@8.3.2(@types/node@26.6.4)))':
     dependencies:
       '@rollup/plugin-commonjs': 29.0.3(rollup@4.64.0)
       '@rollup/plugin-json': 6.1.0(rollup@4.64.0)
       '@rollup/plugin-node-resolve': 16.0.3(rollup@4.64.0)
-      '@sveltejs/kit': 2.62.0(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)))(svelte@5.57.1)(typescript@5.9.3)(vite@8.3.2(@types/node@26.6.4))
+      '@sveltejs/kit': 2.70.2(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)))(svelte@5.57.1)(typescript@5.9.3)(vite@8.3.2(@types/node@26.6.4))
       rollup: 4.64.0
 
-  '@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)))(svelte@5.57.1)(typescript@5.9.3)(vite@8.3.2(@types/node@26.6.4))':
+  '@sveltejs/kit@2.70.2(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4)))(svelte@5.57.1)(typescript@5.9.3)(vite@8.3.2(@types/node@26.6.4))':
     dependencies:
       '@standard-schema/spec': 1.1.0
       '@sveltejs/acorn-typescript': 1.0.13(acorn@8.18.0)
       '@sveltejs/vite-plugin-svelte': 7.3.1(svelte@5.57.1)(vite@8.3.2(@types/node@26.6.4))
       '@types/cookie': 0.6.0
       acorn: 8.18.0
-      cookie: 0.6.0
+      cookie: 0.7.2
       devalue: 5.9.4
       esm-env: 1.2.2
       kleur: 4.1.5
@@ -1174,7 +1177,7 @@ snapshots:
 
   commondir@1.0.1: {}
 
-  cookie@0.6.0: {}
+  cookie@0.7.2: {}
 
   debug@4.4.3(supports-color@10.2.2):
     dependencies:

@@ -11,9 +11,16 @@
   handle /api/v1/* {
     reverse_proxy api:8080
   }
-  # Only Auth health is public until the sign-in/callback security slice is built.
+  # Auth health is public; sign-in/callbacks run through the web server.
   handle /auth/v1/health {
     reverse_proxy supabase-gateway:8000
+  }
+  @emailFallback {
+    method GET
+    path /auth/v1/verify
+  }
+  handle @emailFallback {
+    reverse_proxy web:3000
   }
   @private path /auth/v1 /auth/v1/* /rest/v1 /rest/v1/* /storage/v1 /storage/v1/* /pg/*
   handle @private {

@@ -36,6 +36,7 @@
       {#if form?.message}<p class="error" role="alert">{form.message}</p>{/if}
       <button type="submit">Sign in <span aria-hidden="true">→</span></button>
     </form>
+    <p><a href="/auth/email">Email sign-in or password recovery</a></p>
     <p class="help">
       New installation? Ask the person who set up Looski to create your owner
       account.

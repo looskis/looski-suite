@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Contacts business operations own matching, authorization and transactions.
 mod dao;
+pub mod deletion;
 pub mod intake;
 pub mod organizations;
 pub(crate) mod references;

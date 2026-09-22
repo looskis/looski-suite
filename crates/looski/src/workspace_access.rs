@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Staff grant administration. External memberships remain a separate audience.
 mod dao;
+pub mod invitations;
 use crate::{
     access,
     application::{ActorContext, OperationError as Error},
@@ -39,6 +40,7 @@ pub struct Permission {
 /// Only implemented actions are assignable. Adding a permission never grants it implicitly.
 fn supported() -> Vec<Permission> {
     let workspace = [
+        "workspace.data.export",
         "tasks.configuration.read",
         "tasks.configuration.manage",
         "workspace.read",
@@ -54,6 +56,10 @@ fn supported() -> Vec<Permission> {
         "workspace.tags.manage",
     ];
     let scoped = [
+        "files.read",
+        "files.create",
+        "files.update",
+        "files.archive",
         "crm.opportunities.tasks.manage",
         "crm.deals.coordination.apply",
         "crm.deals.tasks.manage",
@@ -81,6 +87,7 @@ fn supported() -> Vec<Permission> {
         "contacts.create",
         "contacts.update",
         "contacts.archive",
+        "contacts.delete_permanently",
         "contacts.merge",
         "contacts.identifiers.share",
         "contacts.organizations.read",

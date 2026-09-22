@@ -35,6 +35,33 @@ services:
       timeout: 3s
       retries: 30
 
+  auth-templates:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    logging: *logging
+    command: ["caddy", "file-server", "--root", "/templates", "--listen", ":8080"]
+    volumes:
+      - ./infra/auth/templates:/templates:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/magiclink.html"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:v1.31.4
+    restart: unless-stopped
+    logging: *logging
+    profiles: [local-mail]
+    environment:
+      MP_MAX_MESSAGES: "100"
+      MP_SMTP_DISABLE_RDNS: "true"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   auth:
     build:
       context: .
@@ -43,6 +70,7 @@ services:
     logging: *logging
     depends_on:
       db: { condition: service_healthy }
+      auth-templates: { condition: service_healthy }
     entrypoint: ["/bin/sh", "/opt/looski/auth-entrypoint.sh"]
     environment:
       GOTRUE_API_HOST: 0.0.0.0
@@ -59,7 +87,15 @@ services:
       GOTRUE_DISABLE_SIGNUP: "true"
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_MAILER_AUTOCONFIRM: "false"
-    secrets: [db_password, jwt_secret]
+      GOTRUE_MAILER_OTP_EXP: "3600"
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_SMTP_MAX_FREQUENCY: "60s"
+      GOTRUE_SMTP_LOGGING_ENABLED: "false"
+      GOTRUE_MAILER_TEMPLATES_MAGIC_LINK: http://auth-templates:8080/magiclink.html
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://auth-templates:8080/recovery.html
+      GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Sign in to Looski Suite
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: Reset your Looski Suite password
+    secrets: [db_password, jwt_secret, auth_mail]
     volumes:
       - ./infra/auth/entrypoint.sh:/opt/looski/auth-entrypoint.sh:ro
     healthcheck:
@@ -96,7 +132,6 @@ services:
       auth: { condition: service_healthy }
     secrets: [migration_url]
     volumes:
-      - ./supabase:/work/supabase:ro
       - migration-lock:/locks
 
   api:
@@ -109,10 +144,15 @@ services:
     environment:
       LOOSKI_DATABASE_URL_FILE: /run/secrets/database_url
       LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
+      LOOSKI_AUTH_MAIL_ENABLED: ${LOOSKI_AUTH_MAIL_ENABLED:-false}
+      LOOSKI_INVITATION_KEY_FILE: /run/secrets/invitation_key
+      LOOSKI_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
       LOOSKI_AUTH_ISSUER: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1
       LOOSKI_JWT_SECRET_FILE: /run/secrets/jwt_secret
+      LOOSKI_DIAGNOSTICS_MODE: ${LOOSKI_DIAGNOSTICS_MODE:-local}
+      LOOSKI_DIAGNOSTICS_KEY_FILE: /run/secrets/diagnostics_key
       RUST_LOG: info
-    secrets: [database_url, jwt_secret]
+    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key]
     tmpfs:
       - /run/looski:size=64k,mode=0755
     depends_on:
@@ -133,8 +173,15 @@ services:
     command: ["worker"]
     environment:
       LOOSKI_DATABASE_URL_FILE: /run/secrets/database_url
+      LOOSKI_AUTH_MAIL_ENABLED: ${LOOSKI_AUTH_MAIL_ENABLED:-false}
+      LOOSKI_INVITATION_KEY_FILE: /run/secrets/invitation_key
+      LOOSKI_JWT_SECRET_FILE: /run/secrets/jwt_secret
+      LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
+      LOOSKI_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
+      LOOSKI_DIAGNOSTICS_MODE: ${LOOSKI_DIAGNOSTICS_MODE:-local}
+      LOOSKI_DIAGNOSTICS_KEY_FILE: /run/secrets/diagnostics_key
       RUST_LOG: info
-    secrets: [database_url]
+    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key]
     tmpfs:
       - /run/looski:size=64k,mode=0755
     depends_on:
@@ -152,8 +199,10 @@ services:
     restart: unless-stopped
     logging: *logging
     environment:
+      LOOSKI_AUTH_MAIL_ENABLED: ${LOOSKI_AUTH_MAIL_ENABLED:-false}
       HOST: 0.0.0.0
       PORT: "3000"
+      BODY_SIZE_LIMIT: "12M"
       ORIGIN: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
       LOOSKI_API_INTERNAL_URL: http://api:8080
       LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
@@ -185,15 +234,20 @@ services:
       timeout: 3s
       retries: 10
 
-  # Packaged independently; log ingestion/retention is the next observability probe.
+  # Optional diagnostics never gate API/worker readiness or business writes.
   clickhouse:
     image: clickhouse/clickhouse-server:25.8.4.13
     restart: unless-stopped
     logging: *logging
     profiles: [observability]
+    entrypoint: ["/bin/sh", "/opt/looski/clickhouse-entrypoint.sh"]
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+    secrets: [diagnostics_key]
     volumes:
       - clickhouse-data:/var/lib/clickhouse
-      - ./infra/clickhouse/users.xml:/etc/clickhouse-server/users.d/looski.xml:ro
+      - ./infra/clickhouse/entrypoint.sh:/opt/looski/clickhouse-entrypoint.sh:ro
+      - ./infra/clickhouse/init.sql:/docker-entrypoint-initdb.d/looski.sql:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8123/ping"]
       interval: 10s
@@ -201,6 +255,12 @@ services:
       retries: 10
 
 secrets:
+  diagnostics_key:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/diagnostics-key
+  invitation_key:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/invitation-key
+  auth_mail:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/auth-mail.json
   db_password:
     file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/secrets/db_password
   runtime_password:

@@ -12,9 +12,9 @@ This is the implementation checklist for the October 12 build request. Accepted 
 - [x] Scoped action authorization for workspace/assigned Contacts operations.
 - [x] Supported staff role/member administration and final-administrator protection.
 - [x] Optional CRM module selection, disable/re-enable preserving shared Contacts and CRM records.
-- [ ] Staff invitations; team policies remain unavailable until implemented.
+- [x] Staff invitations, explicit recipient consent and queued Auth email; team policies remain unavailable.
 - [x] Transactional audit, request replay, optimistic edits, archive/restore, merge/aliases.
-- [ ] Controlled permanent deletion and detailed reference/erase policy.
+- [x] Controlled archived-contact permanent deletion, scoped confirmation, retained-reference policy and replay redaction.
 - [x] Shared tag catalog and contact/organization assignments, filters, lifecycle and merge preservation.
 - [x] Opportunity pipelines/stages, deals/categories/statuses and independent histories across API/CLI/MCP/web.
 - [x] CRM tag assignments and filters with shared catalog lifecycle.
@@ -28,12 +28,17 @@ This is the implementation checklist for the October 12 build request. Accepted 
 - [x] Explicit removable starter package, copied editable definitions and retained business history.
 - [x] Combined timeline with independent source visibility and bounded cursor pagination.
 - [x] Contacts API/OpenAPI, CLI, MCP, web journeys and pagination.
-- [ ] Broader CRM interface parity and export.
+- [x] Implemented CRM interface parity and versioned, scoped business JSON export with an atomic all-page collector.
 - [x] Durable queued follow-up, retries, leases, exhaustion and explicit module disable/resume.
-- [ ] Magic links/recovery, SMTP, public callback and hosted-mode validation.
-- [ ] Files, encrypted coordinated backups, isolated restore and update recovery.
-- [ ] ClickHouse diagnostic ingestion, redaction, outage behavior and footprint measurements.
-- [ ] Full journey, denial/concurrency tests, production build, standards/spec review.
+- [x] Local magic links/recovery, private test mail, SMTP configuration and callback/outage behavior.
+- [ ] External SMTP deliverability, public Cloudflare callback and hosted-mode validation.
+- [x] Shared scoped Files library, immutable byte storage, browser/API/CLI/MCP, metadata export and transfer limits.
+- [x] Encrypted coordinated backups, offline image portability, isolated restored writes and partial-update recovery.
+- [x] ClickHouse diagnostic ingestion, redaction and outage behavior.
+- [x] Diagnostic resource footprint and complete application regression; recovery checks are tracked separately above.
+- [x] Local full journey, denial/concurrency tests, production build, standards/spec review.
+- [ ] CLI/MCP integrated login and refresh UX; private externally managed first-party token files are implemented and tested.
+- [ ] Public distribution: corresponding-source delivery, complete dependency notices and image/OS advisory review.
 
 ## Subsequent application milestones
 

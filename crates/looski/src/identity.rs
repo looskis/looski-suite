@@ -12,6 +12,7 @@ pub struct Verifier {
 }
 
 pub struct Identity {
+    confirmed_email: Option<String>,
     issuer: String,
     subject: String,
 }
@@ -21,9 +22,18 @@ impl Identity {
     /// request field can select worker authority; every operation reauthorizes.
     pub(crate) fn resume(record: &crate::jobs::RecordedIdentity) -> Self {
         Self {
+            confirmed_email: None,
             issuer: record.issuer().into(),
             subject: record.subject().into(),
         }
+    }
+
+    pub(crate) fn bind_confirmed_email(mut self, email: Option<String>) -> Self {
+        self.confirmed_email = email;
+        self
+    }
+    pub fn confirmed_email(&self) -> Option<&str> {
+        self.confirmed_email.as_deref()
     }
 
     pub fn issuer(&self) -> &str {
@@ -75,6 +85,7 @@ impl Verifier {
             return None;
         }
         Some(Identity {
+            confirmed_email: None,
             issuer: self.issuer.clone(),
             subject: claims.sub.to_string(),
         })

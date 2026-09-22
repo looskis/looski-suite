@@ -23,11 +23,12 @@ export async function authRequest(
   path: string,
   body?: unknown,
   token?: string,
+  method: 'POST' | 'PUT' = 'POST',
 ) {
   return event.fetch(
     `${env.LOOSKI_AUTH_INTERNAL_URL ?? 'http://127.0.0.1:9999'}${path}`,
     {
-      method: 'POST',
+      method,
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -178,4 +179,16 @@ export async function workspaceClient(event: RequestEvent, workspace: string) {
       },
     }),
   };
+}
+
+/** An authenticated identity may accept an invitation before having a workspace. */
+export async function identityClient(event: RequestEvent) {
+  await workspaceList(event);
+  const token = event.cookies.get(accessCookie);
+  if (!token) redirect(303, '/login');
+  return createClient<paths>({
+    baseUrl: env.LOOSKI_API_INTERNAL_URL ?? 'http://127.0.0.1:58081',
+    fetch: event.fetch,
+    headers: { Authorization: `Bearer ${token}`, 'X-Looski-Interface': 'web' },
+  });
 }

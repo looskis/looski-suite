@@ -17,7 +17,71 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
+enum FilesCommand {
+    List {
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        archived: bool,
+        #[arg(long)]
+        search: Option<String>,
+    },
+    Get {
+        id: uuid::Uuid,
+    },
+    Content {
+        id: uuid::Uuid,
+        #[arg(long)]
+        output: Option<std::path::PathBuf>,
+    },
+    Upload {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Edit {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Archive {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+}
+#[derive(Subcommand)]
+enum ExportCommand {
+    Collections,
+    Page,
+}
+
+#[derive(Subcommand)]
 enum Command {
+    /// Shared files. Mutations read JSON from stdin; content can write a private, new file.
+    Files {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: FilesCommand,
+    },
+    /// Export authorized business pages as JSON. Page selection is JSON on stdin.
+    Export {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: ExportCommand,
+    },
+
     Jobs {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
@@ -797,6 +861,38 @@ enum CrmCommand {
 
 #[derive(Subcommand)]
 enum AccessCommand {
+    PreviewInvitation {
+        id: uuid::Uuid,
+    },
+    Invitations {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    Invitation {
+        id: uuid::Uuid,
+    },
+    CreateInvitation {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    SendInvitation {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    RevokeInvitation {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    AcceptInvitation {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+
     Permissions,
     Roles {
         #[arg(long)]
@@ -876,6 +972,11 @@ enum ContactCommand {
         idempotency_key: String,
     },
     Update {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    DeletePermanently {
         id: uuid::Uuid,
         #[arg(long)]
         idempotency_key: String,
@@ -1015,6 +1116,105 @@ async fn run() -> anyhow::Result<()> {
         )
         .init();
     match Cli::parse().command {
+        Command::Files {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let result = match action {
+                FilesCommand::List {
+                    after,
+                    limit,
+                    archived,
+                    search,
+                } => serde_json::to_value(
+                    client
+                        .files_list(
+                            workspace,
+                            &looski::files::FileQuery {
+                                after,
+                                limit,
+                                archived: Some(archived),
+                                search,
+                            },
+                        )
+                        .await?,
+                )?,
+                FilesCommand::Get { id } => {
+                    serde_json::to_value(client.files_get(workspace, id).await?)?
+                }
+                FilesCommand::Content { id, output } => {
+                    let content = client.files_content(workspace, id).await?;
+                    if let Some(path) = output {
+                        looski::files::write_download(&path, &content)?;
+                        serde_json::to_value(content.file)?
+                    } else {
+                        serde_json::to_value(content)?
+                    }
+                }
+                FilesCommand::Upload { idempotency_key } => serde_json::to_value(
+                    client
+                        .files_upload(
+                            workspace,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                FilesCommand::Edit {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .files_edit(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                FilesCommand::Archive {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .files_archive(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+            };
+            println!("{}", serde_json::to_string(&result)?);
+        }
+        Command::Export {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            match action {
+                ExportCommand::Collections => println!(
+                    "{}",
+                    serde_json::to_string(&client.export_collections(workspace).await?)?
+                ),
+                ExportCommand::Page => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .export_page(workspace, &serde_json::from_reader(std::io::stdin())?)
+                            .await?
+                    )?
+                ),
+            }
+        }
+
         Command::Openapi => println!("{}", api::openapi().to_pretty_json()?),
         Command::Status { api_url } => {
             let info = ApiClient::new(&api_url)?.system().await?;
@@ -1123,6 +1323,19 @@ async fn run() -> anyhow::Result<()> {
                 } => serde_json::to_value(
                     client
                         .edit_contact(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                ContactCommand::DeletePermanently {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .delete_contact_permanently(
                             workspace,
                             id,
                             &idempotency_key,
@@ -1249,6 +1462,93 @@ async fn run() -> anyhow::Result<()> {
         } => {
             let client = ApiClient::new(&api_url)?.with_token_file(token_file);
             match action {
+                AccessCommand::PreviewInvitation { id } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .invitation_preview(
+                                workspace,
+                                id,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                AccessCommand::Invitations { limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .invitation_list(
+                                workspace,
+                                &looski::workspace_access::AccessQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                AccessCommand::Invitation { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.invitation_get(workspace, id).await?)?
+                ),
+                AccessCommand::CreateInvitation { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .invitation_create(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                AccessCommand::SendInvitation {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .invitation_send(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                AccessCommand::RevokeInvitation {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .invitation_revoke(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                AccessCommand::AcceptInvitation {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .invitation_accept(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
                 AccessCommand::Permissions => println!(
                     "{}",
                     serde_json::to_string(&client.access_permissions(workspace).await?)?
@@ -2991,11 +3291,27 @@ async fn run() -> anyhow::Result<()> {
                 )
                 .fetch_one(&db)
                 .await?
-                    == 23,
+                    == 28,
                 "Worker requires current schema"
             );
+            let invitation_key =
+                std::fs::read_to_string(std::env::var("LOOSKI_INVITATION_KEY_FILE")?)?;
+            let mailer = looski::workspace_access::invitations::delivery::Mailer::new(
+                std::env::var("LOOSKI_AUTH_MAIL_ENABLED").as_deref() == Ok("true"),
+                std::env::var("LOOSKI_AUTH_INTERNAL_URL")?,
+                std::env::var("LOOSKI_PUBLIC_URL")?,
+                read_jwt_secret()?.as_bytes(),
+                invitation_key.trim().as_bytes(),
+            )?;
+            let diagnostics = looski::diagnostics::Diagnostics::from_environment();
             loop {
-                let result = looski::jobs::run_once(&db).await;
+                let started = std::time::Instant::now();
+                let result = looski::jobs::run_once(&db, &mailer).await;
+                diagnostics.worker(
+                    matches!(result, Ok(true)),
+                    result.is_err(),
+                    started.elapsed(),
+                );
                 if once {
                     anyhow::ensure!(result.is_ok(), "Worker could not process notification");
                     println!("{{\"processed\":{}}}", result.unwrap());
@@ -3011,7 +3327,18 @@ async fn run() -> anyhow::Result<()> {
         }
         Command::Api { bind } => {
             let database_url = std::fs::read_to_string(std::env::var("LOOSKI_DATABASE_URL_FILE")?)?;
+            let invitation_key =
+                std::fs::read_to_string(std::env::var("LOOSKI_INVITATION_KEY_FILE")?)?;
+            anyhow::ensure!(
+                invitation_key.trim().len() >= 32,
+                "Invitation key is unavailable"
+            );
             let state = AppState {
+                auth_mail_enabled: std::env::var("LOOSKI_AUTH_MAIL_ENABLED").as_deref()
+                    == Ok("true"),
+                invitation_tokens: looski::workspace_access::invitations::TokenIssuer::new(
+                    invitation_key.trim().as_bytes(),
+                ),
                 db: PgPoolOptions::new()
                     .max_connections(5)
                     .acquire_timeout(Duration::from_secs(2))
@@ -3027,9 +3354,15 @@ async fn run() -> anyhow::Result<()> {
             };
             let listener = tokio::net::TcpListener::bind(bind).await?;
             tracing::info!(%bind, "API listening");
-            axum::serve(listener, api::router(state))
-                .with_graceful_shutdown(shutdown())
-                .await?;
+            axum::serve(
+                listener,
+                api::router_with_diagnostics(
+                    state,
+                    looski::diagnostics::Diagnostics::from_environment(),
+                ),
+            )
+            .with_graceful_shutdown(shutdown())
+            .await?;
         }
         Command::BootstrapOwner => {
             let input = serde_json::from_reader(std::io::stdin())?;

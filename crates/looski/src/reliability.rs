@@ -40,11 +40,16 @@ pub async fn replay<T: serde::de::DeserializeOwned>(
         ))
         .execute(&mut *db)
         .await?;
-    let row=sqlx::query("SELECT request,result,expires_at>now() AS valid FROM suite.idempotency_records WHERE workspace_id=$1 AND actor_user_id=$2 AND operation_key=$3 AND idempotency_key=$4")
+    let row=sqlx::query("SELECT request,result,invalidated_at IS NOT NULL AS invalidated,expires_at>now() AS valid FROM suite.idempotency_records WHERE workspace_id=$1 AND actor_user_id=$2 AND operation_key=$3 AND idempotency_key=$4")
     .bind(workspace).bind(access.user_id).bind(operation).bind(key).fetch_optional(db).await?;
     match row {
         None => Ok(None),
         Some(row) => {
+            if row.try_get::<bool, _>("invalidated")? {
+                return Err(Error::Conflict(
+                    "Earlier result was permanently deleted; reconcile before starting a new operation",
+                ));
+            }
             if row.try_get::<Json<serde_json::Value>, _>("request")?.0 != *request {
                 return Err(Error::Conflict(
                     "Idempotency key was already used with different input",
@@ -70,5 +75,16 @@ pub async fn save_replay<T: serde::Serialize>(
 ) -> Result<(), Error> {
     sqlx::query("INSERT INTO suite.idempotency_records(workspace_id,actor_user_id,operation_key,idempotency_key,request,result) VALUES($1,$2,$3,$4,$5,$6)")
     .bind(workspace).bind(access.user_id).bind(operation).bind(key).bind(Json(request)).bind(Json(result)).execute(db).await?;
+    Ok(())
+}
+
+/// Delete only Contact-owned replay payloads; key tombstones still prevent resurrection.
+pub(crate) async fn redact_contact_replays(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    id: Uuid,
+) -> Result<(), Error> {
+    sqlx::query("UPDATE suite.idempotency_records SET request='{}'::jsonb,result='{}'::jsonb,invalidated_at=clock_timestamp() WHERE workspace_id=$1 AND (operation_key='contacts.create' OR operation_key=$3 OR operation_key=$4) AND result->>'id'=$2 AND invalidated_at IS NULL")
+  .bind(workspace).bind(id.to_string()).bind(format!("contacts.update:{id}")).bind(format!("contacts.archive:{id}")).execute(db).await?;
     Ok(())
 }

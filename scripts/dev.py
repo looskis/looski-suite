@@ -2,6 +2,10 @@
 """Local development stack. Never resets volumes or rotates existing secrets."""
 import argparse
 import fcntl
+import json
+import hmac
+import hashlib
+import stat
 import os
 from pathlib import Path
 import re
@@ -11,7 +15,7 @@ import subprocess
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
-KEYS = ('COMPOSE_PROJECT_NAME', 'LOOSKI_HTTP_PORT', 'LOOSKI_PUBLIC_URL')
+KEYS = ('COMPOSE_PROJECT_NAME', 'LOOSKI_HTTP_PORT', 'LOOSKI_PUBLIC_URL', 'LOOSKI_MAIL_MODE', 'LOOSKI_DIAGNOSTICS_MODE')
 
 
 def configuration():
@@ -33,6 +37,9 @@ def configuration():
         raise SystemExit('COMPOSE_PROJECT_NAME must contain lowercase letters, digits, hyphens, or underscores')
     if not values['LOOSKI_HTTP_PORT'].isdigit() or not 1024 <= int(values['LOOSKI_HTTP_PORT']) <= 65535:
         raise SystemExit('LOOSKI_HTTP_PORT must be between 1024 and 65535')
+    values.setdefault('LOOSKI_MAIL_MODE', 'disabled')
+    if values['LOOSKI_MAIL_MODE'] not in ('disabled', 'local', 'smtp'):
+        raise SystemExit('LOOSKI_MAIL_MODE must be disabled, local or smtp')
     origin = urlsplit(values['LOOSKI_PUBLIC_URL'])
     if (origin.scheme not in ('http', 'https') or not origin.hostname or origin.path
             or origin.query or origin.fragment or origin.username or origin.password
@@ -42,6 +49,12 @@ def configuration():
         raise SystemExit('Use HTTPS for a public origin')
     if origin.scheme == 'http' and origin.port != int(values['LOOSKI_HTTP_PORT']):
         raise SystemExit('Local LOOSKI_PUBLIC_URL port must match LOOSKI_HTTP_PORT')
+    if values['LOOSKI_MAIL_MODE'] == 'local' and origin.hostname not in ('localhost', '127.0.0.1'):
+        raise SystemExit('Local mail capture is restricted to loopback development origins')
+    values.setdefault('LOOSKI_DIAGNOSTICS_MODE', 'local')
+    if values['LOOSKI_DIAGNOSTICS_MODE'] not in ('disabled','local'):
+        raise SystemExit('LOOSKI_DIAGNOSTICS_MODE must be disabled or local')
+    values['LOOSKI_AUTH_MAIL_ENABLED'] = str(values['LOOSKI_MAIL_MODE'] != 'disabled').lower()
     return values
 
 
@@ -70,6 +83,25 @@ def configure(values):
             with (directory / name).open('x') as stream:
                 os.chmod(stream.name, 0o600)
                 stream.write(value + '\n')
+    # Domain-separated invitation signing material is reproducible from the
+    # backed-up installation secret; it is never the Supabase JWT signing key.
+    invitation_key = hmac.new((directory / 'jwt_secret').read_bytes().strip(), b'looski-suite:staff-invitation:v1', hashlib.sha256).hexdigest()
+    invitation_file = directory.parent / 'invitation-key'
+    if invitation_file.exists():
+        if invitation_file.read_text().strip() != invitation_key:
+            raise SystemExit('Invitation key does not match this installation; restore consistent secrets.')
+    else:
+        with invitation_file.open('x') as stream:
+            os.chmod(stream.name, 0o600)
+            stream.write(invitation_key + '\n')
+    diagnostics_file=directory.parent/'diagnostics-key'
+    diagnostics_key=hmac.new((directory/'jwt_secret').read_bytes().strip(),b'looski-suite:diagnostics:v1',hashlib.sha256).hexdigest()
+    if diagnostics_file.exists():
+        if diagnostics_file.read_text().strip()!=diagnostics_key:raise SystemExit('Diagnostics key does not match this installation')
+    else:
+        descriptor=os.open(diagnostics_file,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(descriptor,'w') as stream:stream.write(diagnostics_key+'\n')
+    configure_mail(values)
     config = ROOT / '.env'
     if not config.exists():
         with config.open('x') as stream:
@@ -78,12 +110,51 @@ def configure(values):
     print(f"Installation: {values['COMPOSE_PROJECT_NAME']} | {values['LOOSKI_PUBLIC_URL']}", flush=True)
 
 
+def configure_mail(values):
+    state = ROOT / '.local' / values['COMPOSE_PROJECT_NAME']
+    mode = values['LOOSKI_MAIL_MODE']
+    mail = {'host': '127.0.0.1', 'port': 1, 'user': '', 'password': '',
+            'from': 'no-reply@example.invalid', 'sender_name': 'Looski Suite'}
+    if mode == 'local':
+        mail.update(host='mailpit', port=1025)
+    elif mode == 'smtp':
+        path = state / 'smtp.json'
+        if not path.is_file() or path.is_symlink() or stat.S_IMODE(path.stat().st_mode) != 0o600:
+            raise SystemExit('SMTP requires a regular private .local/<installation>/smtp.json file with mode 0600; see docs/auth-email.md')
+        try:
+            mail = json.loads(path.read_text())
+            if set(mail) != {'host', 'port', 'user', 'password', 'from', 'sender_name'}:
+                raise ValueError()
+            if not isinstance(mail['port'], int) or isinstance(mail['port'], bool) or mail['port'] != 465:
+                raise ValueError()
+            if any(not isinstance(mail[k], str) or not mail[k] or len(mail[k]) > 1024 or any(c in mail[k] for c in '\r\n\0') for k in ('host', 'user', 'password', 'from', 'sender_name')):
+                raise ValueError()
+            if not re.fullmatch(r'[A-Za-z0-9.-]+', mail['host']) or not re.fullmatch(r'[^<>\s@]+@[^<>\s@]+', mail['from']):
+                raise ValueError()
+        except (ValueError, TypeError, OSError):
+            raise SystemExit('Invalid SMTP configuration; expected host, port (465, implicit TLS), user, password, from and sender_name. Values are not logged.')
+    # Separate from the immutable core secret set. Atomic replacement never rotates identity/DB secrets.
+    target = state / 'auth-mail.json'
+    temporary = state / 'auth-mail.json.tmp'
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, 'w') as stream:
+        os.fchmod(stream.fileno(), 0o600)
+        json.dump(mail, stream)
+    temporary.replace(target)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['configure', 'up', 'stop', 'status', 'logs'])
     args = parser.parse_args()
     values = configuration()
     environment = {**os.environ, **values}
+    profiles = set(filter(None, environment.get('COMPOSE_PROFILES', '').split(',')))
+    if values['LOOSKI_MAIL_MODE'] == 'local': profiles.add('local-mail')
+    else: profiles.discard('local-mail')
+    if values['LOOSKI_DIAGNOSTICS_MODE']=='local':profiles.add('observability')
+    else:profiles.discard('observability')
+    environment['COMPOSE_PROFILES'] = ','.join(sorted(profiles))
     compose = ['docker', 'compose', '--project-directory', str(ROOT), '-f', str(ROOT / 'compose.yaml')]
 
     def run(*arguments, capture=False):
@@ -111,11 +182,22 @@ def main():
             run('build')
             # Quiesce callers before applying schema changes. Failure leaves them stopped.
             run('stop', 'gateway', 'web', 'api', 'worker')
-            run('up', '-d', '--wait', 'db', 'auth', 'supabase-gateway')
+            if values['LOOSKI_MAIL_MODE'] == 'local':
+                run('up', '-d', '--wait', 'mailpit')
+            else:
+                run('stop', 'mailpit')
+            run('up', '-d', '--wait', 'db', 'auth-templates')
+            # Compose does not reliably detect changed file-secret contents.
+            run('up', '-d', '--no-deps', '--force-recreate', '--wait', 'auth')
+            run('up', '-d', '--no-deps', '--wait', 'supabase-gateway')
             # Always run a new migration container, even if the old one exited successfully.
             run('up', '--no-deps', '--force-recreate', '--exit-code-from', 'migrate', 'migrate')
             # Dependencies have already passed health/migration gates. Avoid
             # Compose restarting the completed one-shot migration job a second time.
+            if values['LOOSKI_DIAGNOSTICS_MODE']=='local':
+                try:run('up','-d','--no-deps','--wait','--wait-timeout','45','clickhouse')
+                except subprocess.CalledProcessError:print('Diagnostics unavailable; application startup continues without log storage',flush=True)
+            else:run('stop','clickhouse')
             run('up', '-d', '--no-deps', '--wait', 'api', 'web', 'gateway', 'worker')
             print(f"Ready: http://localhost:{values['LOOSKI_HTTP_PORT']}")
         elif args.command == 'stop':

@@ -10,6 +10,11 @@
 </header>
 <h1>Workspace access</h1>
 <p>
+  <a href={`/workspaces/${data.workspace.id}/access/invitations`}
+    >Staff invitations</a
+  >
+</p>
+<p>
   Manage staff roles and workspace membership. Changes apply to the next
   authorized request.
 </p>

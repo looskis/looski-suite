@@ -28,6 +28,8 @@ impl RecordedIdentity {
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct Job {
     pub context: Option<crate::crm::status_jobs::JobContext>,
+    pub invitation_context:
+        Option<crate::workspace_access::invitations::delivery::InvitationJobContext>,
     pub id: Uuid,
     pub kind: String,
     pub state: String,
@@ -108,7 +110,16 @@ pub async fn get(pool: &PgPool, actor: &ActorContext<'_>, id: Uuid) -> Result<Jo
     let mut tx = pool.begin().await?;
     require(&mut tx, actor, "workspace.jobs.read").await?;
     let mut job = dao::get(&mut tx, actor.workspace, id).await?;
-    job.context = crate::crm::status_jobs::context(&mut tx, actor, id).await?;
+    match job.kind.as_str() {
+        "crm.coordination" => {
+            job.context = crate::crm::status_jobs::context(&mut tx, actor, id).await?
+        }
+        "workspace.invitation_email" => {
+            job.invitation_context =
+                crate::workspace_access::invitations::delivery::context(&mut tx, actor, id).await?
+        }
+        _ => return Err(Error::NotFound),
+    }
     Ok(job)
 }
 pub async fn history(
@@ -142,7 +153,8 @@ pub async fn change(
     modules::lock_workspace(&mut tx, actor.workspace).await?;
     let a = require(&mut tx, actor, "workspace.jobs.manage").await?;
     require(&mut tx, actor, "workspace.jobs.read").await?;
-    if matches!(&input.action, JobAction::Resume) {
+    let current = dao::lock(&mut tx, actor.workspace, id).await?;
+    if matches!(&input.action, JobAction::Resume) && current.kind == "crm.coordination" {
         modules::require_crm(&mut tx, actor).await?;
     }
     let operation = format!("jobs.change:{id}");
@@ -152,7 +164,6 @@ pub async fn change(
     {
         return Ok(saved);
     }
-    let current = dao::lock(&mut tx, actor.workspace, id).await?;
     if current.version != input.expected_version {
         return Err(Error::Conflict("Job changed; reload before editing"));
     }
@@ -161,7 +172,6 @@ pub async fn change(
             if !["blocked", "exhausted"].contains(&current.state.as_str()) {
                 return Err(Error::Conflict("Only blocked or exhausted jobs can resume"));
             }
-            modules::require_crm(&mut tx, actor).await?;
             dao::resume(&mut tx, actor.workspace, id).await?;
         }
         JobAction::Cancel => {
@@ -202,32 +212,40 @@ pub(crate) async fn enqueue(
     a: &access::Access,
     dedup: &str,
 ) -> Result<Uuid, Error> {
-    dao::enqueue(db, actor, a, dedup).await
+    dao::enqueue(db, actor, a, dedup, "crm.coordination").await
 }
 pub(crate) async fn block_crm(db: &mut PgConnection, workspace: Uuid) -> Result<(), Error> {
     dao::block_crm(db, workspace).await
 }
 /// Process at most one notification. The database lease/fence owns execution,
 /// so a stale worker cannot commit after another worker reclaims its job.
-pub async fn run_once(pool: &PgPool) -> Result<bool, Error> {
+pub async fn run_once(
+    pool: &PgPool,
+    mailer: &crate::workspace_access::invitations::delivery::Mailer,
+) -> Result<bool, Error> {
     let Some(message) = dao::notification(pool).await? else {
         return Ok(false);
     };
     let Some(claim) = dao::claim(pool, message).await? else {
         return Ok(true);
     };
-    if let Err(error) = execute(pool, &claim).await {
+    if let Err(error) = execute(pool, &claim, mailer).await {
         let (code, retry) = match error {
             Error::Forbidden => ("authority", false),
             Error::NotFound | Error::Conflict(_) => ("unavailable", false),
             Error::Invalid(_) => ("invalid_input", false),
             Error::Database(_) => ("database", true),
+            Error::Unavailable => ("provider", true),
         };
         dao::failure(pool, &claim, code, retry).await?;
     }
     Ok(true)
 }
-async fn execute(pool: &PgPool, claim: &dao::Claim) -> Result<(), Error> {
+async fn execute(
+    pool: &PgPool,
+    claim: &dao::Claim,
+    mailer: &crate::workspace_access::invitations::delivery::Mailer,
+) -> Result<(), Error> {
     let mut tx = pool.begin().await?;
     modules::lock_workspace(&mut tx, claim.workspace).await?;
     if !dao::fenced(&mut tx, claim).await? {
@@ -244,13 +262,26 @@ async fn execute(pool: &PgPool, claim: &dao::Claim) -> Result<(), Error> {
         &mut tx,
         &identity,
         claim.workspace,
-        "crm.deals.coordination.apply",
+        match claim.kind.as_str() {
+            "crm.coordination" => "crm.deals.coordination.apply",
+            "workspace.invitation_email" => "workspace.access.admin",
+            _ => return Err(Error::NotFound),
+        },
     )
     .await?;
     if authority.user_id != claim.user || authority.membership_id != claim.member {
         return Err(Error::Forbidden);
     }
-    crate::crm::status_jobs::execute(&mut tx, &actor, claim.id).await?;
+    match claim.kind.as_str() {
+        "crm.coordination" => crate::crm::status_jobs::execute(&mut tx, &actor, claim.id).await?,
+        "workspace.invitation_email" => {
+            crate::workspace_access::invitations::delivery::execute(
+                &mut tx, &actor, claim.id, mailer,
+            )
+            .await?
+        }
+        _ => return Err(Error::NotFound),
+    }
     if !dao::finish(&mut tx, claim).await? {
         return Err(Error::Conflict("Job lease expired"));
     }
@@ -265,4 +296,24 @@ async fn execute(pool: &PgPool, claim: &dao::Claim) -> Result<(), Error> {
     .await?;
     tx.commit().await?;
     Ok(())
+}
+
+pub(crate) async fn enqueue_invitation(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    a: &access::Access,
+    dedup: &str,
+) -> Result<Uuid, Error> {
+    dao::enqueue(db, actor, a, dedup, "workspace.invitation_email").await
+}
+pub(crate) async fn record(db: &mut PgConnection, workspace: Uuid, id: Uuid) -> Result<Job, Error> {
+    dao::get(db, workspace, id).await
+}
+
+pub(crate) async fn pending(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    ids: &[Uuid],
+) -> Result<bool, Error> {
+    dao::pending(db, workspace, ids).await
 }

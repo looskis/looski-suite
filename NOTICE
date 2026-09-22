@@ -12,5 +12,6 @@ roles.sql additionally suppresses logging of password-setting statements.
 Supabase PostgreSQL and Auth, Caddy, ClickHouse, Rust, Node, and package dependencies
 are separate upstream distributions. Their images/packages include their notices.
 Dependency compatibility, corresponding-source delivery, and a separate trademark
-policy must be checked before publishing a release. This scaffold does not grant
+policy must be checked before publishing a release. See TRADEMARKS.md and
+docs/implementation/dependency-review.md. This scaffold does not grant
 endorsement rights or impose restrictions on license-compliant commercial use.

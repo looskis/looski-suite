@@ -29,6 +29,118 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn files_list(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::files::FileQuery,
+    ) -> anyhow::Result<crate::files::FilePage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/files"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn files_get(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::files::FileRecord> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/files/{id}"),
+        )?)
+        .await
+    }
+    pub async fn files_content(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::files::FileContent> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/files/{id}/content"),
+        )?)
+        .await
+    }
+    pub async fn files_upload(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::files::UploadFile,
+    ) -> anyhow::Result<crate::files::FileRecord> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/files"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn files_edit(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::files::EditFile,
+    ) -> anyhow::Result<crate::files::FileRecord> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/files/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn files_archive(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::files::ArchiveFile,
+    ) -> anyhow::Result<crate::files::FileRecord> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/files/{id}/archive"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
+    pub async fn export_collections(
+        &self,
+        workspace: uuid::Uuid,
+    ) -> anyhow::Result<Vec<crate::exports::CollectionSpec>> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/exports/collections"),
+        )?)
+        .await
+    }
+    pub async fn export_page(
+        &self,
+        workspace: uuid::Uuid,
+        input: &crate::exports::ExportRequest,
+    ) -> anyhow::Result<crate::exports::ExportPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/exports/page"),
+            )?
+            .json(input),
+        )
+        .await
+    }
+
     pub async fn crm_timeline(
         &self,
         workspace: uuid::Uuid,
@@ -1626,6 +1738,114 @@ impl ApiClient {
         )?)
         .await
     }
+    pub async fn invitation_preview(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        input: &crate::workspace_access::invitations::PreviewInvitation,
+    ) -> anyhow::Result<crate::workspace_access::invitations::InvitationPreview> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/access/invitations/{id}/preview"),
+            )?
+            .json(input),
+        )
+        .await
+    }
+    pub async fn invitation_list(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::workspace_access::AccessQuery,
+    ) -> anyhow::Result<crate::workspace_access::invitations::InvitationPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/access/invitations"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn invitation_get(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::workspace_access::invitations::InvitationLink> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/access/invitations/{id}"),
+        )?)
+        .await
+    }
+    pub async fn invitation_create(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::workspace_access::invitations::CreateInvitation,
+    ) -> anyhow::Result<crate::workspace_access::invitations::InvitationLink> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/access/invitations"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn invitation_send(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::workspace_access::invitations::delivery::SendInvitation,
+    ) -> anyhow::Result<crate::jobs::Job> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/access/invitations/{id}/send"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn invitation_revoke(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::workspace_access::invitations::RevokeInvitation,
+    ) -> anyhow::Result<crate::workspace_access::invitations::Invitation> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/access/invitations/{id}/revoke"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn invitation_accept(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::workspace_access::invitations::AcceptInvitation,
+    ) -> anyhow::Result<crate::workspace_access::Member> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/access/invitations/{id}/accept"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
     pub async fn access_roles(
         &self,
         workspace: uuid::Uuid,
@@ -1845,6 +2065,23 @@ impl ApiClient {
             self.authenticated(
                 reqwest::Method::PATCH,
                 &format!("/api/v1/workspaces/{workspace}/contacts/{contact}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn delete_contact_permanently(
+        &self,
+        workspace: uuid::Uuid,
+        contact: uuid::Uuid,
+        key: &str,
+        input: &crate::contacts::deletion::DeleteContact,
+    ) -> anyhow::Result<crate::contacts::deletion::DeletedContact> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/contacts/{contact}/delete-permanently"),
             )?
             .header("Idempotency-Key", key)
             .json(input),

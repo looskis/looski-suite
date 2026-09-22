@@ -10,7 +10,7 @@ def grant(action,scope='workspace'):return {'action':action,'scope':scope}
 def create(name,grants):return call(base+'/roles','POST',{'name':name,'grants':grants},expected=201,key=key())
 def edit(role,**change):return call(base+'/roles/'+role['id'],'PATCH',{'name':role['name'],'grants':role['grants'],'expected_version':role['version'],**change},key=key())
 catalog=call(base+'/permissions');assert any(p['action']=='workspace.access.admin' for p in catalog)
-assert all(p['action']!='contacts.delete_permanently' for p in catalog),'Do not advertise unsupported grants'
+assert any(p['action']=='contacts.delete_permanently' for p in catalog),'Advertise implemented scoped deletion'
 name='Access '+secrets.token_hex(6)
 role=create(name,[grant('workspace.read'),grant('contacts.read','assigned')])
 assert role['version']==1 and not role['archived']
@@ -18,7 +18,7 @@ assert call(base+'/roles/'+role['id'])==role
 body={'name':name+' updated','grants':[grant('contacts.read','assigned'),grant('contacts.read')],'expected_version':1}
 k=key();updated=call(base+'/roles/'+role['id'],'PATCH',body,key=k);assert call(base+'/roles/'+role['id'],'PATCH',body,key=k)==updated
 call(base+'/roles/'+role['id'],'PATCH',body,expected=409,key=key())
-for unsupported in [[grant('workspace.access.admin','assigned')],[grant('unshipped.future')],[grant('contacts.delete_permanently')],[grant('contacts.read'),grant('contacts.read')]]:
+for unsupported in [[grant('workspace.access.admin','assigned')],[grant('unshipped.future')],[grant('contacts.read'),grant('contacts.read')]]:
  call(base+'/roles','POST',{'name':name,'grants':unsupported},expected=400,key=key())
 # Final admin survives direct removal and role edits; no name-based privilege.
 members=call(base+'/members')['items']

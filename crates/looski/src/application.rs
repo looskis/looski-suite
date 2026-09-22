@@ -33,6 +33,7 @@ pub enum OperationError {
     NotFound,
     Conflict(&'static str),
     Database(sqlx::Error),
+    Unavailable,
 }
 impl From<sqlx::Error> for OperationError {
     fn from(error: sqlx::Error) -> Self {
