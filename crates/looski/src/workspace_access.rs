@@ -42,6 +42,8 @@ fn supported() -> Vec<Permission> {
         "tasks.configuration.read",
         "tasks.configuration.manage",
         "workspace.read",
+        "workspace.jobs.read",
+        "workspace.jobs.manage",
         "workspace.modules.read",
         "workspace.modules.manage",
         "crm.configuration.read",

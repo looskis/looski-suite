@@ -644,6 +644,9 @@ pub async fn save_deal(
         )
         .await?;
     }
+    if current.is_some() && !unchanged {
+        status_jobs::schedule(&mut tx, actor, &write, id, input.status_id, audit).await?;
+    }
     let mut result = dao::deal(&mut tx, actor.workspace, id).await?;
     redact_origins(&mut tx, actor, std::slice::from_mut(&mut result)).await?;
     reliability::save_replay(
@@ -787,3 +790,5 @@ pub async fn archive_deal(
 }
 
 pub mod task_links;
+
+pub mod status_jobs;

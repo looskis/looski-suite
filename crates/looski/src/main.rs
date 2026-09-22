@@ -18,6 +18,25 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    Jobs {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: JobsCommand,
+    },
+
+    /// Run the local durable worker; --once handles at most one notification.
+    Worker {
+        #[arg(long)]
+        once: bool,
+    },
+    /// Check the worker heartbeat without granting business authority.
+    WorkerHealth,
+
     /// Shared task operations. Mutations read JSON from stdin.
     Tasks {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
@@ -126,6 +145,30 @@ enum Command {
 }
 
 #[derive(Subcommand)]
+enum JobsCommand {
+    List {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    Get {
+        id: uuid::Uuid,
+    },
+    History {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    Change {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+}
+#[derive(Subcommand)]
 enum TasksCommand {
     Types {
         #[arg(long)]
@@ -224,6 +267,27 @@ enum TasksCommand {
 
 #[derive(Subcommand)]
 enum CrmCommand {
+    CoordinationRules {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        archived: Option<bool>,
+    },
+    CoordinationRule {
+        id: uuid::Uuid,
+    },
+    CreateCoordinationRule {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EditCoordinationRule {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+
     CoordinationTemplates {
         #[arg(long)]
         limit: Option<i64>,
@@ -1235,6 +1299,52 @@ async fn run() -> anyhow::Result<()> {
                 ),
             }
         }
+        Command::Jobs {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            match action {
+                JobsCommand::List { limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .jobs_list(workspace, &looski::jobs::JobQuery { limit, after })
+                            .await?
+                    )?
+                ),
+                JobsCommand::Get { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.jobs_get(workspace, id).await?)?
+                ),
+                JobsCommand::History { id, limit, after } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .jobs_history(workspace, id, &looski::jobs::JobQuery { limit, after })
+                            .await?
+                    )?
+                ),
+                JobsCommand::Change {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .jobs_change(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+            }
+        }
         Command::Tasks {
             api_url,
             token_file,
@@ -1838,6 +1948,57 @@ async fn run() -> anyhow::Result<()> {
                     serde_json::to_string(
                         &client
                             .crm_apply_coordination(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::CoordinationRules {
+                    limit,
+                    after,
+                    archived,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_coordination_rules(
+                                workspace,
+                                &looski::crm::status_jobs::RuleQuery {
+                                    limit,
+                                    after,
+                                    archived
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::CoordinationRule { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_coordination_rule(workspace, id).await?)?
+                ),
+                CrmCommand::CreateCoordinationRule { idempotency_key } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_coordination_rule(
+                                workspace,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EditCoordinationRule {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_edit_coordination_rule(
                                 workspace,
                                 id,
                                 &idempotency_key,
@@ -2704,6 +2865,53 @@ async fn run() -> anyhow::Result<()> {
                 .await?
                 .waiting()
                 .await?;
+        }
+        Command::WorkerHealth => {
+            let modified = std::fs::metadata("/tmp/looski-worker-heartbeat")?.modified()?;
+            anyhow::ensure!(
+                modified.elapsed()?.as_secs() < 90,
+                "Worker heartbeat is stale"
+            );
+        }
+        Command::Worker { once } => {
+            let database_url = std::fs::read_to_string(std::env::var("LOOSKI_DATABASE_URL_FILE")?)?;
+            let db = PgPoolOptions::new()
+                .max_connections(2)
+                .acquire_timeout(Duration::from_secs(3))
+                .after_connect(|db, _| {
+                    Box::pin(async move {
+                        sqlx::query("SET statement_timeout='30s'")
+                            .execute(&mut *db)
+                            .await?;
+                        sqlx::query("SET lock_timeout='10s'").execute(db).await?;
+                        Ok(())
+                    })
+                })
+                .connect(database_url.trim())
+                .await?;
+            anyhow::ensure!(
+                sqlx::query_scalar::<_, i32>(
+                    "SELECT version FROM suite.schema_version WHERE singleton=true"
+                )
+                .fetch_one(&db)
+                .await?
+                    == 21,
+                "Worker requires current schema"
+            );
+            loop {
+                let result = looski::jobs::run_once(&db).await;
+                if once {
+                    anyhow::ensure!(result.is_ok(), "Worker could not process notification");
+                    println!("{{\"processed\":{}}}", result.unwrap());
+                    break;
+                }
+                if result.is_ok() {
+                    std::fs::write("/tmp/looski-worker-heartbeat", b"ok")?;
+                } else {
+                    tracing::warn!("Worker database unavailable; retrying");
+                }
+                tokio::select! {_=shutdown()=>break,_=tokio::time::sleep(Duration::from_secs(1))=>{}}
+            }
         }
         Command::Api { bind } => {
             let database_url = std::fs::read_to_string(std::env::var("LOOSKI_DATABASE_URL_FILE")?)?;

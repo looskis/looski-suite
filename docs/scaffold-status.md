@@ -36,7 +36,9 @@ Only installation metadata and health are public. Auth token/admin endpoints and
 
 Next: verified Supabase identity, bootstrap/login, workspace membership and authorization denial tests; then one Contacts create/list operation with a module-owned SQLx DAO, audit and queue transaction, exposed through all three interfaces and the web UI. No speculative Contacts/opportunity/deal schema or role presets were added.
 
-Still pending: worker execution/retry/recovery, migration-content checksum drift rejection, an upgrade from a previous application release, backup/restore, hosted Supabase overlay, callback/SMTP/Cloudflare testing, collector ingestion/redaction/retention, resource measurements, vulnerability/dependency license checks, corresponding-source delivery, and trademark policy. The GitHub Actions workflow is authored but has not run on GitHub.
+The [durable jobs checkpoint](implementation/status-jobs-slice.md) now implements worker execution, retries, fenced crash recovery and explicit module resume.
+
+Still pending: migration-content checksum drift rejection, an upgrade from a previous application release, backup/restore, hosted Supabase overlay, callback/SMTP/Cloudflare testing, collector ingestion/redaction/retention, resource measurements, vulnerability/dependency license checks, corresponding-source delivery, and trademark policy. The GitHub Actions workflow is authored but has not run on GitHub.
 
 The initial database probe uncovered two integration errors (a missing upstream role dependency and execution of a bind-mounted shell sentinel); both were corrected in the scaffold. The failed probe volumes contained no user/business data. A test runtime credential emitted by upstream statement logging was replaced, and password-setting statements now suppress that logging. Setup never automatically resets volumes or rotates existing secrets.
 

@@ -24,10 +24,11 @@ This is the implementation checklist for the October 12 build request. Accepted 
 - [x] CRM task links and atomic follow-up composition with independent Tasks scope.
 - [x] Configurable activity types and logged activities with typed anchors, scoped history and four-interface parity.
 - [x] Pinned coordination checklist templates and atomic deal instances with scoped task projection.
-- [ ] Combined timeline, status triggers and removable starter package.
+- [x] Bounded deal-status rules and pinned queued coordination.
+- [ ] Combined timeline and removable starter package.
 - [x] Contacts API/OpenAPI, CLI, MCP, web journeys and pagination.
 - [ ] Broader CRM interface parity and export.
-- [ ] Durable queued follow-up, retries, leases, exhaustion and module disable/resume.
+- [x] Durable queued follow-up, retries, leases, exhaustion and explicit module disable/resume.
 - [ ] Magic links/recovery, SMTP, public callback and hosted-mode validation.
 - [ ] Files, encrypted coordinated backups, isolated restore and update recovery.
 - [ ] ClickHouse diagnostic ingestion, redaction, outage behavior and footprint measurements.

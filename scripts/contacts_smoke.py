@@ -105,16 +105,17 @@ def race_edit(index):
 with ThreadPoolExecutor(max_workers=2) as executor:
     assert sum(executor.map(race_edit,range(2)))==1
 # Pagination has no duplicates and applies visibility before limiting.
+# Scope this probe to its unique run so retained fixtures do not make it unbounded.
 seen=set(); cursor=''; pages=0
 while True:
-    page=call(path+'?limit=2'+('&after='+cursor if cursor else ''))
+    page=call(path+'?limit=2&search='+name.replace(' ','%20')+('&after='+cursor if cursor else ''))
     ids={c['id'] for c in page['items']}
     assert not ids & seen
     seen |= ids; pages+=1
     cursor=page['next_cursor']
     if not cursor: break
-    assert pages<1000
-assert created['id'] in seen
+    assert pages<10
+assert created['id'] in seen and pages>1
 call(path+'?limit=10000',expected=400)
 call(path+'?limit=wrong',expected=400)
 call(path+'/not-a-uuid',expected=400)

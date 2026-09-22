@@ -8,6 +8,9 @@
     >{data.workspace.name}</span
   >
 </header>
+<a href={`/workspaces/${data.workspace.id}/crm/coordination-rules`}
+  >Status rules</a
+>
 <h1>CRM</h1>
 <p>
   Track potential business as opportunities, and live or past work as separate

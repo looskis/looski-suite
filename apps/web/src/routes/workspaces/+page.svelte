@@ -21,7 +21,9 @@
       </div>
       <a class="badge" href={`/workspaces/${workspace.id}/contacts`}
         >Open Contacts →</a
-      ><a href={`/workspaces/${workspace.id}/tasks`}>Tasks →</a>
+      ><a href={`/workspaces/${workspace.id}/tasks`}>Tasks →</a><a
+        href={`/workspaces/${workspace.id}/jobs`}>Background work →</a
+      >
     </article>
   {:else}
     <article>

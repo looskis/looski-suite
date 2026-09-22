@@ -29,6 +29,122 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn jobs_list(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::jobs::JobQuery,
+    ) -> anyhow::Result<crate::jobs::JobPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/jobs"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn jobs_get(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::jobs::Job> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/jobs/{id}"),
+        )?)
+        .await
+    }
+    pub async fn jobs_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::jobs::JobQuery,
+    ) -> anyhow::Result<crate::jobs::JobEventPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/jobs/{id}/history"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn jobs_change(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::jobs::ChangeJob,
+    ) -> anyhow::Result<crate::jobs::Job> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/jobs/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_coordination_rules(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::status_jobs::RuleQuery,
+    ) -> anyhow::Result<crate::crm::status_jobs::CoordinationRulePage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/coordination-rules"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_coordination_rule(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::crm::status_jobs::CoordinationRule> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/coordination-rules/{id}"),
+        )?)
+        .await
+    }
+    pub async fn crm_create_coordination_rule(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::status_jobs::SaveCoordinationRule,
+    ) -> anyhow::Result<crate::crm::status_jobs::CoordinationRule> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/coordination-rules"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_edit_coordination_rule(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::status_jobs::SaveCoordinationRule,
+    ) -> anyhow::Result<crate::crm::status_jobs::CoordinationRule> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/coordination-rules/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
     pub async fn crm_coordination_templates(
         &self,
         workspace: uuid::Uuid,

@@ -20,3 +20,5 @@ pub mod crm;
 pub mod modules;
 
 pub mod tasks;
+
+pub mod jobs;

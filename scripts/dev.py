@@ -110,13 +110,13 @@ def main():
                             raise SystemExit(f'Cannot bind {address}:LOOSKI_HTTP_PORT. Both loopback families must be available; choose a free port and matching LOOSKI_PUBLIC_URL in .env.')
             run('build')
             # Quiesce callers before applying schema changes. Failure leaves them stopped.
-            run('stop', 'gateway', 'web', 'api')
+            run('stop', 'gateway', 'web', 'api', 'worker')
             run('up', '-d', '--wait', 'db', 'auth', 'supabase-gateway')
             # Always run a new migration container, even if the old one exited successfully.
             run('up', '--no-deps', '--force-recreate', '--exit-code-from', 'migrate', 'migrate')
             # Dependencies have already passed health/migration gates. Avoid
             # Compose restarting the completed one-shot migration job a second time.
-            run('up', '-d', '--no-deps', '--wait', 'api', 'web', 'gateway')
+            run('up', '-d', '--no-deps', '--wait', 'api', 'web', 'gateway', 'worker')
             print(f"Ready: http://localhost:{values['LOOSKI_HTTP_PORT']}")
         elif args.command == 'stop':
             run('stop')

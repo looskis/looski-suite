@@ -838,8 +838,173 @@ struct CrmApplyCoordinationArgs {
     change: crate::crm::coordination::ApplyCoordination,
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct JobsListArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::jobs::JobQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct JobsGetArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct JobsHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::jobs::JobQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct JobsChangeArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::jobs::ChangeJob,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmCoordinationRulesArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::status_jobs::RuleQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmCoordinationRuleArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmCreateCoordinationRuleArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::status_jobs::SaveCoordinationRule,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmEditCoordinationRuleArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::status_jobs::SaveCoordinationRule,
+}
+
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "Jobs list. Durable work retains initiating authority; operator actions require current workspace grants."
+    )]
+    async fn jobs_list(
+        &self,
+        Parameters(input): Parameters<JobsListArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .jobs_list(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Jobs get. Durable work retains initiating authority; operator actions require current workspace grants."
+    )]
+    async fn jobs_get(
+        &self,
+        Parameters(input): Parameters<JobsGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.jobs_get(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Jobs history. Durable work retains initiating authority; operator actions require current workspace grants."
+    )]
+    async fn jobs_history(
+        &self,
+        Parameters(input): Parameters<JobsHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .jobs_history(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Jobs change. Durable work retains initiating authority; operator actions require current workspace grants."
+    )]
+    async fn jobs_change(
+        &self,
+        Parameters(input): Parameters<JobsChangeArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .jobs_change(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm coordination rules. Durable work retains initiating authority; operator actions require current workspace grants."
+    )]
+    async fn crm_coordination_rules(
+        &self,
+        Parameters(input): Parameters<CrmCoordinationRulesArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_coordination_rules(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm coordination rule. Durable work retains initiating authority; operator actions require current workspace grants."
+    )]
+    async fn crm_coordination_rule(
+        &self,
+        Parameters(input): Parameters<CrmCoordinationRuleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_coordination_rule(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm create coordination rule. Durable work retains initiating authority; operator actions require current workspace grants."
+    )]
+    async fn crm_create_coordination_rule(
+        &self,
+        Parameters(input): Parameters<CrmCreateCoordinationRuleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_coordination_rule(
+                    input.workspace_id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm edit coordination rule. Durable work retains initiating authority; operator actions require current workspace grants."
+    )]
+    async fn crm_edit_coordination_rule(
+        &self,
+        Parameters(input): Parameters<CrmEditCoordinationRuleArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_edit_coordination_rule(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+
     #[tool(
         description = "Crm coordination templates. Pinned task checklist with independent parent, configuration and Tasks permissions."
     )]

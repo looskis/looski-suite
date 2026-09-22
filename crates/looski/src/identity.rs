@@ -17,6 +17,15 @@ pub struct Identity {
 }
 
 impl Identity {
+    /// Only Jobs can construct this sealed durable-actor record. No token or
+    /// request field can select worker authority; every operation reauthorizes.
+    pub(crate) fn resume(record: &crate::jobs::RecordedIdentity) -> Self {
+        Self {
+            issuer: record.issuer().into(),
+            subject: record.subject().into(),
+        }
+    }
+
     pub fn issuer(&self) -> &str {
         &self.issuer
     }

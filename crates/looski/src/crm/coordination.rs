@@ -375,23 +375,29 @@ pub async fn apply(
     input: ApplyCoordination,
 ) -> Result<CoordinationInstance, Error> {
     let mut tx = pool.begin().await?;
-    let (write, read) = super::mutation(
-        &mut tx,
-        actor,
-        "crm.deals.coordination.apply",
-        "crm.deals.read",
-    )
-    .await?;
-    config(&mut tx, actor, "crm.configuration.read").await?;
-    let parent = super::read_deal(&mut tx, actor, deal).await?;
+    let result = apply_in_transaction(&mut tx, actor, deal, key, input).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+pub(crate) async fn apply_in_transaction(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    deal: Uuid,
+    key: &str,
+    input: ApplyCoordination,
+) -> Result<CoordinationInstance, Error> {
+    let (write, read) =
+        super::mutation(db, actor, "crm.deals.coordination.apply", "crm.deals.read").await?;
+    config(db, actor, "crm.configuration.read").await?;
+    let parent = super::read_deal(db, actor, deal).await?;
     super::record_scope(&write, parent.owner_membership_id)?;
     super::record_scope(&read, parent.owner_membership_id)?;
-    let manage = super::authorize(&mut tx, actor, "crm.deals.tasks.manage").await?;
+    let manage = super::authorize(db, actor, "crm.deals.tasks.manage").await?;
     super::record_scope(&manage, parent.owner_membership_id)?;
     let operation = format!("crm.coordination.apply:{deal}");
     let request = serde_json::to_value(&input).expect("application serializes");
     if let Some(saved) = reliability::replay::<CoordinationInstance>(
-        &mut tx,
+        db,
         actor.workspace,
         &write,
         &operation,
@@ -401,7 +407,7 @@ pub async fn apply(
     .await?
     {
         for item in &saved.items {
-            tasks::require_creation_replay(&mut tx, actor, item.task.id).await?;
+            tasks::require_creation_replay(db, actor, item.task.id).await?;
         }
         return Ok(saved);
     }
@@ -410,8 +416,8 @@ pub async fn apply(
             "Deal changed or is archived; reload before applying coordination",
         ));
     }
-    let revision = dao::revision(&mut tx, actor.workspace, input.revision_id).await?;
-    let template = dao::template(&mut tx, actor.workspace, revision.template_id).await?;
+    let revision = dao::revision(db, actor.workspace, input.revision_id).await?;
+    let template = dao::template(db, actor.workspace, revision.template_id).await?;
     if template.archived {
         return Err(Error::Conflict(
             "Archived coordination templates cannot create new work",
@@ -419,7 +425,7 @@ pub async fn apply(
     }
     let id = Uuid::new_v4();
     let audit = reliability::audit(
-        &mut tx,
+        db,
         actor,
         &write,
         "crm.coordination.applied",
@@ -430,17 +436,17 @@ pub async fn apply(
     // Task creation validates the base date before instance persistence.
     for step in &revision.items {
         let task = tasks::configuration::instantiate_revision(
-            &mut tx,
+            db,
             actor,
             step.fields.task_template_revision_id,
             &input.base_on,
             Some(parent.owner_membership_id),
         )
         .await?;
-        super::task_links::attach_created(&mut tx, actor, deal, task.id).await?;
+        super::task_links::attach_created(db, actor, deal, task.id).await?;
         if step.position == 0 {
             dao::insert_instance(
-                &mut tx,
+                db,
                 actor.workspace,
                 id,
                 deal,
@@ -450,24 +456,15 @@ pub async fn apply(
             )
             .await?;
         }
-        dao::insert_item(
-            &mut tx,
-            actor.workspace,
-            id,
-            deal,
-            revision.id,
-            step.id,
-            task.id,
-        )
-        .await?;
+        dao::insert_item(db, actor.workspace, id, deal, revision.id, step.id, task.id).await?;
     }
-    let row = dao::instance(&mut tx, actor.workspace, deal, id).await?;
-    let result = project_rows(&mut tx, actor, vec![row])
+    let row = dao::instance(db, actor.workspace, deal, id).await?;
+    let result = project_rows(db, actor, vec![row])
         .await?
         .pop()
         .expect("one instance");
     reliability::save_replay(
-        &mut tx,
+        db,
         actor.workspace,
         &write,
         &operation,
@@ -476,6 +473,21 @@ pub async fn apply(
         &result,
     )
     .await?;
-    tx.commit().await?;
     Ok(result)
+}
+
+pub(super) async fn require_active_revision(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    id: Uuid,
+) -> Result<(), Error> {
+    config(db, actor, "crm.configuration.read").await?;
+    let revision = dao::revision(db, actor.workspace, id).await?;
+    if dao::template(db, actor.workspace, revision.template_id)
+        .await?
+        .archived
+    {
+        return Err(Error::Conflict("Coordination template is archived"));
+    }
+    Ok(())
 }

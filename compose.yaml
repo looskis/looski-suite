@@ -124,6 +124,27 @@ services:
       timeout: 5s
       retries: 20
 
+  worker:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.api
+    restart: unless-stopped
+    logging: *logging
+    command: ["worker"]
+    environment:
+      LOOSKI_DATABASE_URL_FILE: /run/secrets/database_url
+      RUST_LOG: info
+    secrets: [database_url]
+    tmpfs:
+      - /run/looski:size=64k,mode=0755
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "looski", "worker-health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   web:
     build:
       context: .

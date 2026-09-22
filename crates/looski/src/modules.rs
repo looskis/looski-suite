@@ -68,6 +68,9 @@ pub async fn set(
         ));
     }
     dao::set(&mut tx, actor.workspace, input.enabled).await?;
+    if !input.enabled {
+        crate::jobs::block_crm(&mut tx, actor.workspace).await?;
+    }
     reliability::audit(
         &mut tx,
         actor,
