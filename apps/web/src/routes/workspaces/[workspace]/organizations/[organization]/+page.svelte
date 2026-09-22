@@ -66,6 +66,7 @@
 </section>
 
 <TagPanel
+  draft={form?.tagDraft}
   panel={data.tags}
   workspace={data.workspace.id}
   version={data.organization.version}

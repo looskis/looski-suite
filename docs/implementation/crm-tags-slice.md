@@ -1,0 +1,9 @@
+# CRM tags checkpoint
+
+Schema 12 adds typed opportunity/deal tag tables with workspace-qualified record, catalog and actor foreign keys. Each CRM record supports up to 50 distinct tags. Assignment operations require the corresponding explicit CRM tags-manage permission, independent record-read authority, tag-catalog read and an enabled CRM module. Both existing owners and new owner provisioning receive the supported grants.
+
+Assignments share the parent record version, serialize with CRM writes/module disable, and commit audit/replay atomically. Retrying checks current authority and catalog access before returning the saved result. Renaming a catalog label preserves links. Archived records and labels retain existing assignments and permit detachment; new assignments require active records and labels. Tag filtering applies record scope before pagination and independently validates the catalog reference.
+
+API, CLI, MCP and SSR detail panels expose the same operations. Full catalog search/pagination links to opportunity/deal filters, including archived labels. Rejected tag forms retain their intended selections, submitted version and retry key with explicit discard/reload. This shared form fix also applies to Contacts and Organizations.
+
+Verification: `make check test` passed, and the complete sequential acceptance suite passed on the upgraded schema-12 fixture and a freshly bootstrapped schema-12 installation. `crm_tags_smoke.py` covers web/API/CLI/MCP, exact scoped filters, archive rules, foreign IDs and database FKs, audit rollback, concurrent edits, stale drafts, retries and module disable. Standards/spec review findings on fresh-owner grants, full-catalog navigation and draft retention were fixed and rechecked. Participants and shared Tasks remain separate increments.

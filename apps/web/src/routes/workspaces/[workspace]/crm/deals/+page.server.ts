@@ -14,6 +14,7 @@ export const load: PageServerLoad = async (event) => {
     event.params.workspace,
   );
   const search = event.url.searchParams.get('search') ?? '';
+  const tagId = event.url.searchParams.get('tag_id') ?? '';
   const archived = event.url.searchParams.get('archived') === 'true';
   const result = await client.GET(
     '/api/v1/workspaces/{workspace_id}/crm/deals',
@@ -24,6 +25,7 @@ export const load: PageServerLoad = async (event) => {
           limit: 50,
           after: event.url.searchParams.get('after') ?? undefined,
           search,
+          tag_id: tagId || undefined,
           archived,
         },
       },
@@ -67,12 +69,22 @@ export const load: PageServerLoad = async (event) => {
       );
     origins.push({ id: item.data.id, name: item.data.title });
   }
+  const catalog = await client.GET('/api/v1/workspaces/{workspace_id}/tags', {
+    params: { path: { workspace_id: workspace.id }, query: { limit: 100 } },
+  });
+  if (!catalog.data && catalog.response.status !== 403)
+    error(
+      catalog.response.status,
+      catalog.error?.message ?? 'Tags unavailable',
+    );
   return {
+    tagChoices: catalog.data?.items ?? [],
     workspace,
     page: result.data,
     workflow,
     fields: recordFields(),
     search,
+    tagId,
     archived,
     origins,
     origin,

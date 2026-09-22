@@ -2,6 +2,7 @@
 //! Sales pursuit and concrete transactions have distinct records and histories.
 pub mod configuration;
 mod dao;
+pub mod tagging;
 use crate::{
     access,
     application::{ActorContext, OperationError as Error},
@@ -124,6 +125,7 @@ pub struct OpportunityQuery {
     pub limit: Option<i64>,
     pub after: Option<Uuid>,
     pub search: Option<String>,
+    pub tag_id: Option<Uuid>,
     pub archived: Option<bool>,
     pub pipeline_id: Option<Uuid>,
     pub stage_id: Option<Uuid>,
@@ -134,6 +136,7 @@ pub struct DealQuery {
     pub limit: Option<i64>,
     pub after: Option<Uuid>,
     pub search: Option<String>,
+    pub tag_id: Option<Uuid>,
     pub archived: Option<bool>,
     pub category_id: Option<Uuid>,
     pub status_id: Option<Uuid>,
@@ -314,6 +317,9 @@ pub async fn opportunities(
     let limit = page_limit(query.limit, query.search.as_ref())?;
     let mut tx = pool.begin().await?;
     let a = authorize(&mut tx, actor, "crm.opportunities.read").await?;
+    if let Some(tag) = query.tag_id {
+        crate::tags::definitions(&mut tx, actor, &[tag], false).await?;
+    }
     if let Some(after) = query.after {
         read_opportunity(&mut tx, actor, after).await?;
     }
@@ -505,6 +511,9 @@ pub async fn deals(
     let limit = page_limit(query.limit, query.search.as_ref())?;
     let mut tx = pool.begin().await?;
     let a = authorize(&mut tx, actor, "crm.deals.read").await?;
+    if let Some(tag) = query.tag_id {
+        crate::tags::definitions(&mut tx, actor, &[tag], false).await?;
+    }
     if let Some(after) = query.after {
         read_deal(&mut tx, actor, after).await?;
     }

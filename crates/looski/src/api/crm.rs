@@ -683,8 +683,101 @@ async fn set_crm(
         crate::modules::set(&state.db, &actor, "crm", key(&headers)?, input).await?,
     ))
 }
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/tags",operation_id="crm_opportunity_tags",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path)),responses((status=200,body=Vec<crate::tags::Tag>),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn opportunity_tags(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+) -> Result<Json<Vec<crate::tags::Tag>>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        crm::tagging::list(&state.db, &actor, crm::tagging::Target::Opportunity, id).await?,
+    ))
+}
+#[utoipa::path(put,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/tags",operation_id="crm_set_opportunity_tags",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=crate::tags::SetTags,responses((status=200,body=Vec<crate::tags::Tag>),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn set_opportunity_tags(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<crate::tags::SetTags>,
+) -> Result<Json<Vec<crate::tags::Tag>>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        crm::tagging::set(
+            &state.db,
+            &actor,
+            crm::tagging::Target::Opportunity,
+            id,
+            key(&headers)?,
+            input,
+        )
+        .await?,
+    ))
+}
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/deals/{id}/tags",operation_id="crm_deal_tags",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path)),responses((status=200,body=Vec<crate::tags::Tag>),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn deal_tags(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+) -> Result<Json<Vec<crate::tags::Tag>>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        crm::tagging::list(&state.db, &actor, crm::tagging::Target::Deal, id).await?,
+    ))
+}
+#[utoipa::path(put,path="/api/v1/workspaces/{workspace_id}/crm/deals/{id}/tags",operation_id="crm_set_deal_tags",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=crate::tags::SetTags,responses((status=200,body=Vec<crate::tags::Tag>),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn set_deal_tags(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<crate::tags::SetTags>,
+) -> Result<Json<Vec<crate::tags::Tag>>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        crm::tagging::set(
+            &state.db,
+            &actor,
+            crm::tagging::Target::Deal,
+            id,
+            key(&headers)?,
+            input,
+        )
+        .await?,
+    ))
+}
+
 pub(super) fn routes() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
+        .routes(routes!(opportunity_tags, set_opportunity_tags))
+        .routes(routes!(deal_tags, set_deal_tags))
         .routes(routes!(pipelines, create_pipeline))
         .routes(routes!(pipeline, edit_pipeline))
         .routes(routes!(stages, create_stage))

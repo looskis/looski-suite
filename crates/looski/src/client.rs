@@ -29,6 +29,63 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn crm_opportunity_tags(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<Vec<crate::tags::Tag>> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/tags"),
+        )?)
+        .await
+    }
+    pub async fn crm_set_opportunity_tags(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::tags::SetTags,
+    ) -> anyhow::Result<Vec<crate::tags::Tag>> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PUT,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/tags"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_deal_tags(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<Vec<crate::tags::Tag>> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/tags"),
+        )?)
+        .await
+    }
+    pub async fn crm_set_deal_tags(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::tags::SetTags,
+    ) -> anyhow::Result<Vec<crate::tags::Tag>> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PUT,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/tags"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
     pub async fn crm_pipelines(
         &self,
         workspace: uuid::Uuid,

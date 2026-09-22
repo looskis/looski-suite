@@ -1,4 +1,5 @@
 <script lang="ts">
+  import TagPanel from '$lib/components/TagPanel.svelte';
   import CrmRecordFields from '$lib/components/CrmRecordFields.svelte';
   import CrmWorkflowPicker from '$lib/components/CrmWorkflowPicker.svelte';
   let { data, form } = $props();
@@ -90,3 +91,10 @@
     >
   </form>
 </section>
+
+<TagPanel
+  draft={form?.tagDraft}
+  panel={data.tags}
+  workspace={data.workspace.id}
+  version={data.record.version}
+/>

@@ -171,3 +171,10 @@ pub(crate) async fn definitions(
     }
     Ok(result)
 }
+
+#[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SetTags {
+    pub expected_version: i64,
+    pub tag_ids: Vec<Uuid>,
+}

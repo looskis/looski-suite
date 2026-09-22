@@ -116,6 +116,23 @@ enum Command {
 
 #[derive(Subcommand)]
 enum CrmCommand {
+    OpportunityTags {
+        id: uuid::Uuid,
+    },
+    SetOpportunityTags {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    DealTags {
+        id: uuid::Uuid,
+    },
+    SetDealTags {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+
     Pipelines {
         #[arg(long)]
         limit: Option<i64>,
@@ -217,6 +234,8 @@ enum CrmCommand {
         pipeline_id: Option<uuid::Uuid>,
         #[arg(long)]
         stage_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        tag_id: Option<uuid::Uuid>,
     },
     Opportunity {
         id: uuid::Uuid,
@@ -257,6 +276,8 @@ enum CrmCommand {
         status_id: Option<uuid::Uuid>,
         #[arg(long)]
         originating_opportunity_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        tag_id: Option<uuid::Uuid>,
     },
     Deal {
         id: uuid::Uuid,
@@ -831,6 +852,46 @@ async fn run() -> anyhow::Result<()> {
         } => {
             let client = ApiClient::new(&api_url)?.with_token_file(token_file);
             match action {
+                CrmCommand::OpportunityTags { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_opportunity_tags(workspace, id).await?)?
+                ),
+                CrmCommand::SetOpportunityTags {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_set_opportunity_tags(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::DealTags { id } => println!(
+                    "{}",
+                    serde_json::to_string(&client.crm_deal_tags(workspace, id).await?)?
+                ),
+                CrmCommand::SetDealTags {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_set_deal_tags(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
                 CrmCommand::Pipelines {
                     limit,
                     after,
@@ -1050,6 +1111,7 @@ async fn run() -> anyhow::Result<()> {
                     archived,
                     pipeline_id,
                     stage_id,
+                    tag_id,
                 } => println!(
                     "{}",
                     serde_json::to_string(
@@ -1062,7 +1124,8 @@ async fn run() -> anyhow::Result<()> {
                                     search,
                                     archived: Some(archived),
                                     pipeline_id,
-                                    stage_id
+                                    stage_id,
+                                    tag_id,
                                 }
                             )
                             .await?
@@ -1136,6 +1199,7 @@ async fn run() -> anyhow::Result<()> {
                     category_id,
                     status_id,
                     originating_opportunity_id,
+                    tag_id,
                 } => println!(
                     "{}",
                     serde_json::to_string(
@@ -1149,7 +1213,8 @@ async fn run() -> anyhow::Result<()> {
                                     archived: Some(archived),
                                     category_id,
                                     status_id,
-                                    originating_opportunity_id
+                                    originating_opportunity_id,
+                                    tag_id,
                                 }
                             )
                             .await?

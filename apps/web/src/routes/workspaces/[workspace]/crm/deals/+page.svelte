@@ -19,10 +19,28 @@
 <h1>Deals</h1>
 {#if form?.message}<p class="error" role="alert">{form.message}</p>{/if}
 <form method="GET" class="inline">
-  <label>Search<input name="search" value={data.search} /></label><button
-    class="secondary">Search</button
-  >
+  <input
+    type="hidden"
+    name="archived"
+    value={data.archived ? 'true' : 'false'}
+  />
+  <label>Search<input name="search" value={data.search} /></label>
+  <label
+    >Tag<select name="tag_id" value={data.tagId}
+      ><option value="">Any tag</option>
+      {#if data.tagId && !data.tagChoices.some((t) => t.id === data.tagId)}<option
+          value={data.tagId}>Selected tag</option
+        >{/if}
+      {#each data.tagChoices as tag}<option value={tag.id}>{tag.name}</option
+        >{/each}</select
+    ></label
+  ><button class="secondary">Search</button>
 </form>
+<p>
+  <a href={`/workspaces/${data.workspace.id}/tags`}
+    >Find any tag in the full catalog</a
+  >
+</p>
 <section>
   <div class="table-wrap">
     <table>
@@ -42,7 +60,7 @@
   </div>
   {#if data.page.next_cursor}<p>
       <a
-        href={`?after=${data.page.next_cursor}&search=${encodeURIComponent(data.search)}&archived=${data.archived}`}
+        href={`?after=${data.page.next_cursor}&search=${encodeURIComponent(data.search)}&archived=${data.archived}&tag_id=${data.tagId}`}
         >More deals →</a
       >
     </p>{/if}

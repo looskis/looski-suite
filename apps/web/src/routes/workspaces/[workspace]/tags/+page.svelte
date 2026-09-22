@@ -39,6 +39,15 @@
           href={`/workspaces/${data.workspace.id}/organizations?tag_id=${tag.id}`}
           >Organizations</a
         >
+        ·
+        <a
+          href={`/workspaces/${data.workspace.id}/crm/opportunities?tag_id=${tag.id}`}
+          >Opportunities</a
+        >
+        ·
+        <a href={`/workspaces/${data.workspace.id}/crm/deals?tag_id=${tag.id}`}
+          >Deals</a
+        >
       </li>{:else}<li>No tags found.</li>{/each}
   </ul>
   {#if data.page.next_cursor}<a

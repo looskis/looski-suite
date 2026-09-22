@@ -45,7 +45,7 @@ pub(super) async fn opportunities(
     limit: i64,
 ) -> Result<Vec<Opportunity>, Error> {
     let sql = format!(
-        "{OPPORTUNITY} WHERE o.workspace_id=$1 AND ($2 OR o.owner_membership_id=$3) AND ($4::uuid IS NULL OR (o.created_at,o.id)>(SELECT created_at,id FROM crm.opportunities WHERE workspace_id=$1 AND id=$4)) AND ($5::text IS NULL OR strpos(lower(o.title),lower($5))>0) AND (o.archived_at IS NOT NULL)=$6 AND ($7::uuid IS NULL OR o.pipeline_id=$7) AND ($8::uuid IS NULL OR o.stage_id=$8) ORDER BY o.created_at,o.id LIMIT $9"
+        "{OPPORTUNITY} WHERE o.workspace_id=$1 AND ($2 OR o.owner_membership_id=$3) AND ($4::uuid IS NULL OR (o.created_at,o.id)>(SELECT created_at,id FROM crm.opportunities WHERE workspace_id=$1 AND id=$4)) AND ($5::text IS NULL OR strpos(lower(o.title),lower($5))>0) AND (o.archived_at IS NOT NULL)=$6 AND ($7::uuid IS NULL OR o.pipeline_id=$7) AND ($8::uuid IS NULL OR o.stage_id=$8) AND ($10::uuid IS NULL OR EXISTS(SELECT 1 FROM crm.opportunity_tags t WHERE t.workspace_id=o.workspace_id AND t.opportunity_id=o.id AND t.tag_id=$10)) ORDER BY o.created_at,o.id LIMIT $9"
     );
     Ok(
         sqlx::query_scalar::<_, Json<Opportunity>>(sqlx::AssertSqlSafe(sql.as_str()))
@@ -58,6 +58,7 @@ pub(super) async fn opportunities(
             .bind(q.pipeline_id)
             .bind(q.stage_id)
             .bind(limit)
+            .bind(q.tag_id)
             .fetch_all(db)
             .await?
             .into_iter()
@@ -73,7 +74,7 @@ pub(super) async fn deals(
     limit: i64,
 ) -> Result<Vec<Deal>, Error> {
     let sql = format!(
-        "{DEAL} WHERE d.workspace_id=$1 AND ($2 OR d.owner_membership_id=$3) AND ($4::uuid IS NULL OR (d.created_at,d.id)>(SELECT created_at,id FROM crm.deals WHERE workspace_id=$1 AND id=$4)) AND ($5::text IS NULL OR strpos(lower(d.title),lower($5))>0) AND (d.archived_at IS NOT NULL)=$6 AND ($7::uuid IS NULL OR d.category_id=$7) AND ($8::uuid IS NULL OR d.status_id=$8) AND ($9::uuid IS NULL OR d.originating_opportunity_id=$9) ORDER BY d.created_at,d.id LIMIT $10"
+        "{DEAL} WHERE d.workspace_id=$1 AND ($2 OR d.owner_membership_id=$3) AND ($4::uuid IS NULL OR (d.created_at,d.id)>(SELECT created_at,id FROM crm.deals WHERE workspace_id=$1 AND id=$4)) AND ($5::text IS NULL OR strpos(lower(d.title),lower($5))>0) AND (d.archived_at IS NOT NULL)=$6 AND ($7::uuid IS NULL OR d.category_id=$7) AND ($8::uuid IS NULL OR d.status_id=$8) AND ($9::uuid IS NULL OR d.originating_opportunity_id=$9) AND ($11::uuid IS NULL OR EXISTS(SELECT 1 FROM crm.deal_tags t WHERE t.workspace_id=d.workspace_id AND t.deal_id=d.id AND t.tag_id=$11)) ORDER BY d.created_at,d.id LIMIT $10"
     );
     Ok(
         sqlx::query_scalar::<_, Json<Deal>>(sqlx::AssertSqlSafe(sql.as_str()))
@@ -87,6 +88,7 @@ pub(super) async fn deals(
             .bind(q.status_id)
             .bind(q.originating_opportunity_id)
             .bind(limit)
+            .bind(q.tag_id)
             .fetch_all(db)
             .await?
             .into_iter()

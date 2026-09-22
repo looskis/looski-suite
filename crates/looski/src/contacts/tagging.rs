@@ -7,10 +7,7 @@ use crate::{
     reliability,
     tags::{self, Tag},
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use sqlx::{PgConnection, PgPool};
-use utoipa::ToSchema;
 use uuid::Uuid;
 #[derive(Clone, Copy)]
 pub enum Target {
@@ -37,12 +34,7 @@ impl Target {
         }
     }
 }
-#[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
-#[serde(deny_unknown_fields)]
-pub struct SetTags {
-    pub expected_version: i64,
-    pub tag_ids: Vec<Uuid>,
-}
+pub use crate::tags::SetTags;
 async fn parent(
     db: &mut PgConnection,
     actor: &ActorContext<'_>,

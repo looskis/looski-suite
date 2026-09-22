@@ -59,6 +59,8 @@ fn supported() -> Vec<Permission> {
         "crm.deals.create",
         "crm.deals.update",
         "crm.deals.archive",
+        "crm.deals.tags.manage",
+        "crm.opportunities.tags.manage",
         "contacts.create",
         "contacts.update",
         "contacts.archive",

@@ -401,8 +401,96 @@ struct CrmSetCrmArgs {
     change: crate::modules::SetModule,
 }
 
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmOpportunityTagsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmSetOpportunityTagsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::tags::SetTags,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmDealTagsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+struct CrmSetDealTagsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::tags::SetTags,
+}
+
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "Read tags on a permitted opportunity. CRM must be enabled; mutations use expected_version and an idempotency key."
+    )]
+    async fn crm_opportunity_tags(
+        &self,
+        Parameters(input): Parameters<CrmOpportunityTagsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_opportunity_tags(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Set tags on a permitted opportunity. CRM must be enabled; mutations use expected_version and an idempotency key."
+    )]
+    async fn crm_set_opportunity_tags(
+        &self,
+        Parameters(input): Parameters<CrmSetOpportunityTagsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_set_opportunity_tags(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Read tags on a permitted deal. CRM must be enabled; mutations use expected_version and an idempotency key."
+    )]
+    async fn crm_deal_tags(
+        &self,
+        Parameters(input): Parameters<CrmDealTagsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deal_tags(input.workspace_id, input.id)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Set tags on a permitted deal. CRM must be enabled; mutations use expected_version and an idempotency key."
+    )]
+    async fn crm_set_deal_tags(
+        &self,
+        Parameters(input): Parameters<CrmSetDealTagsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_set_deal_tags(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+
     #[tool(
         description = "Pipelines in the permitted workspace. CRM records require an enabled module and current record scope; mutations require an idempotency key."
     )]
