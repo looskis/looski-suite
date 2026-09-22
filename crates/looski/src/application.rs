@@ -16,3 +16,26 @@ pub fn system_info() -> SystemInfo {
         stage: "scaffold",
     }
 }
+
+/// Server-established operation context; the caller cannot construct an Identity.
+pub struct ActorContext<'a> {
+    pub identity: &'a crate::identity::Identity,
+    pub workspace: uuid::Uuid,
+    pub request_id: uuid::Uuid,
+    /// Adapter attribution only; it cannot grant authority.
+    pub source_interface: &'static str,
+}
+
+#[derive(Debug)]
+pub enum OperationError {
+    Invalid(&'static str),
+    Forbidden,
+    NotFound,
+    Conflict(&'static str),
+    Database(sqlx::Error),
+}
+impl From<sqlx::Error> for OperationError {
+    fn from(error: sqlx::Error) -> Self {
+        Self::Database(error)
+    }
+}

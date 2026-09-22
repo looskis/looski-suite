@@ -1,22 +1,25 @@
 # CRM planning record
 
-This is the working product/build plan for CRM as of October 4, 2026, not an ADR or a completed implementation specification. It owns evolving CRM scope, examples, proposed behavior, open questions, and planning history. The [architecture](architecture.md) owns shared technical requirements; the [build plan](build-plan.md) owns delivery gates. Items marked proposed still need agreement or evidence.
+This is the working product/build plan for CRM updated October 12, 2026, not an ADR or a completed implementation specification. It owns evolving CRM scope, examples, proposed behavior, open questions, and planning history. The [architecture](architecture.md) owns shared technical requirements; the [build plan](build-plan.md) owns delivery gates. Items marked proposed still need agreement or evidence.
 
 The [schema design draft](schema-design.md) translates this plan into proposed tables, constraints, and migration groups. It does not silently settle the open product choices below.
 
 ## Accepted direction
 
-- Keep opportunities (potential business) and deals (concrete live or historical transactions/engagements) as distinct records with independent lifecycles. A deal can originate from an opportunity or be created directly.
+- Keep opportunities (potential business) and deals (concrete live or historical transactions/engagements) as distinct records with independent lifecycles. A deal has zero or one originating opportunity; an opportunity can produce multiple deals. Direct deal creation is supported.
 - Use import contacts → qualify interest → track an opportunity → follow up → win/lose as a reference acceptance journey. It is not a mandatory sequence or a service-industry restriction. A business can use Contacts without sales records, create an opportunity directly, and record communications without creating a lead/deal.
 - Support user-defined CRM statuses using stable IDs, editable labels/order, and sales-outcome mappings. Renaming is not a business transition. General custom fields remain a separate scope choice.
+- Make deal categories, activity behavior, and transaction coordination workspace-configurable. Ship a standard starter template that can be edited, replaced, or removed. No separate lead table: qualification uses opportunities and their stages.
+- Use a shared Tasks capability with dedicated task records and typed links from CRM/Contacts. Projects later adds grouping and boards. Coordination templates use supported task, status, checklist/milestone, and trigger/action building blocks; removing a template preserves its instances.
 - Support tags on contacts and other relevant records, beginning with CRM records; tags are independent labels, not statuses or permission grants.
 - Defer Gmail and CRM communication implementation beyond the initial foundation/CRM build. Preserve the omnichannel direction and email connector notes for later planning; neither mailbox sync nor business-email sending is an initial release prerequisite. Authentication emails remain part of the foundation.
 - Design for agents and just-in-time data-loading scripts. Defer a dedicated bulk-import product and CSV wizard; scripts use supported CLI/API operations with normal validation, authorization, and retry guarantees.
 - People who share an email address or phone number remain separate contacts. Ambiguous matches require review.
-- Support an explicit path from an existing contact to a login account and scoped access, without conflating the contact and authenticated user. Delivery timing and portal access policies remain open.
+- Support an explicit path from an existing contact to a login account and scoped access, without conflating the contact and authenticated user. Future customer access uses separate workspace-scoped external memberships, external roles, and explicit record/action grants. Recipient proof, detailed portal policies, and delivery timing remain design work.
 - Authorization belongs in Rust business operations; business writes and required audit/job scheduling commit atomically in PostgreSQL. Follow-up work uses PGMQ. CLI, API, and MCP use those same operations.
 - Local ClickHouse is the selected operational log store. It does not replace the transactional business database or its authoritative audit history.
-- RBAC presets and record visibility remain to be designed. Administrator/member/read-only are examples, not accepted final roles.
+- Enforce RBAC with explicit record scope on permission grants. Reuse the existing workspace roles, permission catalog, and membership-role assignments; do not infer access from role names. Preset contents and any team-specific policy remain design work.
+- Preserve email local-part case. Merge confirmed duplicates by selecting a survivor, resolving conflicts, and preserving relationships/history. Archive by default; permanent deletion requires its own permission. No automatic record deletion by default.
 
 ## Opportunities, deals, and optional lead qualification
 
@@ -24,11 +27,25 @@ Accepted distinction: an opportunity is potential business; a deal is a concrete
 
 Use separate opportunity and deal records/tables with independent IDs, statuses, history, tags, participants, and links to conversations. Opportunity outcome describes the sales pursuit; deal status describes the actual transaction or engagement. Winning an opportunity is not the same event as completing a deal.
 
-Proposed relationship: an opportunity can produce zero or more deals, and a deal can be created without an opportunity. Start with an optional originating-opportunity reference on a deal if one origin is sufficient; validate whether multiple origins are needed before schema finalization. Creating a deal from an opportunity should preserve the original opportunity and copy/link only deliberate fields; it must be atomic and retry-safe. Direct creation supports businesses recording existing transactions or coordinating work without an earlier sales funnel.
+Accepted relationship: an opportunity can produce zero or more deals; each deal has zero or one originating opportunity. Model this as nullable `crm.deals.originating_opportunity_id`, with a workspace-qualified foreign key and a non-unique index on `(workspace_id, originating_opportunity_id)`. No origin join table is needed for this relationship. Creating a deal from an opportunity should preserve the original opportunity and copy/link only deliberate fields; it must be atomic and retry-safe. Direct creation supports businesses recording existing transactions or coordinating work without an earlier sales funnel.
 
 Example: an opportunity to renovate an office can produce a renovation deal and a maintenance deal. Each deal has its own participants, dates, tasks, milestones, and history. Exact coordination features are CRM scope choices; invoicing, payment execution, contracts/signatures, and project delivery remain owned by their respective modules when implemented.
 
-A lead remains potential interest being qualified; a dedicated lead inbox/conversion object is optional and unresolved. Do not require every contact, inquiry, or conversation to produce an opportunity. Custom opportunity stages may cover qualification initially. This is a product/schema choice recorded here, not a new ADR.
+There is no separate lead table or lead-conversion object. Lead describes an opportunity being qualified; configurable opportunity stages handle qualification. Do not require every contact, inquiry, or conversation to produce an opportunity. This is a product/schema choice recorded here, not a new ADR.
+
+## Staff roles and record visibility
+
+These answer different questions. A role grants actions such as reading contacts, editing deals, exporting data, or managing members. Visibility determines the records on which those actions are allowed: all eligible records in the workspace, records assigned to the user, or records available to their team. Membership in workspace A never grants access to workspace B.
+
+For example, a salesperson may edit deals but only within their team; a read-only member may see all eligible workspace records while editing none. Ownership records responsibility; it does not automatically define visibility. Search, matching, exports, timelines, counts, and linked records must use the same visibility policy as direct reads.
+
+Accepted design: RBAC determines actions and each permission grant carries an explicit record scope. Reuse `suite.roles`, `suite.permissions`, `suite.role_permissions`, and `suite.membership_roles`. Extend the role-permission relation when the first scoped CRM operation ships; do not create a second generic roles/access table with overlapping authority. A role can allow `crm.deals.read` across a workspace and `crm.deals.update` only for assigned deals. A single scope on the entire role cannot express this correctly.
+
+Scopes are a finite, code-supported vocabulary: workspace, assigned, team, or explicitly granted records as the corresponding policies are implemented. Unimplemented scopes deny access; do not expose configuration before its queries and denial tests exist. Teams require actual team memberships and record-team relationships; a role label is not a team. For the same action, allowed records from multiple applicable roles combine by union; active actor/membership/workspace, enabled module, resource rules, and any future delegated grant still restrict the result. Never combine a broad read scope with an unrelated edit permission to create broad editing rights. No implicit allow or wildcard future permissions.
+
+Keep authorization in module business operations, with scoped queries applied before pagination/counts. Role administration must restrict who can assign/manage each grant, prevent self-escalation, audit changes, clear assignments on removed memberships, and protect the final administrator. Preset contents and team semantics remain implementation design work. The initial Contacts slice now enforces workspace/assigned scopes per action; CRM and team scopes remain unimplemented. See the [implementation checkpoint](implementation/contacts-slice.md).
+
+Permanent deletion is a separate permission such as `contacts.delete_permanently`, independent of `contacts.archive`, `contacts.update`, and export. A future OAuth scope can further restrict this permission but cannot create it. Destructive operations still enforce resource scope and reference/retention rules; no implicit cascading destruction of linked records.
 
 ## Proposed contact model and matching rules
 
@@ -46,11 +63,17 @@ Accepted handling of shared identifiers: retain separate people when they share 
 | Valid identifiers match nothing | Create a contact through a concurrency-safe resolution operation. |
 | No usable identifier | Preserve the inquiry/submission; offer manual resolution or an explicitly provisional contact. Never merge by name alone. |
 
-Trim email whitespace and lowercase the domain; decide local-part case normalization explicitly. Do not globally strip plus tags or dots. Parse phone numbers using known country context, keep extensions separately, and exclude invalid numbers from automatic matching.
+Accepted email matching policy: trim surrounding whitespace, lowercase the domain, and preserve local-part case. Do not globally strip plus tags or dots. Parse phone numbers using known country context, keep extensions separately, and exclude invalid numbers from automatic matching.
 
 Matching/creation must coordinate concurrent requests on normalized identifier keys, including multi-key conflicts, with a defined locking order and database constraints where appropriate. An idempotency key prevents repeat execution of one request; it does not resolve two different requests mentioning the same person.
 
-Proposed merge flow: a permitted user previews records/fields and relationships, chooses the surviving contact, resolves conflicting fields, and confirms. Preserve original source messages/submissions and a merge audit trail; maintain references or aliases so old links resolve. Define unmerge feasibility before promising undo, especially once later changes or external actions have occurred. Revocation or alteration of login identities is not a contact merge operation.
+Accepted merge flow: a permitted user previews records/fields and relationships, chooses the surviving contact, resolves conflicting fields, and confirms. Preserve original source messages/submissions and a merge audit trail; maintain references or aliases so old links resolve. Define unmerge feasibility before promising undo, especially once later changes or external actions have occurred. Revocation or alteration of login identities is not a contact merge operation.
+
+### Normalization, merge, archive, and retention explained
+
+The email local part is the text before `@`. Accepted: `Alex@example.com` and `alex@example.com` remain distinct exact matching keys. The policy is: preserve the original, normalize the domain, retain local-part case/dots/plus tags, and suggest case-only matches for review rather than silently conflating identities.
+
+Merge means consolidating records confirmed to represent the same person: choose a surviving contact, resolve field conflicts, preserve business links/history, and retain an alias for old IDs. Sharing an address alone is never grounds for merging. Archive means hide from ordinary active lists while retaining history and a restore path; archived identifiers still participate in controlled matching. Retention means deciding when archived records, original inputs, audit evidence, and backups may be purged. Accepted default: archive rather than hard-delete, require a separate permanent-deletion permission, and perform no automatic purge of CRM records; backup expiry is a separate policy. Detailed erase/unmerge behavior remains open.
 
 ## Contacts and authenticated users
 
@@ -65,14 +88,42 @@ Proposed contact-to-login flow:
 1. An authorized operator selects the contact and intended access purpose, such as future customer-portal access, plus a suitable login address. It need not equal every correspondence address on the contact.
 2. Create a pending, expiring invitation bound server-side to that contact ID, workspace, intended recipient, purpose, and proposed access. Do not embed arbitrary caller-controlled grants in a signup request.
 3. Supabase authenticates an existing user or handles authorized account creation. The backend checks the pending invitation, recipient binding, expiration/revocation, and any identity ambiguity; verified mailbox control alone is not sufficient to distinguish people sharing it.
-4. Atomically consume the invitation, link the stable application user to the specified contact, and grant only the approved access. Replays must not duplicate the association or elevate access. Customer access must not default to employee/member access.
+4. Atomically consume the invitation, link the stable application user to the specified contact, and grant only the approved access. Replays must not duplicate the association or elevate access. Customer access uses a separate workspace-scoped external membership, constrained by both its external role and explicit record/action grants. It never defaults to staff permissions or extends staff membership implicitly.
 5. Audit the link and expose a controlled unlink/revoke path. Existing identities are reused; contact creation, email matching, or a contact merge never creates or combines login accounts automatically.
+
+### Accepted external access relationship
+
+Keep a contact as a business record. Add access for an authenticated user through a separate workspace-scoped external membership, not by treating the contact row as a credential or silently creating staff membership. Accepted future relations are `suite.external_memberships` (workspace, user, active/revoked state), external role assignments, and module-owned typed grants such as `crm.deal_external_grants` (workspace, deal, external membership, allowed action). The explicit contact-to-user link remains a separate representation/identity relationship.
+
+Reuse the role/permission vocabulary and authorization machinery, with an enforced staff/external role audience and code-defined external-eligible permissions. An external grant must satisfy both the assigned external role and the per-record allowed action; grant recipients cannot acquire staff roles or workspace-wide CRM scope. Use dedicated shared-data views/actions where necessary: access to one deal must not expose internal notes, private attachments, unrelated participants, or linked records. Revocation blocks the next read even with a valid Supabase session. The same person may be staff in one workspace and a customer in another, or hold distinct staff/external relationships without those roles being implicitly combined.
+
+This is the accepted design for the future customer-access feature, not a shipped invitation or portal. Only create its tables with the first authorized external-access operation. Do not add a generic `entity_type/entity_id` grant table without referential integrity.
 
 ## Custom-status behavior
 
-Status definitions belong to a workspace and the applicable record type/pipeline. Use stable IDs, editable labels, ordering, and an archive state. Opportunity stages also map to semantic outcomes such as open/won/lost so reports and automations do not interpret label text. Deals have their own lifecycle and custom statuses; proposed categories include active/completed/cancelled, with exact semantics still to be designed. A won opportunity can therefore have an active deal. Neither lifecycle is a universal status enum for every module.
+Status definitions belong to a workspace and the applicable record type/pipeline. Use stable IDs, editable labels, ordering, and an archive state. Opportunity stages also map to semantic outcomes such as open/won/lost so reports and automations do not interpret label text. Deals have their own lifecycle, workspace-defined categories, and custom statuses. Active/completed/cancelled are possible starter-template values, not required database enums or permanent categories. A won opportunity can therefore have an active deal. Neither lifecycle is a universal status enum for every module.
 
 Renaming a status preserves references and does not trigger a business transition. Referenced statuses cannot simply disappear: archive them or migrate records with a preview. Real transitions write history and may enqueue configured follow-up. Moving between pipelines validates or explicitly maps the destination stage. Exact transitions, permissions, multiple-pipeline scope, and treatment of historical labels remain open.
+
+## Workspace configuration and removable starter templates
+
+Accepted: the business can specify its deal categories, activity behavior, and transaction-coordination setup. Ship a standard starter template with useful defaults, while supporting customization, replacement, and removal. A suggested template might contain active/completed/cancelled deal categories, note/call/meeting activity types, dedicated task templates, and a simple checklist or milestone sequence; its exact contents and configuration parameters still need design within the accepted building blocks below.
+
+Configurations use stable workspace-owned definitions; categories and activity types are records rather than fixed enums. Behavior must be explicit configuration over supported capabilities, not inference from labels. For example, renaming an activity to “Invoice” does not implement invoicing, and a workflow definition cannot bypass access checks. This requirement does not implicitly pull the later general-purpose automation builder into the first CRM slice.
+
+Accepted template lifecycle: installing a version copies definitions into the workspace; subsequent edits belong to that workspace. Removing the starter template never deletes deals or activity history, and updates must not silently reinstall removed defaults. Unused definitions can be removed; referenced definitions are retired or records are explicitly remapped. Existing records remain readable without the template, including historical snapshots. Material behavior changes need revision and migration rules so an edited template does not silently change in-progress coordination.
+
+The earlier fixed activity-kind and fixed deal-category proposals are superseded. Exact behavior parameters, supported configuration UI/API, reporting/completion metadata, template revisions, and in-progress migration semantics remain implementation design work.
+
+### Tasks and configuration building blocks
+
+A task is an actionable record with its own assignment, due date, status, and completion lifecycle; it should have a dedicated table rather than live as a variant of a generic CRM activity. Accepted ownership is a small shared Tasks capability (`tasks.tasks`) with typed links from CRM/Contacts and, later, Projects. This revises the earlier task-in-`crm.activities` sketch. CRM must not require the optional Projects application merely to record a follow-up task; Projects later adds project grouping, boards, and delivery views over the same task records. This ownership split is accepted; task tables and operations are not implemented yet.
+
+A CRM activity records something that happened (a note or logged interaction); the timeline composes activities, task events, and status changes through their owning interfaces. It is not a second authoritative copy of task state. Linking a task does not automatically grant access to its parent or make internal task content customer-visible. Cross-module links retain workspace-qualified FKs and each owning operation checks the applicable visibility policies.
+
+The accepted initial configuration building blocks are: task types/templates (what to do, assignment and due-date rules), editable deal categories/statuses and explicit transitions, ordered checklist/milestone definitions, and bounded triggers/actions such as creating a task when a deal reaches a configured stage. Implement only primitives exercised by the first coordination journey. A generic visual workflow builder, arbitrary executable configuration, and dependencies across every kind of record are not implied.
+
+Templates hold reusable definitions. Applying a template creates ordinary task/checklist records and pins the relevant definition revision. Removing a template never deletes those instances; changing its definition does not silently rewrite existing work. Exact task schema, completion conditions, assignment resolution, and retry keys for generated tasks must be designed with the first operation.
 
 ## Omnichannel communication plan
 
@@ -116,7 +167,7 @@ Defer a dedicated import wizard, import mapping UI, and resumable bulk-import fr
 
 A script can normalize/map input, preview its intended changes, keep its own checkpoint/result file, and retry failed operations. A failed run may have partially completed; do not claim whole-file atomicity or automatic rollback. Reuse operation keys when retrying the same intended write and account for server-side idempotency retention. Separate creation from updates; changed data and ambiguity still require explicit resolution. Add server-side batching or job support later if measured workloads justify it.
 
-Use archive as the ordinary reversible removal action; permanent deletion is a separate permission-checked operation with a defined reference and retention policy. Archived contacts must be considered during matching to prevent accidental recreation, without silently reactivating them. Merge, deletion, privacy/retention, and audit visibility require further decisions. Do not promise arbitrary rollback of an import after records have been edited or external actions performed.
+Use archive as the ordinary reversible removal action; permanent deletion is a separate permission-checked operation with a defined reference and retention policy. Archived contacts must be considered during matching to prevent accidental recreation, without silently reactivating them. Survivor-based merge, archive-by-default, separately authorized permanent deletion, and no automatic record deletion are accepted. Exact reference/erasure handling, unmerge feasibility, backup expiry, and audit visibility require further design. Do not promise arbitrary rollback of an import after records have been edited or external actions performed.
 
 Exports should include permitted stable IDs, relationships, custom statuses, and custom fields with a manifest. Decide attachment/message export scope and representation before claiming full portability. Spreadsheet-oriented exports should account for formula injection while retaining a documented faithful machine-readable path.
 
@@ -145,3 +196,9 @@ These are concrete defaults to review, not implemented endpoints or a frozen pub
 - October 4, 2026, clarification: opportunities remain potential business; deals are separate live/historical transaction records and may support coordination. Added an explicit contact-to-login requirement, selected Gmail plus generic SMTP connectivity as email direction, and accepted the shared tag-catalog starting design. Opportunity/deal cardinality, exact email sync scope, and customer access policy remain open.
 
 - October 4, 2026, scope reduction: deferred Gmail and communication implementation until that work is scheduled. Retained connector research as future context, removed it as an initial CRM release requirement, and kept authentication SMTP/invitations/magic links in the foundation.
+
+- October 12, 2026: accepted zero-or-one opportunity origin per deal and zero-or-many deals per opportunity; no separate lead table. Accepted workspace-defined deal categories, activity behavior, and transaction coordination with an editable/removable standard starter template. Future customer access is always workspace-scoped through a membership or equivalent restricted grant. Staff visibility, normalization, detailed merge/archive/retention rules, and the configuration/access schema remain under refinement.
+
+- October 12, 2026, refinement: confirmed RBAC enforcement and selected scoped permission grants over the existing role model. Accepted email local-part case preservation, survivor-based merge with conflict resolution and retained relationships/history, archive by default, a separate permanent-deletion permission, and no automatic record deletion. Template removal preserves instances. Recommended a dedicated shared Tasks capability and a separate external membership/resource-grant relationship for future customer access; these tables are not implemented.
+
+- October 12, 2026, approval: confirmed scoped RBAC, dedicated shared Tasks ownership and configuration building blocks, and separate external memberships with role-constrained record/action grants. Promoted these designs from recommendations to accepted direction. Precise schema fields, role presets, supported policy details, invitation proof, and template parameters remain implementation design; approval does not imply shipped functionality.

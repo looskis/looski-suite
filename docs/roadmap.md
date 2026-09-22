@@ -8,10 +8,10 @@ The order favors business value, a bounded replacement scope, reuse across the s
 
 | Order | Application | Reference products | First replacement scope | Optional connections |
 | --- | --- | --- | --- | --- |
-| 1 | CRM | Pipedrive, HubSpot CRM | Contacts, organizations, sales opportunities and separate live/historical deals, configurable stages, tags, activities, and scriptable data access/export. Gmail and communication connectors are deferred. Deal relationships/coordination scope and optional lead qualification remain open; dedicated import tooling is deferred. | Uses the shared Contacts module; supplies sales context to later applications. |
+| 1 | CRM | Pipedrive, HubSpot CRM | Contacts, organizations, sales opportunities and separate live/historical deals, configurable stages, tags, activities, shared follow-up tasks, and scriptable data access/export. Gmail and communication connectors are deferred. One opportunity can produce many deals, each with an optional single origin; qualification uses opportunity stages. Configurable coordination behavior and removable starter templates need detailed design; dedicated import tooling is deferred. | Uses the shared Contacts module; supplies sales context to later applications. |
 | 2 | Forms and surveys | Typeform, Jotform | Builder, conditional questions, embeds, versioned submissions, notifications, export. | Create CRM inquiries and link source answers. |
 | 3 | CMS | Contentful, Sanity | Content types, entries, media, drafts, revisions, publishing interface. | Embed forms in published content. |
-| 4 | Projects and tasks | Trello, Asana, Basecamp | Projects, tasks, boards, assignment, deadlines, comments. | Create a project from a configured deal milestone. |
+| 4 | Projects and tasks | Trello, Asana, Basecamp | Projects, boards, delivery views over shared Tasks, assignment, deadlines, comments. | Create a project from a configured deal milestone. |
 | 5 | Knowledge base and SOPs | Confluence, Notion wiki workflows | Documents, collections, search, revisions, permissions. | Reuse content editing capabilities; connect articles to support. |
 | 6 | Helpdesk | Zendesk, Help Scout | Web tickets, assignment, status, internal notes, customer replies, knowledge base links. | Link tickets to contacts; add email intake through an existing provider. |
 | 7 | Time tracking | Toggl Track, Harvest | Timers, manual entries, billable hours, project budgets, reports. | Attach time to projects; later supply invoice line items. |

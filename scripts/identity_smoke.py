@@ -125,7 +125,7 @@ for deny, restore in [
     ("UPDATE suite.workspaces SET state='suspended'", "UPDATE suite.workspaces SET state='active'"),
     ("UPDATE suite.roles SET archived_at=now()", "UPDATE suite.roles SET archived_at=NULL"),
     ("UPDATE suite.auth_identities SET disabled_at=now()", "UPDATE suite.auth_identities SET disabled_at=NULL"),
-    ("DELETE FROM suite.role_permissions", "INSERT INTO suite.role_permissions SELECT workspace_id,id,'workspace.read' FROM suite.roles"),
+    ("DELETE FROM suite.role_permissions WHERE permission_key='workspace.read'", "INSERT INTO suite.role_permissions(workspace_id,role_id,permission_key) SELECT workspace_id,id,'workspace.read' FROM suite.roles"),
 ]:
     try:
         sql(deny)

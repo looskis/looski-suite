@@ -27,6 +27,17 @@ enum Command {
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
         token_file: std::path::PathBuf,
     },
+    /// Workspace Contacts operations. Mutations read their JSON body from stdin.
+    Contacts {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: ContactCommand,
+    },
     /// Start the HTTP API. Requires the migrated development database.
     Api {
         #[arg(long, env = "LOOSKI_API_BIND", default_value = "127.0.0.1:58081")]
@@ -48,8 +59,66 @@ enum Command {
     },
 }
 
+#[derive(Subcommand)]
+enum ContactCommand {
+    Merge {
+        survivor: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    List {
+        #[arg(long, default_value_t = 50)]
+        limit: i64,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        search: Option<String>,
+        #[arg(long)]
+        archived: bool,
+    },
+    Get {
+        id: uuid::Uuid,
+    },
+    Create {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Update {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Archive {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+        #[arg(long)]
+        expected_version: i64,
+        #[arg(long)]
+        restore: bool,
+    },
+}
+
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() {
+    if let Err(error) = run().await {
+        let code = if let Some(failure) = error.downcast_ref::<looski::client::ApiFailure>() {
+            eprintln!("{failure}");
+            match failure.status {
+                400 | 404 | 422 => 3,
+                401 | 403 => 4,
+                409 => 5,
+                500..=599 => 6,
+                _ => 1,
+            }
+        } else {
+            eprintln!("{error}");
+            1
+        };
+        std::process::exit(code);
+    }
+}
+async fn run() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .json()
         .with_writer(std::io::stderr)
@@ -72,6 +141,91 @@ async fn main() -> anyhow::Result<()> {
                 "{}",
                 serde_json::to_string_pretty(&client.workspaces().await?)?
             );
+        }
+        Command::Contacts {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let result = match action {
+                ContactCommand::Merge {
+                    survivor,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .merge_contacts(
+                            workspace,
+                            survivor,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                ContactCommand::List {
+                    limit,
+                    after,
+                    search,
+                    archived,
+                } => serde_json::to_value(
+                    client
+                        .contacts(
+                            workspace,
+                            &looski::contacts::ListContacts {
+                                limit: Some(limit),
+                                after,
+                                search,
+                                archived: Some(archived),
+                            },
+                        )
+                        .await?,
+                )?,
+                ContactCommand::Get { id } => {
+                    serde_json::to_value(client.contact(workspace, id).await?)?
+                }
+                ContactCommand::Create { idempotency_key } => serde_json::to_value(
+                    client
+                        .create_contact(
+                            workspace,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                ContactCommand::Update {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .edit_contact(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                ContactCommand::Archive {
+                    id,
+                    idempotency_key,
+                    expected_version,
+                    restore,
+                } => serde_json::to_value(
+                    client
+                        .archive_contact(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &looski::contacts::ArchiveContact {
+                                expected_version,
+                                archived: !restore,
+                            },
+                        )
+                        .await?,
+                )?,
+            };
+            println!("{}", serde_json::to_string_pretty(&result)?);
         }
         Command::Mcp {
             api_url,

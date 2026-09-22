@@ -80,7 +80,10 @@ export async function workspaceList(event: RequestEvent) {
   });
   const read = (token: string) =>
     client.GET('/api/v1/workspaces', {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-Looski-Interface': 'web',
+      },
       signal: AbortSignal.timeout(5000),
       redirect: 'error',
     });
@@ -155,4 +158,24 @@ export async function signOut(event: RequestEvent) {
   }
   clearSession(event);
   return revoked;
+}
+
+/** Refresh through the same verified workspace flow before a business request. */
+export async function workspaceClient(event: RequestEvent, workspace: string) {
+  const workspaces = await workspaceList(event);
+  const selected = workspaces.find((item) => item.id === workspace);
+  if (!selected) error(403, 'Workspace access is not permitted');
+  const token = event.cookies.get(accessCookie);
+  if (!token) redirect(303, '/login');
+  return {
+    workspace: selected,
+    client: createClient<paths>({
+      baseUrl: env.LOOSKI_API_INTERNAL_URL ?? 'http://127.0.0.1:58081',
+      fetch: event.fetch,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-Looski-Interface': 'web',
+      },
+    }),
+  };
 }

@@ -1,6 +1,6 @@
 # Foundation and CRM schema design
 
-Status: draft for discussion, October 5, 2026. This is the proposed relational model for the foundation and first CRM release. It preserves the accepted architecture and identifies choices that are still proposals. The October 12 identity slice implements users, identity mappings, workspaces, memberships, roles/permissions, a bootstrap audit event, and the durable installation latch. See [implementation scope](identity-slice.md). Remaining tables and choices below are still proposed; invitations, module selection, Contacts, and CRM migrations have not shipped.
+Status: working schema draft, refined October 12, 2026. This is the proposed relational model for the foundation and first CRM release. It preserves the accepted architecture and identifies choices that are still proposals. The October 12 identity slice implements users, identity mappings, workspaces, memberships, roles/permissions, a bootstrap audit event, and the durable installation latch. See [implementation scope](identity-slice.md). Remaining table shapes are drafts implementing the accepted choices identified below; the first Contacts migrations now implement people, identifiers/associations, scoped grants, audit attribution, and retry records. Organizations, invitations, module selection, CRM, and Tasks remain unimplemented. See the [Contacts checkpoint](implementation/contacts-slice.md) for current limits and evidence.
 
 The main separation is **login identity → application user → workspace membership**, alongside **contacts → opportunities → optional deals**. Contacts are people known to a business; memberships grant staff access. Neither a matching email nor a contact-to-user link grants membership.
 
@@ -16,10 +16,10 @@ erDiagram
     WORKSPACES ||--o{ CONTACTS : knows
     CONTACTS ||--o{ CONTACT_IDENTIFIERS : uses
     IDENTIFIERS ||--o{ CONTACT_IDENTIFIERS : can_be_shared
-    OPPORTUNITIES |o--o{ DEALS : proposed_origin
+    OPPORTUNITIES |o--o{ DEALS : optional_origin
 ```
 
-The origin cardinality is proposed. Explicit contact-to-user links are deferred until their proof/cardinality rules are selected; the diagram deliberately has no automatic contact-to-login edge.
+The origin cardinality is accepted: zero-or-one origin per deal, zero-or-many deals per opportunity. Explicit contact-to-user links are deferred until their proof/cardinality rules are selected; the diagram deliberately has no automatic contact-to-login edge.
 
 ## Schema ownership
 
@@ -28,7 +28,8 @@ The origin cardinality is proposed. Explicit contact-to-user links are deferred 
 | `auth` | Supabase only: accounts, credentials, sessions, and provider identities. |
 | `suite` | Application users, verified identity mappings, workspaces, access, module selection, shared tag catalog, audit, and operation reliability. |
 | `contacts` | People, organizations, contact identifiers, their relationships, and contact/organization tag assignments. Always available independently of CRM. |
-| `crm` | Opportunities, deals, statuses, participants, activities, and CRM tag assignments. |
+| `crm` | Opportunities, deals, statuses, participants, activities, CRM tag assignments, and typed CRM-to-task links. |
+| `tasks` | Shared task records, assignment, and lifecycle, introduced with the first CRM follow-up. Projects later supplies project/board grouping. |
 | `pgmq` and extension objects | PGMQ implementation; use its supported functions rather than editing queue tables. |
 
 These are ownership namespaces inside the same PostgreSQL database, allowing one SQLx transaction to commit related business records, audit, and queued work. Cross-module foreign keys protect references; they do not authorize cross-module DAO reads or writes. Rust operations invoke the owning module's interface.
@@ -58,7 +59,7 @@ The following is the first migration group, before Contacts writes become availa
 | `suite.memberships` | `workspace_id`, `user_id`, `state` (`active`, `suspended`, `removed`), `joined_at` | Unique `(workspace_id, user_id)` for a durable relationship. Reinstatement is an audited change to that relationship; historical references remain valid. |
 | `suite.permissions` | `key` text PK, `application_key?`, description | Code/migration-defined catalog. Suggested actions: `contacts.read`, `contacts.create`, `contacts.update`, `contacts.export`, `crm.opportunities.read`, `crm.deals.update`, `workspace.members.manage`. |
 | `suite.roles` | `workspace_id`, `key`, `name`, `archived_at?` | Unique `(workspace_id, key)`. Role IDs/keys are stable; names are editable. Initial presets remain undecided. |
-| `suite.role_permissions` | `workspace_id`, `role_id`, `permission_key` | Unique assignment; scoped role FK and permission-catalog FK. No arbitrary permission strings. |
+| `suite.role_permissions` | `workspace_id`, `role_id`, `permission_key`; planned extension: `record_scope` | Scoped role FK and permission-catalog FK. Unique grant per role/action/scope; allow only code-supported action/scope combinations. Scope is per action, not per role. The scope extension is not implemented yet. |
 | `suite.membership_roles` | `workspace_id`, `membership_id`, `role_id` | Composite PK; both FKs include workspace. Multiple roles combine permitted actions; no implicit deny-rule language initially. |
 | `suite.applications` | `key` text PK, name | Code/migration-defined list of optional applications; not a dynamic plugin loader. |
 | `suite.workspace_applications` | `workspace_id`, `application_key`, `enabled`, timestamps/version | PK `(workspace_id, application_key)`. Missing row means disabled. Foundation/Contacts are not selectable applications. |
@@ -67,7 +68,7 @@ The `issuer` and `subject` are verified credential values, not form fields. `sub
 
 Do not add a mandatory FK from this mapping to `auth.users`: hosted and local Auth are independent, and stable business attribution must survive provider migration or account removal. This deliberate application-owned reference requires login verification and account-state reconciliation; an existing mapping alone never proves a valid login. Suspending an application user blocks suite access even with a valid upstream session.
 
-Authorization checks the current user, membership, active roles, role permissions, module state, and resource policy inside each business operation. Removing a membership also removes its current role assignments atomically; audit retains their history. Reinstatement grants only newly approved roles, never dormant administrative privileges. Suggested initial **workspace-wide visibility** is still awaiting the user's choice. Ownership columns below track responsibility; ownership does not automatically grant or restrict access. If assigned/team visibility is selected, design its rule and tables before shipping reads, exports, matching results, or tags/counts.
+Authorization checks the current user, membership, active roles, role permissions, module state, and resource policy inside each business operation. Removing a membership also removes its current role assignments atomically; audit retains their history. Reinstatement grants only newly approved roles, never dormant administrative privileges. Selected design direction is RBAC with explicit record scope per permission grant, rather than an implicit workspace-wide staff default. The current migration supports only the workspace-discovery permission. Ownership columns below track responsibility; ownership does not automatically grant or restrict access. Extend `role_permissions` with a supported `record_scope` when implementing CRM authorization, include scope in grant uniqueness if multiple scopes are supported, and constrain allowed action/scope combinations. Design assigned/team rules and relationships before enabling those modes. Union scopes only for the same action; retain all actor/workspace/module restrictions.
 
 Do not hard-code access based on role labels. The last active administrative membership must be protected by an operation that locks the workspace and evaluates effective management permissions. Final bootstrap/recovery and admin-preservation rules need agreement before grants are seeded.
 
@@ -98,7 +99,7 @@ Bootstrap has a separate installation-level, one-time authorization path; do not
 
 For Alex and Sam sharing `office@example.com`, create **one identifier row and two contact-association rows**. Auth remains independent. Ending an association retains history; a new association can record a recycled address without silently moving someone's identity. Primary identifiers are optional; “at most one” does not force a contact to have an address.
 
-Proposed normalization is conservative: trim email whitespace, canonicalize/lowercase the domain, preserve local-part case, and preserve dots/plus tags. Case-only local-part matches can be review suggestions but are not automatic merges. SMTP formally permits case-sensitive local parts, so case folding is a product trade-off rather than a universally correct identity rule. [RFC 5321 section 2.3.11](https://www.rfc-editor.org/rfc/rfc5321.html#section-2.3.11)
+Accepted normalization is case-preserving: trim email whitespace, canonicalize/lowercase the domain, preserve local-part case, and preserve dots/plus tags. Case-only local-part matches can be review suggestions but are distinct exact keys and are not automatic merges. The registry must use case-sensitive local-part comparison, not `citext`, a lowercased whole-address index, or a case-insensitive collation. SMTP formally permits case-sensitive local parts, so case folding is a product trade-off rather than a universally correct identity rule. [RFC 5321 section 2.3.11](https://www.rfc-editor.org/rfc/rfc5321.html#section-2.3.11)
 
 For phones, parse using explicit country context and store E.164 in the identifier. Extensions belong on associations; a shared switchboard number with different extensions remains potentially ambiguous. Invalid values do not enter the matching registry. A versioned normalization change needs a collision review/migration, not a silent rewrite of keys.
 
@@ -110,7 +111,11 @@ Automatic intake may reuse an unambiguous authorized match. An explicit permitte
 
 Reserve a future `contacts.contact_user_links` relation for an explicitly verified association between `workspace_id`, `contact_id`, and application `user_id`. Do not create it automatically from identifiers, and do not grant a staff membership as a side effect.
 
-Proposed starting cardinality for a **self-identity** link: at most one active user per contact and one active contact per user within a workspace. A user can still represent different contact records in different workspaces. This remains a product choice, not a migration constraint yet. Guardian/assistant/shared-account representation would use separate scoped grants, not relax the meaning of a self-identity link. Contact onboarding invitations and portal grants wait for that access design; keep them separate from member invitations.
+Proposed starting cardinality for a **self-identity** link: at most one active user per contact and one active contact per user within a workspace. A user can still represent different contact records in different workspaces. This remains a product choice, not a migration constraint yet. Guardian/assistant/shared-account representation would use separate scoped grants, not relax the meaning of a self-identity link. Accepted future customer access is workspace-scoped and limited to allowed records/actions. Its design uses `suite.external_memberships`, external role assignments, and module-owned record/action grants, separate from staff `suite.memberships`. Enforce role audience, external-eligible permissions, and shared-data projections; require both role permission and explicit per-record grant. Contact links alone never confer access; do not apply staff-wide visibility to customer access. Contact onboarding invitations and portal grants wait for detailed recipient-proof and operation design; keep them separate from staff invitations.
+
+### Contact lifecycle
+
+Accepted: confirmed duplicates merge into a chosen survivor with explicit field-conflict resolution, preserved relationships/history, and stable old-ID resolution. Archive is the default removal behavior. Hard deletion requires the distinct `contacts.delete_permanently` permission and a scoped operation that resolves references without cascading through unrelated business history or Auth. No automatic record deletion by default. Detailed erase/anonymization behavior, merge rollback feasibility, and backup expiry remain separate design work.
 
 ## Opportunities and deals
 
@@ -121,20 +126,21 @@ Opportunities represent potential business. Deals represent concrete transaction
 | `crm.opportunity_pipelines` | `workspace_id`, `name`, `archived_at?` | Begin with one default pipeline per workspace; table shape permits additional pipelines without forcing their UI in the first slice. |
 | `crm.opportunity_stages` | `workspace_id`, `pipeline_id`, stable `key`, editable `name`, `position`, `outcome` (`open`, `won`, `lost`), `archived_at?` | Unique `(workspace_id, pipeline_id, key)`; scoped pipeline FK. Use `(position, id)` ordering so reorder transactions need not maintain globally unique positions. |
 | `crm.opportunities` | `workspace_id`, `title`, `pipeline_id`, `stage_id`, `owner_membership_id?`, `expected_value?`, `currency_code?`, `expected_close_on?`, `closed_at?`, `archived_at?` | Stage FK includes workspace and pipeline. A stage from another pipeline/workspace is invalid. Value/currency paired; owner is a scoped membership. |
-| `crm.deal_statuses` | `workspace_id`, stable `key`, editable `name`, `position`, `category` (`active`, `completed`, `cancelled` proposed), `archived_at?` | Unique `(workspace_id, key)`; independent from opportunity stages. A separate deal-pipeline abstraction waits for a real requirement. |
+| `crm.deal_categories` | `workspace_id`, stable `key`, editable `name`, `position`, `archived_at?`; behavior/reporting metadata to design | Workspace-owned definitions, unique `(workspace_id, key)`; starter categories are removable defaults, not a fixed enum. |
+| `crm.deal_statuses` | `workspace_id`, stable `key`, editable `name`, `position`, `category_id?`, `archived_at?` | Unique `(workspace_id, key)`; scoped category FK; independent from opportunity stages. A separate deal-pipeline abstraction waits for a real requirement. |
 | `crm.deals` | `workspace_id`, `title`, `status_id`, `originating_opportunity_id?`, `owner_membership_id?`, `value?`, `currency_code?`, `starts_on?`, `ends_on?`, `archived_at?` | Scoped status/origin/owner FKs; end date not before start when both exist. Direct creation is valid. |
 | `crm.opportunity_contacts`, `crm.deal_contacts` | `workspace_id`, parent ID, `contact_id`, `role_label?`, `is_primary` | Separate assignment tables with scoped FKs and unique parent/contact pairs. At most one primary contact per parent. |
 | `crm.opportunity_organizations`, `crm.deal_organizations` | `workspace_id`, parent ID, `organization_id`, `role_label?`, `is_primary` | Separate assignment tables with scoped FKs, unique parent/organization pairs, and at most one primary organization per parent; support more than one organization without a generic “party” supertable. |
 | `crm.opportunity_stage_changes` | `workspace_id`, `opportunity_id`, `from_stage_id?`, `to_stage_id`, outcome/label snapshots, `changed_at`, `audit_event_id`, `operation_id` | Immutable transition history; initial assignment can have no previous stage. Scoped parent, stage, and audit-event references; actor attribution comes from the immutable audit event. |
 | `crm.deal_status_changes` | `workspace_id`, `deal_id`, `from_status_id?`, `to_status_id`, category/label snapshots, `changed_at`, `audit_event_id`, `operation_id` | Separate immutable deal history. Scoped audit-event FK supplies user/system execution attribution without a human-only actor column. |
 
-**Origin cardinality pending:** recommended zero-or-one originating opportunity per deal; zero-or-many deals per opportunity. Do not make `originating_opportunity_id` unique. If deals can consolidate multiple opportunities, replace this column with a scoped `crm.opportunity_deals` join before implementing that migration.
+**Accepted origin cardinality:** zero-or-one originating opportunity per deal; zero-or-many deals per opportunity. Keep `originating_opportunity_id` nullable, with a composite FK `(workspace_id, originating_opportunity_id)` referencing the opportunity and a non-unique index on those columns. Multiple deals can reference the same opportunity; no origin join table is needed. Referenced opportunities are not cascade-deleted with deals, and deleting an opportunity must not erase its deals.
 
 Winning an opportunity does not automatically create or complete a deal. An explicit “create deal from opportunity” operation can copy selected data and change the opportunity outcome when requested, atomically and idempotently. Exact conversion behavior belongs in the product operation, not an implicit insert trigger.
 
 Renaming a stage/status does not change any record's state. Proposed semantic category/outcome mappings are immutable once used; changing meaning creates a new definition and uses explicit transitions. This avoids rewriting history merely by relabeling a stage. Archive referenced definitions instead of deleting them; no new assignment to an archived definition. Transition operations validate categories and maintain `closed_at`; an ordinary row `CHECK` cannot validate another table's outcome. Pipeline moves explicitly map the destination stage and record the transition.
 
-Historical labels/outcomes are snapshots in history; current screens use the current definition's label. Opportunity/deal ownership, participant links, and status transitions all use the same workspace-qualified references. No separate lead table is proposed initially; qualification can use opportunity stages until a distinct lead workflow is justified.
+Historical labels/outcomes are snapshots in history; current screens use the current definition's label. Opportunity/deal ownership, participant links, and status transitions all use the same workspace-qualified references. No separate lead table or conversion object is needed. Qualification uses configurable opportunity stages.
 
 ## Tags and activities
 
@@ -143,11 +149,20 @@ Historical labels/outcomes are snapshots in history; current screens use the cur
 | `suite.tags` | `workspace_id`, `name`, `name_key`, `color?`, `archived_at?`, common entity fields | Unique `(workspace_id, name_key)`. Proposed key is trimmed, consistently case-folded text. Do not reuse archived names without a deliberate restore/rename decision. |
 | `contacts.contact_tags`, `contacts.organization_tags` | `workspace_id`, record ID, `tag_id`, `created_at`, attribution | Scoped record/tag FKs; composite PK prevents duplicate assignments. Contacts owns these writes. |
 | `crm.opportunity_tags`, `crm.deal_tags` | `workspace_id`, record ID, `tag_id`, `created_at`, attribution | Same constraint pattern; CRM owns these writes and checks module state. |
-| `crm.activities` | `workspace_id`, `kind` (`note`, `task`, `call`, `meeting` proposed), `subject`, `body?`, `due_at?`, `completed_at?`, `owner_membership_id?`, `contact_id?`, `opportunity_id?`, `deal_id?`, common entity fields | Proposed first shape requires exactly one anchor, using a same-row check and scoped FKs. Activity visibility must respect its anchor. Scheduling/communications are not implicitly implemented by recording a call/meeting activity. |
+| `crm.activity_types` | `workspace_id`, stable `key`, editable `name`, `archived_at?`; behavior definition/revision to design | Workspace-defined logged interaction types; note/call/meeting are possible removable defaults. Actionable tasks have a separate accepted Tasks owner/table. |
+| `crm.activities` | `workspace_id`, `activity_type_id`, `subject`, `body?`, `occurred_at`, `actor_user_id`, `contact_id?`, `opportunity_id?`, `deal_id?`, common entity fields | Scoped activity-type FK; proposed first shape requires exactly one anchor, using a same-row check and scoped FKs. Activity visibility must respect its anchor. Scheduling/communications are not implicitly implemented by recording a call/meeting activity. |
 
 The tag catalog is shared; assignments remain typed and module-owned. Avoid a generic `(entity_type, entity_id, tag_id)` table whose target cannot have an ordinary foreign key. Counts and search results operate only over authorized, enabled records; they cannot be an access bypass.
 
+Workspace-defined categories, activity behavior, and coordination templates are accepted product requirements. Their exact configuration/revision relations must be designed before the corresponding migration. Template removal must not cascade to business records, and upgrades must not restore removed defaults. See [template lifecycle](crm-plan.md#workspace-configuration-and-removable-starter-templates).
+
 Activity shape is a later CRM migration, after confirming follow-up behavior and visibility. A contact-anchored CRM activity remains CRM-owned and is unavailable with CRM disabled; a future standalone Contacts notes feature would need its own operation/model. More than one activity anchor, attachments, external calendars, and omnichannel messages are separate later requirements, not hidden JSON flags in this draft.
+
+### Dedicated task records (accepted ownership)
+
+Introduce the minimal `tasks.tasks` table with the first actionable CRM follow-up: workspace, title, assigned membership, due date, status/completion, timestamps, and version, with exact fields finalized by that operation. Tasks owns its lifecycle and DAO. Use typed workspace-qualified links such as `crm.deal_tasks`, `crm.opportunity_tasks`, and `contacts.contact_tasks` only as needed. These are links to one task, not copies of task state. The optional Projects application would later own project/board grouping and use the shared Tasks interface. This is the accepted ownership revision to the earlier Projects-owned/task-in-activity sketches, not an applied migration.
+
+CRM timelines compose authorized activity/task/status records. Task and linked-parent visibility are evaluated explicitly; a relation does not grant broad access or automatically share a task externally. Template task definitions/revisions are distinct from instantiated tasks and cannot cascade-delete them. Avoid a generic polymorphic target column when typed links can enforce referential integrity.
 
 ## Audit and retry reliability
 
@@ -194,13 +209,14 @@ A tag from workspace B cannot be attached to a contact in workspace A, even if a
 | Sequence | Deliverable | Decisions or evidence required first |
 | --- | --- | --- |
 | 1 | Users, verified identity mappings, workspaces, memberships, permission/role catalog and assignments, module selection, staff invitations | Role presets, visibility, bootstrap/recipient proof, prevention of unauthorized grants. No unprotected bootstrap endpoint. |
-| 2 | Audit/idempotency support and Contacts/organizations/identifiers/relationships/tag catalog plus contact assignments | Approve normalization, matching/archiving behavior, identifier sharing, retry retention, and visibility treatment. Test via one authorized create/list journey. |
+| 2 | Audit/idempotency support and Contacts/organizations/identifiers/relationships/tag catalog plus contact assignments | Implement accepted case preservation, archive/merge policy, and shared identifiers; finish retry retention, visibility, and permanent-deletion reference rules. Test via one authorized create/list journey. |
 | 3 | Job metadata and the first actual queued follow-up | SQLx business/audit/PGMQ transaction, bounded retries, lease expiry/redelivery, module state and execution authority. |
-| 4 | Opportunity/deal pipelines/statuses, records, participants, transitions, tags | Origin cardinality, stage/category semantics, supported participant roles, conversion behavior, and ownership/visibility. |
-| 5 | CRM activities; explicit contact-to-login invitations/links and customer grants when scheduled | Activity workflow and portal/self-identity versus representation rules. A portal link must not imply staff access. |
+| 4 | Opportunity/deal pipelines/statuses, records, participants, transitions, tags | Enforce accepted origin cardinality; design configurable stage/category definitions, supported participant roles, conversion behavior, and ownership/visibility. |
+| 5 | Shared Tasks, typed record links, CRM activities, and coordination templates | Task fields/assignment, scoped visibility, template revisions, and retry-safe task creation. Deleting a template preserves instances. |
+| Later, when scheduled | Explicit contact-to-login invitations/links, external memberships, external roles, and typed record/action grants | Recipient proof and self-identity versus representation rules; require external-role permission and explicit record/action access. A contact link never implies staff access. |
 
 All suite SQL remains in `supabase/migrations/`, with one Supabase CLI history. Each group should ship only when its owning operation and denial/constraint tests are ready; this document is not an instruction to generate every table immediately.
 
 Required negative tests include cross-workspace assignments, wrong-pipeline stages, duplicate membership/role/tag assignments, revoked membership with a valid session, conflicting/shared identifier matches, concurrent intake, invitation replay, stale record versions, mismatched idempotency payloads, disabled CRM access, and rollback of business/audit/queue writes. Also test that a contact merge or email change cannot alter an Auth identity or grant access.
 
-Open product choices: staff roles/visibility; opportunity/deal origin cardinality; email local-part policy; self-identity link cardinality; exact deal categories; contact merge/retention and activity scope. The suggested defaults above make those choices concrete without silently treating them as accepted.
+Remaining design work: RBAC presets and supported per-action record scopes/team relations; self-identity link cardinality and detailed external invitation/grant operations; shared task schema and configuration parameters/revisions; detailed merge/erase/reference handling, backup expiry, and activity scope. Email case preservation, survivor-based merge, archive by default, separately authorized permanent deletion, and no automatic record deletion are accepted. Origin cardinality and the absence of a separate lead table are accepted. Shared Tasks ownership, configuration building blocks, and the external membership/role/record-grant model are also accepted. Proposed table fields and operation details remain drafts until implemented and verified.

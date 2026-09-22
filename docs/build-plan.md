@@ -1,12 +1,12 @@
 # Build plan and acceptance gates
 
-This plan implements the agreed architecture and the first eight applications in [roadmap.md](roadmap.md). A development scaffold is now implemented; see [scaffold evidence](scaffold-status.md) for checks and limitations. The milestones below remain release gates, not completion claims.
+This plan implements the agreed architecture and the first eight applications in [roadmap.md](roadmap.md). The development scaffold and initial identity slice are implemented; see [scaffold evidence](scaffold-status.md) and [identity scope](identity-slice.md) for checks and limitations. The milestones below remain release gates, not completion claims.
 
 Build complete user journeys in small increments. Develop the shared foundation through the first CRM journey instead of spending months building a general platform. Later milestones add optional integrations while retaining standalone application behavior.
 
 ## Build readiness and first implementation slice
 
-Ready to begin the foundation and a small Contacts journey. The workspace now includes the first scaffold, with its implementation and verification tracked in [scaffold evidence](scaffold-status.md). Remaining product decisions do not block scaffolding and integration probes, but they must be resolved before the behavior that depends on them is finalized.
+Ready to build the first Contacts journey on the scaffold and [implemented identity foundation](identity-slice.md). Remaining product decisions do not block scaffolding and integration probes, but they must be resolved before the behavior that depends on them is finalized.
 
 The [schema design draft](schema-design.md) proposes the foundation/CRM relations and the decisions required before each migration group.
 
@@ -14,12 +14,12 @@ Recommended first implementation order:
 
 1. Scaffold the Rust workspace and SvelteKit frontend, add the selected license and developer commands, and establish formatting/lint/type-check/test checks. Use the [setup contract](setup-contract.md) for the `looski-suite` namespace, configuration ownership, and proposed ports.
 2. Run pinned local PostgreSQL/Supabase Auth with suite migrations in `supabase/migrations/`, applied by the Supabase CLI to an explicit target outside the managed `auth` schema. Gate API/worker startup on successful migrations; validate PGMQ and local ClickHouse packaging. Keep diagnostic ingestion failure independent of application readiness.
-3. Implement verified identity, workspace context, and the application authorization interface. Establish bootstrap/login and denial tests before opening business operations to ordinary users; final role presets and visibility policy remain an explicit design task.
+3. Implement verified identity, workspace context, and the application authorization interface. Establish bootstrap/login and denial tests before opening business operations to ordinary users; final role presets and resource-specific rules must implement the accepted scoped RBAC design.
 4. Implement one workspace-scoped Contacts create/list journey through a focused SQLx DAO and a Rust business operation. Include required audit writes, retry/concurrency behavior, and a durable follow-up probe.
 5. Expose that same journey through the HTTP API/OpenAPI, SvelteKit, CLI, and local MCP. Use it to select client/SDK tooling and verify session handling and interface consistency.
-6. Expand into shared identifiers, organizations, tags, custom statuses, opportunities, and separate deals using the CRM plan. Validate backup/restore and updates before release.
+6. Expand into shared identifiers, organizations, tags, custom statuses, opportunities, separate deals, and shared Tasks with coordination templates using the CRM plan. Validate backup/restore and updates before release.
 
-Resolve RBAC/visibility before implementing production grants, opportunity/deal relationship cardinality before those migrations, and remaining identifier-normalization/merge rules before shipping automatic contact resolution. Set recovery and retention policy before release. Communication connectors, third-party OAuth, a dedicated import product, and the full customer portal are not prerequisites for this first slice; preserve their agreed future integration requirements.
+Define role presets and implement/test the accepted per-action record scopes before enabling production grants, template configuration/revision rules before the affected CRM migrations, and remaining matching/concurrency and detailed merge/reference rules before shipping automatic contact resolution; email local-part case preservation and archive-by-default are accepted. Set recovery and retention policy before release. Communication connectors, third-party OAuth, a dedicated import product, and the full customer portal are not prerequisites for this first slice; preserve their agreed future integration requirements.
 
 ## Milestone 0 — Resolve implementation choices with evidence
 
@@ -47,7 +47,7 @@ Exit evidence: recorded choices, a runnable infrastructure probe, measured resou
 
 Implement shared identity, memberships, invitations, authorization, lightweight Contacts, the application registry, and CRM. Add only the files, jobs, audit, and operational capabilities needed for this journey and safe release.
 
-Use the [CRM planning record](crm-plan.md) to refine the reference journey and capability matrix across UI, CLI, API, and MCP. The journey must not force a particular industry or qualification sequence. Custom statuses and tags are required. Gmail, mailbox connectors, and CRM communication implementation are deferred; authentication SMTP and email flows remain in scope. Dedicated bulk-import tooling is deferred in favor of agent-authored scripts using supported CLI/API operations. Before finalizing schema and access behavior, define relationships and coordination scope for the accepted separate opportunity/deal records, decide whether separate lead qualification is needed, and settle email normalization and ambiguous-match/merge policy under the accepted email/E.164 deduplication rule, built-in roles, and whether CRM visibility is workspace-wide or assigned/team-scoped. The decision register contains proposed starting points; these are not silently accepted by the implementation plan. Define file storage, backup retention/recovery expectations, and update recovery before release, using the [local recovery proposal](local-backup-and-recovery.md) as a starting point.
+Use the [CRM planning record](crm-plan.md) to refine the reference journey and capability matrix across UI, CLI, API, and MCP. The journey must not force a particular industry or qualification sequence. Custom statuses and tags are required. Gmail, mailbox connectors, and CRM communication implementation are deferred; authentication SMTP and email flows remain in scope. Dedicated bulk-import tooling is deferred in favor of agent-authored scripts using supported CLI/API operations. Before finalizing schema and access behavior, implement the accepted optional single opportunity origin per deal and multiple deals per opportunity, define configurable coordination behavior and removable starter templates, use opportunity stages for qualification without a separate lead table, and implement accepted email case preservation and survivor-based merge/archive behavior, define scoped RBAC presets and record-access rules, and implement the accepted shared Tasks ownership and configuration building blocks, finalizing their fields and parameters with each operation. Permanent deletion requires a distinct permission; no automatic record deletion runs by default. The decision register contains proposed starting points; these are not silently accepted by the implementation plan. Define file storage, backup retention/recovery expectations, and update recovery before release, using the [local recovery proposal](local-backup-and-recovery.md) as a starting point.
 
 Acceptance:
 
@@ -64,6 +64,7 @@ Acceptance:
 11. Verify correlated local ClickHouse diagnostics and transactional PostgreSQL audit history, including a ClickHouse outage during a valid mutation.
 12. Create, rename, attach/detach, and filter tags on contacts, opportunities, and deals through supported interfaces. Verify workspace/resource scope and stable references after renaming.
 13. Exercise representative CRM reads and mutations through CLI, API, and MCP. Verify consistent business results, workspace/permission denials, disabled-module behavior, structured errors, and no duplicate mutation on an eligible retry. Document any capability intentionally omitted from an interface.
+14. Create a CRM follow-up task with Projects disabled. Apply and edit a coordination template; verify retry-safe task creation, preserved task/checklist instances after template removal, and scoped task/timeline visibility.
 
 The first public replacement claim covers only the workflows that pass these checks.
 
@@ -85,7 +86,7 @@ Acceptance: publish and view content using the supported public access mode, sub
 
 ## Milestone 4 — Add project delivery
 
-Implement projects, tasks, boards, assignment, deadlines, and comments. Add an optional recipe to create a project from a configured deal milestone.
+Implement project grouping, boards, delivery views, and comments over the shared Tasks capability introduced with CRM. Extend assignment and deadline behavior as needed through the Tasks interface. Add an optional recipe to create a project from a configured deal milestone.
 
 Acceptance: projects can be created without CRM; retrying the configured deal-to-project recipe does not create a second project for the same configured conversion; project membership and task visibility are enforced independently of CRM access.
 
@@ -153,4 +154,4 @@ Do not start the general automation builder, custom database platform, or intern
 
 ### October 12 implementation increment
 
-The [identity slice](identity-slice.md) adds local owner bootstrap, password sign-in, browser sessions, and permission-filtered workspace discovery through web/API/CLI/MCP. This begins the foundation access work; staff invitations, magic links, general role management, and module selection remain unimplemented. The next business operation is Contacts create/list after its matching and visibility decisions are finalized.
+The [identity slice](identity-slice.md) adds local owner bootstrap, password sign-in, browser sessions, and permission-filtered workspace discovery through web/API/CLI/MCP. This begins the foundation access work; staff invitations, magic links, general role management, and module selection remain unimplemented. The [Contacts increment](implementation/contacts-slice.md) now implements and tests explicit create/read/edit, archive/restore, confirmed merge, scoped authorization, audit, and request replay through web/API/CLI/MCP. Organizations/relationships and automatic intake resolution are next; this is not completion of milestone 1.

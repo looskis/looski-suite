@@ -17,9 +17,11 @@
       <span class="icon" aria-hidden="true">⌂</span>
       <div>
         <h2>{workspace.name}</h2>
-        <p>Your workspace is ready. Contacts is the next module being built.</p>
+        <p>Keep your business relationships in one place.</p>
       </div>
-      <span class="badge">Ready</span>
+      <a class="badge" href={`/workspaces/${workspace.id}/contacts`}
+        >Open Contacts →</a
+      >
     </article>
   {:else}
     <article>

@@ -13,17 +13,23 @@ anyhow = "1"
 axum = "=0.8.9"
 clap = { version = "=4.6.7", features = ["derive", "env"] }
 jsonwebtoken = { version = "=10.3.0", default-features = false, features = ["rust_crypto"] }
-reqwest = { version = "=0.13.5", default-features = false, features = ["json", "rustls"] }
+reqwest = { version = "=0.13.5", default-features = false, features = ["json", "rustls", "query"] }
 rmcp = { version = "=3.5.0", features = ["server", "transport-io"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sqlx = { version = "=0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring", "postgres", "uuid"] }
+sqlx = { version = "=0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring", "postgres", "uuid", "json", "macros"] }
 tokio = { version = "=1.53.2", features = ["macros", "rt-multi-thread", "net", "signal", "time"] }
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter", "json"] }
-utoipa = "=6.0.0"
+utoipa = { version = "=6.0.0", features = ["uuid"] }
 utoipa-axum = "=0.3.0"
 uuid = { version = "1", features = ["serde", "v4"] }
+
+schemars = { version = "=1.2.2", features = ["uuid1"] }
+phonenumber = "=0.3.10"
+email_address = "=0.2.9"
+
+idna = "=1.1.0"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

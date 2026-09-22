@@ -6,3 +6,8 @@ pub mod client;
 pub mod identity;
 pub mod mcp;
 pub mod workspaces;
+
+pub mod access;
+pub mod contacts;
+
+pub mod reliability;

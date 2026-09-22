@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+mod contacts;
 use axum::{
     Json, Router,
     extract::State,
@@ -61,7 +62,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 2)
+        .is_ok_and(|version| version == 5)
     };
     let auth = async {
         state
@@ -93,6 +94,26 @@ async fn workspaces(
     State(state): State<AppState>,
     headers: HeaderMap,
 ) -> Result<Json<Vec<crate::workspaces::Workspace>>, (StatusCode, Json<ApiError>)> {
+    let identity = verified_identity(&state, &headers).await?;
+    crate::workspaces::list(&state.db, &identity)
+        .await
+        .map(Json)
+        .map_err(|error| {
+            tracing::error!(error = %error, "Workspace query failed");
+            (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(ApiError {
+                    code: "unavailable".into(),
+                    message: "The service is temporarily unavailable".into(),
+                }),
+            )
+        })
+}
+
+pub(super) async fn verified_identity(
+    state: &AppState,
+    headers: &HeaderMap,
+) -> Result<crate::identity::Identity, (StatusCode, Json<ApiError>)> {
     let denied = || {
         (
             StatusCode::UNAUTHORIZED,
@@ -140,13 +161,7 @@ async fn workspaces(
     if user.id != identity.subject() {
         return Err(denied());
     }
-    crate::workspaces::list(&state.db, &identity)
-        .await
-        .map(Json)
-        .map_err(|error| {
-            tracing::error!(error = %error, "Workspace query failed");
-            unavailable()
-        })
+    Ok(identity)
 }
 
 async fn not_found() -> impl IntoResponse {
@@ -175,6 +190,7 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(system))
         .routes(routes!(ready))
         .routes(routes!(workspaces))
+        .merge(contacts::routes())
 }
 
 pub fn openapi() -> utoipa::openapi::OpenApi {
@@ -187,6 +203,7 @@ pub fn router(state: AppState) -> Router {
         .route("/health/live", get(live))
         .route("/api/v1/openapi.json", get(move || async { Json(spec) }))
         .fallback(not_found)
+        .layer(axum::middleware::from_fn(request_context))
         .with_state(state)
 }
 
@@ -226,6 +243,35 @@ mod tests {
                 .await
                 .unwrap();
             assert_eq!(response.status(), expected);
+        }
+    }
+
+    #[tokio::test]
+    async fn contact_operations_require_bearer_identity_before_database_access() {
+        for (method, path, body) in [
+            (
+                "GET",
+                "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/contacts",
+                "",
+            ),
+            (
+                "POST",
+                "/api/v1/workspaces/00000000-0000-0000-0000-000000000001/contacts",
+                r#"{"display_name":"Alex"}"#,
+            ),
+        ] {
+            let response = app()
+                .oneshot(
+                    Request::builder()
+                        .method(method)
+                        .uri(path)
+                        .header("content-type", "application/json")
+                        .body(Body::from(body))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
         }
     }
 
@@ -314,5 +360,54 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct RequestId(pub uuid::Uuid);
+async fn request_context(
+    mut request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use tracing::Instrument;
+    let id = uuid::Uuid::new_v4();
+    request.extensions_mut().insert(RequestId(id));
+    let span = tracing::info_span!("request",request_id=%id,method=%request.method());
+    let mut response = next.run(request).instrument(span).await;
+    // Unify framework extractor errors without echoing payloads or parse details.
+    if matches!(response.status().as_u16(), 400 | 413 | 415 | 422)
+        && response
+            .headers()
+            .get("content-type")
+            .is_none_or(|v| v != "application/json")
+    {
+        response = (
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                code: "invalid_input".into(),
+                message: "Invalid request path, query, or JSON body".into(),
+            }),
+        )
+            .into_response();
+    }
+    response
+        .headers_mut()
+        .insert("x-request-id", id.to_string().parse().expect("UUID header"));
+    response.headers_mut().insert(
+        "cache-control",
+        axum::http::HeaderValue::from_static("no-store"),
+    );
+    response
+}
+
+fn source_interface(headers: &HeaderMap) -> &'static str {
+    match headers
+        .get("x-looski-interface")
+        .and_then(|v| v.to_str().ok())
+    {
+        Some("web") => "web",
+        Some("cli") => "cli",
+        Some("mcp") => "mcp",
+        _ => "api",
     }
 }

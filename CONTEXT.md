@@ -22,6 +22,9 @@ _Avoid_: Contact, customer.
 **Membership**:
 A user's relationship to a workspace, including the access granted there.
 
+**External membership**:
+An authenticated user’s relationship to a workspace as a customer or other outside participant, separate from staff membership. Access requires both an external role and explicit permission for the particular records and actions. A linked contact alone grants no access.
+
 **Permission**:
 An action a member is allowed to perform, subject to the workspace and the records they may access.
 
@@ -62,7 +65,7 @@ A form used to gather information as part of another business process, such as b
 A request or expression of interest received by the business. A contact can make multiple inquiries.
 
 **Lead**:
-A potential sales opportunity being assessed or followed up in CRM. A submission or booking becomes a lead only when the configured business workflow calls for it.
+An opportunity in qualification or early follow-up. A submission or booking becomes an opportunity only when the configured business workflow calls for it.
 _Avoid_: Contact when referring to the sales opportunity.
 
 **Opportunity**:
@@ -70,7 +73,7 @@ Potential business being evaluated or pursued. Its outcome describes whether tha
 _Avoid_: Deal when referring only to potential business.
 
 **Deal**:
-A concrete business transaction or engagement, whether live or historical, that may be used to coordinate participants, commitments, and progress. A deal may originate from an opportunity or be recorded directly; it does not necessarily mean a signed contract.
+A concrete business transaction or engagement, whether live or historical, that may be used to coordinate participants, commitments, and progress. A deal may originate from one opportunity or be recorded directly; it does not necessarily mean a signed contract.
 _Avoid_: Opportunity as a synonym, or completed transaction when the deal is still active.
 
 **Pipeline**:
@@ -78,6 +81,18 @@ An ordered set of stages used to track sales progress.
 
 **Status**:
 A named state of a business record. A workspace can define custom CRM statuses; the name alone does not determine the record's business outcome.
+
+**CRM starter template**:
+A removable starting configuration for a workspace’s deal categories, statuses, activity types, and coordination behavior. Businesses can adapt or replace it without losing existing business history.
+
+**Task**:
+An actionable piece of work with an assignee, due date, and completion state, which may support a contact, deal, or project.
+
+**Activity**:
+A recorded note or interaction in the business history. A timeline may show activities alongside tasks and status changes.
+
+**Customer access**:
+An explicitly granted ability for a signed-in person to use a limited subset of a workspace’s records and actions. Being listed as a contact does not itself confer access.
 
 **Tag**:
 A reusable workspace label attached to a contact or another supported business record for categorization and filtering. A record may have multiple tags; a tag does not determine lifecycle state or grant access.
