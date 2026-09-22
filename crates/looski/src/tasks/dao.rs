@@ -116,3 +116,17 @@ pub(super) async fn project_many(
             .collect(),
     )
 }
+
+pub(super) async fn history_stream(
+    db: &mut PgConnection,
+    ws: Uuid,
+    a: &Access,
+    ids: &[Uuid],
+    after: Option<&crate::history::Position>,
+    newer_than: Option<&crate::history::Position>,
+    id: Option<Uuid>,
+) -> Result<Vec<super::HistoryEvent>, Error> {
+    Ok(sqlx::query_scalar::<_,Json<super::HistoryEvent>>("SELECT jsonb_build_object('position',jsonb_build_object('id',c.id,'source','task','recorded_at',to_char(c.occurred_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')),'change',jsonb_build_object('id',c.id,'snapshot',c.snapshot,'audit_event_id',c.audit_event_id,'occurred_at',c.occurred_at::text)) FROM tasks.task_changes c JOIN tasks.tasks t ON (t.workspace_id,t.id)=(c.workspace_id,c.task_id) WHERE c.workspace_id=$1 AND ($2 OR t.assigned_membership_id=$3) AND ($4::text IS NULL OR (c.occurred_at,'task'::text,c.id)<($4::timestamptz,$6::text,$5::uuid)) AND (($7::uuid IS NOT NULL AND c.id=$7) OR ($7::uuid IS NULL AND c.task_id=ANY($8))) AND ($9::text IS NULL OR (c.occurred_at,'task'::text,c.id)>($9::timestamptz,$11::text,$10::uuid)) ORDER BY c.occurred_at DESC,c.id DESC LIMIT 101")
+ .bind(ws).bind(a.workspace_wide).bind(a.membership_id).bind(after.map(|p|p.recorded_at.as_str())).bind(after.map(|p|p.id)).bind(after.map(|p|p.source.as_str())).bind(id).bind(ids)
+ .bind(newer_than.map(|p|p.recorded_at.as_str())).bind(newer_than.map(|p|p.id)).bind(newer_than.map(|p|p.source.as_str())).fetch_all(db).await?.into_iter().map(|r|r.0).collect())
+}

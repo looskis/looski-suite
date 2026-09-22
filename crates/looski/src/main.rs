@@ -267,6 +267,17 @@ enum TasksCommand {
 
 #[derive(Subcommand)]
 enum CrmCommand {
+    Timeline {
+        #[arg(long)]
+        anchor_kind: String,
+        #[arg(long)]
+        anchor_id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<String>,
+    },
+
     StarterPackages {
         #[arg(long)]
         limit: Option<i64>,
@@ -2069,6 +2080,29 @@ async fn run() -> anyhow::Result<()> {
                             .await?
                     )?
                 ),
+                CrmCommand::Timeline {
+                    anchor_kind,
+                    anchor_id,
+                    limit,
+                    after,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_timeline(
+                                workspace,
+                                &looski::crm::timeline::TimelineQuery {
+                                    anchor_kind: serde_json::from_value(
+                                        serde_json::Value::String(anchor_kind)
+                                    )?,
+                                    anchor_id,
+                                    limit,
+                                    after
+                                }
+                            )
+                            .await?
+                    )?
+                ),
                 CrmCommand::OpportunityTags { id } => println!(
                     "{}",
                     serde_json::to_string(&client.crm_opportunity_tags(workspace, id).await?)?
@@ -2957,7 +2991,7 @@ async fn run() -> anyhow::Result<()> {
                 )
                 .fetch_one(&db)
                 .await?
-                    == 22,
+                    == 23,
                 "Worker requires current schema"
             );
             loop {

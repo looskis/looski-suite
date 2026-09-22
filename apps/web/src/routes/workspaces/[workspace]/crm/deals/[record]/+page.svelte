@@ -15,6 +15,10 @@
     >Version {data.record.version}</span
   >
 </header>
+<a
+  href={`/workspaces/${data.workspace.id}/crm/timeline?anchor_kind=deal&anchor_id=${data.record.id}`}
+  >Timeline</a
+>
 <h1>{data.record.title}</h1>
 <p>
   {data.record.category_name} · {data.record.status_name}{data.record.archived

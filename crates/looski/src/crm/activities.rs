@@ -535,3 +535,53 @@ pub async fn history(
     }
     Ok(ActivityHistoryPage { items, next_cursor })
 }
+
+/// Current independently authorized activity projections for a single anchor.
+pub(super) async fn project_many(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    kind: AnchorKind,
+    parent: Uuid,
+    ids: &[Uuid],
+) -> Result<std::collections::HashMap<Uuid, Activity>, Error> {
+    if ids.len() > 100 {
+        return Err(Error::Invalid("Activity projection batch exceeds 100"));
+    }
+    let access = match super::authorize(db, actor, "crm.activities.read").await {
+        Ok(a) => a,
+        Err(Error::Forbidden) => return Ok(Default::default()),
+        Err(e) => return Err(e),
+    };
+    let anchor = anchor(db, actor, kind, parent, false).await?;
+    let mut rows = dao::project_many(db, actor.workspace, &access, ids).await?;
+    let contacts = if kind == AnchorKind::Contact {
+        references::visible(
+            db,
+            actor,
+            references::Kind::Contact,
+            &rows.iter().map(|r| r.anchor_id).collect::<Vec<_>>(),
+        )
+        .await?
+        .into_iter()
+        .filter(|r| r.canonical_id == anchor.canonical)
+        .map(|r| r.reference_id)
+        .collect::<std::collections::HashSet<_>>()
+    } else {
+        Default::default()
+    };
+    rows.retain(|r| {
+        r.anchor_kind == kind
+            && if kind == AnchorKind::Contact {
+                contacts.contains(&r.anchor_id)
+            } else {
+                r.anchor_id == parent
+            }
+    });
+    Ok(rows
+        .into_iter()
+        .map(|mut r| {
+            project(&mut r, &anchor);
+            (r.id, r)
+        })
+        .collect())
+}

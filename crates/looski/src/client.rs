@@ -29,6 +29,21 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn crm_timeline(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::crm::timeline::TimelineQuery,
+    ) -> anyhow::Result<crate::crm::timeline::TimelinePage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/timeline"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+
     pub async fn crm_starter_packages(
         &self,
         workspace: uuid::Uuid,

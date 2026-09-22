@@ -12172,6 +12172,120 @@
         ]
       }
     },
+    "/api/v1/workspaces/{workspace_id}/crm/timeline": {
+      "get": {
+        "tags": [
+          "crm"
+        ],
+        "operationId": "crm_timeline",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "anchor_kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AnchorKind"
+            }
+          },
+          {
+            "name": "anchor_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimelinePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/workspaces/{workspace_id}/jobs": {
       "get": {
         "tags": [
@@ -17188,6 +17302,82 @@
         },
         "additionalProperties": false
       },
+      "EventDetail": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "detail",
+              "kind"
+            ],
+            "properties": {
+              "detail": {
+                "$ref": "#/components/schemas/ActivityChange"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "activity"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "detail",
+              "kind"
+            ],
+            "properties": {
+              "detail": {
+                "$ref": "#/components/schemas/Transition"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "transition"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "detail",
+              "kind"
+            ],
+            "properties": {
+              "detail": {
+                "$ref": "#/components/schemas/TaskChange"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "task"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "detail",
+              "kind"
+            ],
+            "properties": {
+              "detail": {
+                "$ref": "#/components/schemas/LinkEvent"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "task_link"
+                ]
+              }
+            }
+          }
+        ]
+      },
       "Grant": {
         "type": "object",
         "required": [
@@ -17531,6 +17721,36 @@
               "null"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "LinkEvent": {
+        "type": "object",
+        "required": [
+          "link_id",
+          "task_id",
+          "task_title",
+          "ended",
+          "audit_event_id"
+        ],
+        "properties": {
+          "audit_event_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ended": {
+            "type": "boolean"
+          },
+          "link_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "task_title": {
+            "type": "string"
           }
         }
       },
@@ -19403,6 +19623,58 @@
           }
         },
         "additionalProperties": false
+      },
+      "TimelineEvent": {
+        "type": "object",
+        "required": [
+          "cursor",
+          "recorded_at",
+          "event"
+        ],
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "event": {
+            "$ref": "#/components/schemas/EventDetail"
+          },
+          "recorded_at": {
+            "type": "string"
+          }
+        }
+      },
+      "TimelinePage": {
+        "type": "object",
+        "required": [
+          "anchor_kind",
+          "anchor_id",
+          "anchor_name",
+          "items"
+        ],
+        "properties": {
+          "anchor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "anchor_kind": {
+            "$ref": "#/components/schemas/AnchorKind"
+          },
+          "anchor_name": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineEvent"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       },
       "Transition": {
         "type": "object",

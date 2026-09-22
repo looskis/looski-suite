@@ -13,6 +13,10 @@
     >{data.workspace.name}</span
   >
 </header>
+<a
+  href={`/workspaces/${data.workspace.id}/crm/timeline?anchor_kind=contact&anchor_id=${data.contact.id}`}
+  >Timeline</a
+>
 <h1>{data.contact.display_name}</h1>
 <p class="muted">
   {data.contact.archived

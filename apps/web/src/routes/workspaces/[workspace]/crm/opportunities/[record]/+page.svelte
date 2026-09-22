@@ -15,6 +15,10 @@
     >← Opportunities</a
   ><span>Version {data.record.version}</span>
 </header>
+<a
+  href={`/workspaces/${data.workspace.id}/crm/timeline?anchor_kind=opportunity&anchor_id=${data.record.id}`}
+  >Timeline</a
+>
 <h1>{data.record.title}</h1>
 <p>
   {data.record.pipeline_name} · {data.record.stage_name}{data.record.archived

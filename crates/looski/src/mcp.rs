@@ -913,8 +913,27 @@ struct CrmRemoveStarterArgs {
     change: crate::crm::starter::RemoveStarter,
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct CrmTimelineArgs {
+    workspace_id: Uuid,
+    query: crate::crm::timeline::TimelineQuery,
+}
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "Read a contact, opportunity or deal timeline. Activities, task events and status changes retain independent current permissions; continuation cursors are reauthorized."
+    )]
+    async fn crm_timeline(
+        &self,
+        Parameters(input): Parameters<CrmTimelineArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_timeline(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+
     #[tool(
         description = "List the available CRM starter package and bounded installation history."
     )]

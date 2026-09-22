@@ -498,3 +498,24 @@ async fn create_from_template(
     )
     .await
 }
+
+/// History from a bounded set of task references, under current Tasks scope.
+pub(crate) async fn history_stream(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    ids: &[Uuid],
+    after: Option<&crate::history::Position>,
+    newer_than: Option<&crate::history::Position>,
+    id: Option<Uuid>,
+) -> Result<Vec<HistoryEvent>, Error> {
+    if ids.len() > 100 {
+        return Err(Error::Invalid("Task history reference batch exceeds 100"));
+    }
+    let a = require(db, actor, "tasks.read").await?;
+    dao::history_stream(db, actor.workspace, &a, ids, after, newer_than, id).await
+}
+#[derive(Deserialize)]
+pub(crate) struct HistoryEvent {
+    pub position: crate::history::Position,
+    pub change: TaskChange,
+}

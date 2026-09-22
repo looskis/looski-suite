@@ -1156,6 +1156,22 @@ export interface paths {
         patch: operations["crm_edit_status"];
         trace?: never;
     };
+    "/api/v1/workspaces/{workspace_id}/crm/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["crm_timeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspace_id}/jobs": {
         parameters: {
             query?: never;
@@ -1875,6 +1891,23 @@ export interface components {
             /** Format: int64 */
             expected_version: number;
         };
+        EventDetail: {
+            detail: components["schemas"]["ActivityChange"];
+            /** @enum {string} */
+            kind: "activity";
+        } | {
+            detail: components["schemas"]["Transition"];
+            /** @enum {string} */
+            kind: "transition";
+        } | {
+            detail: components["schemas"]["TaskChange"];
+            /** @enum {string} */
+            kind: "task";
+        } | {
+            detail: components["schemas"]["LinkEvent"];
+            /** @enum {string} */
+            kind: "task_link";
+        };
         Grant: {
             action: string;
             scope: components["schemas"]["Scope"];
@@ -1966,6 +1999,16 @@ export interface components {
             items: components["schemas"]["Job"][];
             /** Format: uuid */
             next_cursor?: string | null;
+        };
+        LinkEvent: {
+            /** Format: uuid */
+            audit_event_id: string;
+            ended: boolean;
+            /** Format: uuid */
+            link_id: string;
+            /** Format: uuid */
+            task_id: string;
+            task_title: string;
         };
         LinkTask: {
             /** Format: int64 */
@@ -2469,6 +2512,19 @@ export interface components {
             title: string;
             /** Format: uuid */
             type_id?: string | null;
+        };
+        TimelineEvent: {
+            cursor: string;
+            event: components["schemas"]["EventDetail"];
+            recorded_at: string;
+        };
+        TimelinePage: {
+            /** Format: uuid */
+            anchor_id: string;
+            anchor_kind: components["schemas"]["AnchorKind"];
+            anchor_name: string;
+            items: components["schemas"]["TimelineEvent"][];
+            next_cursor?: string | null;
         };
         Transition: {
             /** Format: uuid */
@@ -10435,6 +10491,72 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    crm_timeline: {
+        parameters: {
+            query: {
+                anchor_kind: components["schemas"]["AnchorKind"];
+                anchor_id: string;
+                limit?: number;
+                after?: string;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelinePage"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

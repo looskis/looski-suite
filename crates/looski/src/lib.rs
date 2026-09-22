@@ -22,3 +22,5 @@ pub mod modules;
 pub mod tasks;
 
 pub mod jobs;
+
+pub(crate) mod history;
