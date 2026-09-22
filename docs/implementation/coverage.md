@@ -19,7 +19,8 @@ This is the implementation checklist for the October 12 build request. Accepted 
 - [x] Opportunity pipelines/stages, deals/categories/statuses and independent histories across API/CLI/MCP/web.
 - [x] CRM tag assignments and filters with shared catalog lifecycle.
 - [x] CRM participants.
-- [ ] Shared Tasks, activities, coordination configuration/templates, safe template removal.
+- [x] Shared Tasks with independent assignment, lifecycle, history and four-interface parity.
+- [ ] CRM task links, activities, coordination configuration/templates, safe template removal.
 - [x] Contacts API/OpenAPI, CLI, MCP, web journeys and pagination.
 - [ ] Broader CRM interface parity and export.
 - [ ] Durable queued follow-up, retries, leases, exhaustion and module disable/resume.

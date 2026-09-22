@@ -50,6 +50,8 @@ Use fixed internal service ports and a configurable host gateway binding. Servic
 
 Supabase helper services retained after validation stay internal as well. Different containers can listen on the same internal port. Only host bindings collide across installations. Optional debugging/admin bindings must be explicit loopback-only overrides with collision checks; the standard installation need not expose database, Studio, ClickHouse, or raw Auth ports.
 
+The gateway publishes on both `127.0.0.1` and `::1`, with no wildcard LAN binding. This is required for reliable `localhost` clients on the supported Mac runtime: an unbound IPv6 destination in the ephemeral port range can accidentally TCP-connect back to the client itself. Setup checks both families; the smoke suite verifies actual HTTP responses and reserved listener endpoints.
+
 A bind conflict should fail with the conflicting setting and a suggested override; do not silently change a port because callbacks and configured clients depend on it. A preflight check is helpful but cannot replace handling a bind failure at startup. For a second installation, change both project identity and host gateway port, for example to `58889`.
 
 ## Configuration sources

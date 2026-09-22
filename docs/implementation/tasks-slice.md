@@ -1,0 +1,9 @@
+# Shared Tasks checkpoint
+
+Schema 14 introduces Tasks independently of optional CRM or Projects. Each record owns its assignee, due date, lifecycle/completion time, archive state and optimistic version. The four supported semantic states are open, in progress, completed and cancelled. Changing labels in another module does not change task behavior.
+
+Task read/create/update/archive grants each support workspace or assigned scope; writes intersect action and read authority. Assignment requires an active same-workspace membership. Workspace serialization coordinates administration and assignment; retries recheck current authority. Audit, task state, immutable snapshots and retry results commit in one transaction. Runtime grants cannot update/delete task history.
+
+API, CLI, MCP and SSR support bounded listing/filtering, read/create/edit, archive/restore and paginated history. SSR preserves input, version and key on rejected writes. Creation defaults to the caller; omitted assignee on edit keeps the existing assignment. Archived tasks must be restored before ordinary edits. Completed task edits preserve completion time; leaving completed clears it.
+
+Full sequential acceptance on upgraded and fresh isolated installations passes lifecycle/history, scope intersections, assignment/replay denials, inactive and foreign memberships, module independence, audit rollback, simultaneous edits, CLI/MCP and browser draft/filter/archive checks. Static checks and unit tests pass. Both full regression runs include all previously implemented capabilities. A deterministic IPv6 loopback probe identified a host TCP self-connection when an ephemeral client port matched the unbound IPv6 gateway port. Publishing the gateway on both loopback families fixes that condition; the smoke suite verifies HTTP and listener reservation for both, while retaining loopback-only exposure. Typed CRM links, activities, templates and durable follow-up remain subsequent increments.

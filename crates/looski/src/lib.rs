@@ -18,3 +18,5 @@ pub mod workspace_access;
 
 pub mod crm;
 pub mod modules;
+
+pub mod tasks;

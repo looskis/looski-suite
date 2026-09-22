@@ -18,6 +18,17 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Shared task operations. Mutations read JSON from stdin.
+    Tasks {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: std::path::PathBuf,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: TasksCommand,
+    },
     /// CRM definitions, opportunities, deals and module selection. Mutations read JSON from stdin.
     Crm {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
@@ -111,6 +122,50 @@ enum Command {
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
         token_file: Option<std::path::PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
+enum TasksCommand {
+    List {
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        search: Option<String>,
+        #[arg(long)]
+        archived: Option<bool>,
+        #[arg(long)]
+        status: Option<String>,
+        #[arg(long)]
+        assigned_membership_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        due_before: Option<String>,
+    },
+    Get {
+        id: uuid::Uuid,
+    },
+    Create {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Edit {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Archive {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    History {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
     },
 }
 
@@ -956,6 +1011,90 @@ async fn run() -> anyhow::Result<()> {
                     )?
                 ),
             }
+        }
+        Command::Tasks {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let result = match action {
+                TasksCommand::List {
+                    limit,
+                    after,
+                    search,
+                    archived,
+                    status,
+                    assigned_membership_id,
+                    due_before,
+                } => serde_json::to_value(
+                    client
+                        .tasks_list(
+                            workspace,
+                            &looski::tasks::TaskQuery {
+                                limit,
+                                after,
+                                search,
+                                archived,
+                                status: status
+                                    .map(|s| serde_json::from_value(serde_json::Value::String(s)))
+                                    .transpose()?,
+                                assigned_membership_id,
+                                due_before,
+                            },
+                        )
+                        .await?,
+                )?,
+                TasksCommand::Get { id } => {
+                    serde_json::to_value(client.tasks_get(workspace, id).await?)?
+                }
+                TasksCommand::Create { idempotency_key } => serde_json::to_value(
+                    client
+                        .tasks_create(
+                            workspace,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                TasksCommand::Edit {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .tasks_edit(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                TasksCommand::Archive {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .tasks_archive(
+                            workspace,
+                            id,
+                            &idempotency_key,
+                            &serde_json::from_reader(std::io::stdin())?,
+                        )
+                        .await?,
+                )?,
+                TasksCommand::History { id, limit, after } => serde_json::to_value(
+                    client
+                        .tasks_history(
+                            workspace,
+                            id,
+                            &looski::tasks::TaskHistoryQuery { limit, after },
+                        )
+                        .await?,
+                )?,
+            };
+            println!("{}", serde_json::to_string(&result)?);
         }
         Command::Crm {
             api_url,

@@ -1,4 +1,5 @@
 mod crm;
+mod tasks;
 mod workspace_access;
 // SPDX-License-Identifier: AGPL-3.0-only
 mod contacts;
@@ -67,7 +68,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 13)
+        .is_ok_and(|version| version == 14)
     };
     let auth = async {
         state
@@ -200,6 +201,7 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .merge(tags::routes())
         .merge(workspace_access::routes())
         .merge(crm::routes())
+        .merge(tasks::routes())
         .merge(intake::routes())
 }
 

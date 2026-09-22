@@ -29,6 +29,97 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn tasks_list(
+        &self,
+        workspace: uuid::Uuid,
+        query: &crate::tasks::TaskQuery,
+    ) -> anyhow::Result<crate::tasks::TaskPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/tasks"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn tasks_get(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+    ) -> anyhow::Result<crate::tasks::Task> {
+        self.business(self.authenticated(
+            reqwest::Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/tasks/{id}"),
+        )?)
+        .await
+    }
+    pub async fn tasks_create(
+        &self,
+        workspace: uuid::Uuid,
+        key: &str,
+        input: &crate::tasks::TaskInput,
+    ) -> anyhow::Result<crate::tasks::Task> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/tasks"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn tasks_edit(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::tasks::EditTask,
+    ) -> anyhow::Result<crate::tasks::Task> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/tasks/{id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn tasks_archive(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::tasks::ArchiveTask,
+    ) -> anyhow::Result<crate::tasks::Task> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/tasks/{id}/archive"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn tasks_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::tasks::TaskHistoryQuery,
+    ) -> anyhow::Result<crate::tasks::TaskHistoryPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/tasks/{id}/history"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+
     pub async fn crm_opportunity_contacts(
         &self,
         workspace: uuid::Uuid,

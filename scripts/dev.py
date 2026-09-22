@@ -102,11 +102,12 @@ def main():
         elif args.command == 'up':
             running_gateway = run('ps', '--status', 'running', '-q', 'gateway', capture=True).stdout.strip()
             if not running_gateway:
-                with socket.socket() as sock:
-                    try:
-                        sock.bind(('127.0.0.1', int(values['LOOSKI_HTTP_PORT'])))
-                    except OSError:
-                        raise SystemExit('LOOSKI_HTTP_PORT is occupied. Choose a free port and matching LOOSKI_PUBLIC_URL in .env.')
+                for family, address in [(socket.AF_INET, '127.0.0.1'), (socket.AF_INET6, '::1')]:
+                    with socket.socket(family, socket.SOCK_STREAM) as sock:
+                        try:
+                            sock.bind((address, int(values['LOOSKI_HTTP_PORT'])))
+                        except OSError:
+                            raise SystemExit(f'Cannot bind {address}:LOOSKI_HTTP_PORT. Both loopback families must be available; choose a free port and matching LOOSKI_PUBLIC_URL in .env.')
             run('build')
             # Quiesce callers before applying schema changes. Failure leaves them stopped.
             run('stop', 'gateway', 'web', 'api')

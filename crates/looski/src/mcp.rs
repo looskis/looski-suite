@@ -547,8 +547,132 @@ struct CrmDealOrganizationHistoryArgs {
     query: crate::crm::HistoryQuery,
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct TasksListArgs {
+    workspace_id: Uuid,
+    #[serde(default)]
+    query: crate::tasks::TaskQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksGetArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksCreateArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    change: crate::tasks::TaskInput,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksEditArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::tasks::EditTask,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksArchiveArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::tasks::ArchiveTask,
+}
+#[derive(Deserialize, JsonSchema)]
+struct TasksHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::tasks::TaskHistoryQuery,
+}
+
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "Tasks list. Requires current task permissions; linked records never grant access."
+    )]
+    async fn tasks_list(
+        &self,
+        Parameters(input): Parameters<TasksListArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_list(input.workspace_id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks get. Requires current task permissions; linked records never grant access."
+    )]
+    async fn tasks_get(
+        &self,
+        Parameters(input): Parameters<TasksGetArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.tasks_get(input.workspace_id, input.id).await)
+    }
+    #[tool(
+        description = "Tasks create. Requires current task permissions; linked records never grant access."
+    )]
+    async fn tasks_create(
+        &self,
+        Parameters(input): Parameters<TasksCreateArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_create(input.workspace_id, &input.idempotency_key, &input.change)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks edit. Requires current task permissions; linked records never grant access."
+    )]
+    async fn tasks_edit(
+        &self,
+        Parameters(input): Parameters<TasksEditArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_edit(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks archive. Requires current task permissions; linked records never grant access."
+    )]
+    async fn tasks_archive(
+        &self,
+        Parameters(input): Parameters<TasksArchiveArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_archive(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Tasks history. Requires current task permissions; linked records never grant access."
+    )]
+    async fn tasks_history(
+        &self,
+        Parameters(input): Parameters<TasksHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .tasks_history(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+
     #[tool(
         description = "Opportunity contacts with independent CRM and Contacts visibility. Mutations require the parent record version and an idempotency key."
     )]

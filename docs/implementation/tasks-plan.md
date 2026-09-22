@@ -1,0 +1,9 @@
+# Shared Tasks increment
+
+Tasks is an always-available foundation capability. A task owns its title, notes, assigned staff membership, optional calendar due date, lifecycle, completion timestamp, archive state and optimistic version. Initial supported lifecycle states are open, in progress, completed and cancelled; these explicit semantics do not depend on editable CRM labels. Completion records server time, leaving completion clears it, and editing an already completed task preserves its completion time. Archive retains records and history and prevents ordinary edits until restored.
+
+Each task action has independent workspace/assigned RBAC. Assignment alone grants nothing. Mutations require both the action and current read scope, validate the new assignee against both scopes, and require an active membership. Current authorization is rechecked on retry. Workspace serialization coordinates membership removal and reassignment. Audit, immutable full task snapshots and the retry result commit atomically. Lists apply scope and filters before bounded cursor pagination. Tasks remain accessible while optional CRM is disabled.
+
+API, CLI, MCP and SSR expose create/list/read/edit/archive/restore/history using the same operation. Browser drafts preserve fields, expected version and idempotency key on validation/conflict errors. Task references from CRM will be typed, independently authorized, and never duplicate task lifecycle state. The following increment adds typed links and the first coordination journey with pinned template revisions.
+
+Acceptance includes assignment/permission intersections, immediate revocation on saved retry, stale/concurrent writes, history/completion semantics, module independence, cross-workspace references, audit rollback, date validation, bounded search/filter/cursors and all four interfaces.
