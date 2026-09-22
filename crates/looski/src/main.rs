@@ -171,6 +171,73 @@ enum TasksCommand {
 
 #[derive(Subcommand)]
 enum CrmCommand {
+    OpportunityTasks {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        ended: Option<bool>,
+    },
+    LinkOpportunityTask {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    CreateOpportunityFollowup {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EndOpportunityTask {
+        id: uuid::Uuid,
+        link_id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    OpportunityTaskHistory {
+        id: uuid::Uuid,
+        link_id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    DealTasks {
+        id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        ended: Option<bool>,
+    },
+    LinkDealTask {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    CreateDealFollowup {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    EndDealTask {
+        id: uuid::Uuid,
+        link_id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    DealTaskHistory {
+        id: uuid::Uuid,
+        link_id: uuid::Uuid,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+
     OpportunityContacts {
         id: uuid::Uuid,
         #[arg(long)]
@@ -1104,6 +1171,184 @@ async fn run() -> anyhow::Result<()> {
         } => {
             let client = ApiClient::new(&api_url)?.with_token_file(token_file);
             match action {
+                CrmCommand::OpportunityTasks {
+                    id,
+                    limit,
+                    after,
+                    ended,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_opportunity_tasks(
+                                workspace,
+                                id,
+                                &looski::crm::task_links::TaskLinkQuery {
+                                    limit,
+                                    after,
+                                    ended
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::LinkOpportunityTask {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_link_opportunity_task(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::CreateOpportunityFollowup {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_opportunity_followup(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EndOpportunityTask {
+                    id,
+                    link_id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_end_opportunity_task(
+                                workspace,
+                                id,
+                                link_id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::OpportunityTaskHistory {
+                    id,
+                    link_id,
+                    limit,
+                    after,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_opportunity_task_history(
+                                workspace,
+                                id,
+                                link_id,
+                                &looski::crm::HistoryQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::DealTasks {
+                    id,
+                    limit,
+                    after,
+                    ended,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_deal_tasks(
+                                workspace,
+                                id,
+                                &looski::crm::task_links::TaskLinkQuery {
+                                    limit,
+                                    after,
+                                    ended
+                                }
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::LinkDealTask {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_link_deal_task(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::CreateDealFollowup {
+                    id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_create_deal_followup(
+                                workspace,
+                                id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::EndDealTask {
+                    id,
+                    link_id,
+                    idempotency_key,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_end_deal_task(
+                                workspace,
+                                id,
+                                link_id,
+                                &idempotency_key,
+                                &serde_json::from_reader(std::io::stdin())?
+                            )
+                            .await?
+                    )?
+                ),
+                CrmCommand::DealTaskHistory {
+                    id,
+                    link_id,
+                    limit,
+                    after,
+                } => println!(
+                    "{}",
+                    serde_json::to_string(
+                        &client
+                            .crm_deal_task_history(
+                                workspace,
+                                id,
+                                link_id,
+                                &looski::crm::HistoryQuery { limit, after }
+                            )
+                            .await?
+                    )?
+                ),
                 CrmCommand::OpportunityTags { id } => println!(
                     "{}",
                     serde_json::to_string(&client.crm_opportunity_tags(workspace, id).await?)?

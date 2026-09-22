@@ -586,8 +586,251 @@ struct TasksHistoryArgs {
     query: crate::tasks::TaskHistoryQuery,
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct CrmOpportunityTasksArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::task_links::TaskLinkQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmLinkOpportunityTaskArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::task_links::LinkTask,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmCreateOpportunityFollowupArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::task_links::CreateFollowup,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmEndOpportunityTaskArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    link_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::task_links::EndTaskLink,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmOpportunityTaskHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    link_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::HistoryQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmDealTasksArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    #[serde(default)]
+    query: crate::crm::task_links::TaskLinkQuery,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmLinkDealTaskArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::task_links::LinkTask,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmCreateDealFollowupArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::task_links::CreateFollowup,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmEndDealTaskArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    link_id: Uuid,
+    idempotency_key: String,
+    change: crate::crm::task_links::EndTaskLink,
+}
+#[derive(Deserialize, JsonSchema)]
+struct CrmDealTaskHistoryArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    link_id: Uuid,
+    #[serde(default)]
+    query: crate::crm::HistoryQuery,
+}
+
 #[tool_router]
 impl McpServer {
+    #[tool(
+        description = "Crm opportunity tasks. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
+    )]
+    async fn crm_opportunity_tasks(
+        &self,
+        Parameters(input): Parameters<CrmOpportunityTasksArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_opportunity_tasks(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm link opportunity task. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
+    )]
+    async fn crm_link_opportunity_task(
+        &self,
+        Parameters(input): Parameters<CrmLinkOpportunityTaskArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_link_opportunity_task(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm create opportunity followup. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
+    )]
+    async fn crm_create_opportunity_followup(
+        &self,
+        Parameters(input): Parameters<CrmCreateOpportunityFollowupArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_opportunity_followup(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm end opportunity task. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
+    )]
+    async fn crm_end_opportunity_task(
+        &self,
+        Parameters(input): Parameters<CrmEndOpportunityTaskArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_end_opportunity_task(
+                    input.workspace_id,
+                    input.id,
+                    input.link_id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm opportunity task history. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
+    )]
+    async fn crm_opportunity_task_history(
+        &self,
+        Parameters(input): Parameters<CrmOpportunityTaskHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_opportunity_task_history(
+                    input.workspace_id,
+                    input.id,
+                    input.link_id,
+                    &input.query,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm deal tasks. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
+    )]
+    async fn crm_deal_tasks(
+        &self,
+        Parameters(input): Parameters<CrmDealTasksArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deal_tasks(input.workspace_id, input.id, &input.query)
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm link deal task. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
+    )]
+    async fn crm_link_deal_task(
+        &self,
+        Parameters(input): Parameters<CrmLinkDealTaskArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_link_deal_task(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm create deal followup. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
+    )]
+    async fn crm_create_deal_followup(
+        &self,
+        Parameters(input): Parameters<CrmCreateDealFollowupArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_create_deal_followup(
+                    input.workspace_id,
+                    input.id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm end deal task. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
+    )]
+    async fn crm_end_deal_task(
+        &self,
+        Parameters(input): Parameters<CrmEndDealTaskArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_end_deal_task(
+                    input.workspace_id,
+                    input.id,
+                    input.link_id,
+                    &input.idempotency_key,
+                    &input.change,
+                )
+                .await,
+        )
+    }
+    #[tool(
+        description = "Crm deal task history. Parent and Tasks visibility are independent; writes require current permissions and idempotency."
+    )]
+    async fn crm_deal_task_history(
+        &self,
+        Parameters(input): Parameters<CrmDealTaskHistoryArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .crm_deal_task_history(input.workspace_id, input.id, input.link_id, &input.query)
+                .await,
+        )
+    }
+
     #[tool(
         description = "Tasks list. Requires current task permissions; linked records never grant access."
     )]

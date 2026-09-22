@@ -87,3 +87,26 @@ pub(super) async fn history(
     if let Some(after)=q.after && !sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM tasks.task_changes WHERE workspace_id=$1 AND task_id=$2 AND id=$3)").bind(workspace).bind(id).bind(after).fetch_one(&mut *db).await?{return Err(Error::NotFound);}
     Ok(sqlx::query_scalar::<_,Json<TaskChange>>("SELECT jsonb_build_object('id',id,'snapshot',snapshot,'audit_event_id',audit_event_id,'occurred_at',occurred_at::text) FROM tasks.task_changes WHERE workspace_id=$1 AND task_id=$2 AND ($3::uuid IS NULL OR (occurred_at,id)>(SELECT occurred_at,id FROM tasks.task_changes WHERE workspace_id=$1 AND task_id=$2 AND id=$3)) ORDER BY occurred_at,id LIMIT $4").bind(workspace).bind(id).bind(q.after).bind(limit).fetch_all(db).await?.into_iter().map(|r|r.0).collect())
 }
+
+pub(super) async fn project_many(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    access: &Access,
+    ids: &[Uuid],
+) -> Result<Vec<Task>, Error> {
+    let sql = format!(
+        "{RECORD} WHERE workspace_id=$1 AND ($2 OR assigned_membership_id=$3) AND id=ANY($4)"
+    );
+    Ok(
+        sqlx::query_scalar::<_, Json<Task>>(sqlx::AssertSqlSafe(sql.as_str()))
+            .bind(workspace)
+            .bind(access.workspace_wide)
+            .bind(access.membership_id)
+            .bind(ids)
+            .fetch_all(db)
+            .await?
+            .into_iter()
+            .map(|row| row.0)
+            .collect(),
+    )
+}

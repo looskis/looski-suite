@@ -265,13 +265,8 @@ pub async fn save(
             .map(|t| t.assigned_membership_id)
             .unwrap_or(write.membership_id)
     });
-    if !write.permits_owner(assignee) || !read_access.permits_owner(assignee) {
-        return Err(Error::Forbidden);
-    }
-    access::require_active_member(&mut tx, actor.workspace, assignee).await?;
-    let id = dao::save(&mut tx, actor.workspace, id, assignee, &input).await?;
-    let result = dao::get(&mut tx, actor.workspace, id).await?;
-    record(&mut tx, actor, &write, "tasks.saved", &result).await?;
+    assignment(&mut tx, actor, &write, &read_access, assignee).await?;
+    let result = persist(&mut tx, actor, &write, id, assignee, &input).await?;
     reliability::save_replay(
         &mut tx,
         actor.workspace,
@@ -357,4 +352,81 @@ pub async fn history(
         None
     };
     Ok(TaskHistoryPage { items, next_cursor })
+}
+
+/// A composition caller owns both the transaction and its outer retry contract.
+/// This operation still establishes current Tasks authority independently.
+pub(crate) async fn create_in_transaction(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    input: TaskInput,
+) -> Result<Task, Error> {
+    validate(&input)?;
+    let (write, read) = mutation(db, actor, "tasks.create").await?;
+    let assignee = input.assigned_membership_id.unwrap_or(write.membership_id);
+    assignment(db, actor, &write, &read, assignee).await?;
+    persist(db, actor, &write, None, assignee, &input).await
+}
+async fn assignment(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    write: &access::Access,
+    read: &access::Access,
+    assignee: Uuid,
+) -> Result<(), Error> {
+    if !write.permits_owner(assignee) || !read.permits_owner(assignee) {
+        return Err(Error::Forbidden);
+    }
+    access::require_active_member(db, actor.workspace, assignee).await
+}
+async fn persist(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    write: &access::Access,
+    id: Option<Uuid>,
+    assignee: Uuid,
+    input: &TaskInput,
+) -> Result<Task, Error> {
+    let id = dao::save(db, actor.workspace, id, assignee, input).await?;
+    let result = dao::get(db, actor.workspace, id).await?;
+    record(db, actor, write, "tasks.saved", &result).await?;
+    Ok(result)
+}
+pub(crate) async fn require_creation_replay(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    id: Uuid,
+) -> Result<(), Error> {
+    let create = require(db, actor, "tasks.create").await?;
+    let task = read(db, actor, id).await?;
+    scope(&create, &task)
+}
+pub(crate) async fn require_read(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+) -> Result<access::Access, Error> {
+    require(db, actor, "tasks.read").await
+}
+
+/// Bounded independent projections for module-owned typed links.
+pub(crate) async fn project_many(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    ids: &[Uuid],
+) -> Result<std::collections::HashMap<Uuid, Task>, Error> {
+    if ids.len() > 100 {
+        return Err(Error::Invalid(
+            "Task projection batches must contain at most 100 IDs",
+        ));
+    }
+    let a = match require(db, actor, "tasks.read").await {
+        Ok(a) => a,
+        Err(Error::Forbidden) => return Ok(std::collections::HashMap::new()),
+        Err(error) => return Err(error),
+    };
+    Ok(dao::project_many(db, actor.workspace, &a, ids)
+        .await?
+        .into_iter()
+        .map(|task| (task.id, task))
+        .collect())
 }

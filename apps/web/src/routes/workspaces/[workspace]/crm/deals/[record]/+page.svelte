@@ -113,3 +113,10 @@
     >
   </p>
 </section>
+
+<section>
+  <h2>Tasks</h2>
+  <a href={`/workspaces/${data.workspace.id}/crm/deals/${data.record.id}/tasks`}
+    >Manage follow-up tasks</a
+  >
+</section>

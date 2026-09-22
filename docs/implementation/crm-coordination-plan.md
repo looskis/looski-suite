@@ -1,0 +1,11 @@
+# CRM coordination implementation sequence
+
+The first connection is an independently authorized task linked to an opportunity or deal. CRM owns typed opportunity/deal task links; Tasks owns task content and lifecycle. A relation never grants read or write permission on either record. Link list/history applies both scopes before pagination. CRM can create a task and its association atomically by invoking a Tasks-owned transaction operation; it never reads or writes Tasks tables directly. Disabling CRM hides these links while shared Tasks remains available.
+
+Link actions need the parent read and task-link management permission, and independent task read. Creating a follow-up additionally needs Tasks create/read and a permitted active assignee. Existing task linking does not edit the task. Parent optimistic version protects link changes; archive retains references but denies new links/restoration until both records are active. Individual end/restore operations preserve evidence and cannot erase hidden links.
+
+The next coordination journey will apply a pinned workspace template revision to a deal. It creates ordinary tasks and an ordered checklist/milestone instance, with stable per-instance task references. Editing/removing the template never rewrites or deletes existing instances. Supported behavior is bounded configuration: task title/notes, explicit assignee rule, calendar due offsets, ordered milestones and a configured deal-status trigger. A general workflow engine is outside this increment.
+
+Task creation from a configured status transition will exercise PGMQ: material change, audit, job metadata and enqueue are atomic. The worker will recheck enabled modules and current initiating authority, use leases/fencing and durable retry/exhaustion state, and expose blocked/exhausted work. Resume is explicit after module re-enablement. No caller-supplied flag can create system authority.
+
+Activity definitions and logged interactions remain CRM-owned. The timeline composes authorized activity, task/link and status history through their owning interfaces. Templates, activity types, supported configuration behavior and instance revision rules are implemented before the first starter-template installation is advertised.

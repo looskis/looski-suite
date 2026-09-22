@@ -29,6 +29,175 @@ pub struct ApiClient {
 }
 
 impl ApiClient {
+    pub async fn crm_opportunity_tasks(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::task_links::TaskLinkQuery,
+    ) -> anyhow::Result<crate::crm::task_links::TaskLinkPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/tasks"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_link_opportunity_task(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::task_links::LinkTask,
+    ) -> anyhow::Result<crate::crm::task_links::TaskLink> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/tasks"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_create_opportunity_followup(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::task_links::CreateFollowup,
+    ) -> anyhow::Result<crate::crm::task_links::TaskLink> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/followups"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_end_opportunity_task(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        link_id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::task_links::EndTaskLink,
+    ) -> anyhow::Result<crate::crm::task_links::TaskLink> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/opportunities/{id}/tasks/{link_id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_opportunity_task_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        link_id: uuid::Uuid,
+        query: &crate::crm::HistoryQuery,
+    ) -> anyhow::Result<crate::crm::task_links::TaskLinkHistory> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!(
+                    "/api/v1/workspaces/{workspace}/crm/opportunities/{id}/tasks/{link_id}/history"
+                ),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_deal_tasks(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        query: &crate::crm::task_links::TaskLinkQuery,
+    ) -> anyhow::Result<crate::crm::task_links::TaskLinkPage> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/tasks"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+    pub async fn crm_link_deal_task(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::task_links::LinkTask,
+    ) -> anyhow::Result<crate::crm::task_links::TaskLink> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/tasks"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_create_deal_followup(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::task_links::CreateFollowup,
+    ) -> anyhow::Result<crate::crm::task_links::TaskLink> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/followups"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_end_deal_task(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        link_id: uuid::Uuid,
+        key: &str,
+        input: &crate::crm::task_links::EndTaskLink,
+    ) -> anyhow::Result<crate::crm::task_links::TaskLink> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::PATCH,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/tasks/{link_id}"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+    pub async fn crm_deal_task_history(
+        &self,
+        workspace: uuid::Uuid,
+        id: uuid::Uuid,
+        link_id: uuid::Uuid,
+        query: &crate::crm::HistoryQuery,
+    ) -> anyhow::Result<crate::crm::task_links::TaskLinkHistory> {
+        self.business(
+            self.authenticated(
+                reqwest::Method::GET,
+                &format!("/api/v1/workspaces/{workspace}/crm/deals/{id}/tasks/{link_id}/history"),
+            )?
+            .query(query),
+        )
+        .await
+    }
+
     pub async fn tasks_list(
         &self,
         workspace: uuid::Uuid,

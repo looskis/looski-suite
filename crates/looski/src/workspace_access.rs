@@ -50,6 +50,8 @@ fn supported() -> Vec<Permission> {
         "workspace.tags.manage",
     ];
     let scoped = [
+        "crm.opportunities.tasks.manage",
+        "crm.deals.tasks.manage",
         "tasks.read",
         "tasks.create",
         "tasks.update",

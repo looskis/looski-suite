@@ -1,5 +1,8 @@
 <script lang="ts">
-  let { fields, creating = false } = $props<{
+  let {
+    fields,
+    creating = false,
+  }: {
     creating?: boolean;
     fields: {
       title: string;
@@ -8,7 +11,7 @@
       due_on: string;
       status: string;
     };
-  }>();
+  } = $props();
 </script>
 
 <label
