@@ -15,7 +15,9 @@ import subprocess
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
-KEYS = ('COMPOSE_PROJECT_NAME', 'LOOSKI_HTTP_PORT', 'LOOSKI_PUBLIC_URL', 'LOOSKI_MAIL_MODE', 'LOOSKI_DIAGNOSTICS_MODE')
+KEYS = ('COMPOSE_PROJECT_NAME', 'LOOSKI_HTTP_PORT', 'LOOSKI_PUBLIC_URL', 'LOOSKI_MAIL_MODE', 'LOOSKI_DIAGNOSTICS_MODE',
+        'LOOSKI_TUNNEL_MODE')
+TUNNEL_CREDENTIAL_KEYS = {'AccountTag', 'TunnelSecret', 'TunnelID'}
 
 
 def configuration():
@@ -54,6 +56,11 @@ def configuration():
     values.setdefault('LOOSKI_DIAGNOSTICS_MODE', 'local')
     if values['LOOSKI_DIAGNOSTICS_MODE'] not in ('disabled','local'):
         raise SystemExit('LOOSKI_DIAGNOSTICS_MODE must be disabled or local')
+    values.setdefault('LOOSKI_TUNNEL_MODE', 'disabled')
+    if values['LOOSKI_TUNNEL_MODE'] not in ('disabled', 'cloudflare'):
+        raise SystemExit('LOOSKI_TUNNEL_MODE must be disabled or cloudflare')
+    if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare' and (origin.scheme != 'https' or origin.port):
+        raise SystemExit('A Cloudflare tunnel requires an HTTPS LOOSKI_PUBLIC_URL on the default port')
     values['LOOSKI_AUTH_MAIL_ENABLED'] = str(values['LOOSKI_MAIL_MODE'] != 'disabled').lower()
     return values
 
@@ -102,6 +109,7 @@ def configure(values):
         descriptor=os.open(diagnostics_file,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
         with os.fdopen(descriptor,'w') as stream:stream.write(diagnostics_key+'\n')
     configure_mail(values)
+    configure_tunnel(values)
     config = ROOT / '.env'
     if not config.exists():
         with config.open('x') as stream:
@@ -143,6 +151,54 @@ def configure_mail(values):
     temporary.replace(target)
 
 
+def write_private(target, content):
+    temporary = target.with_name(target.name + '.tmp')
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, 'w') as stream:
+        os.fchmod(stream.fileno(), 0o600)
+        stream.write(content)
+    temporary.replace(target)
+
+
+def configure_tunnel(values):
+    """Render the connector configuration from the one public origin.
+
+    The tunnel credential is created once by `cloudflared tunnel create` and kept
+    privately with the installation; setup never creates or rotates it.
+    """
+    state = ROOT / '.local' / values['COMPOSE_PROJECT_NAME']
+    tunnel_id = '00000000-0000-0000-0000-000000000000'
+    if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare':
+        path = state / 'cloudflare-tunnel.json'
+        if not path.is_file() or path.is_symlink() or stat.S_IMODE(path.stat().st_mode) != 0o600:
+            raise SystemExit('Cloudflare tunnel requires a regular private .local/<installation>/cloudflare-tunnel.json file with mode 0600; see docs/setup-contract.md')
+        try:
+            credentials = json.loads(path.read_text())
+            if not TUNNEL_CREDENTIAL_KEYS <= set(credentials) or any(not isinstance(credentials[k], str) or not credentials[k] for k in TUNNEL_CREDENTIAL_KEYS):
+                raise ValueError()
+            if not re.fullmatch(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', credentials['TunnelID']):
+                raise ValueError()
+        except (ValueError, TypeError, OSError):
+            raise SystemExit('Invalid Cloudflare tunnel credentials; expected the JSON file written by cloudflared tunnel create. Values are not logged.')
+        tunnel_id = credentials['TunnelID']
+    else:
+        # Compose resolves every declared secret file; the disabled connector never starts.
+        path = state / 'cloudflare-tunnel.json'
+        if not path.exists():
+            write_private(path, '{}')
+    hostname = urlsplit(values['LOOSKI_PUBLIC_URL']).hostname
+    write_private(state / 'cloudflared.yml', ''.join([
+        f'tunnel: {tunnel_id}\n',
+        'credentials-file: /run/secrets/cloudflare_tunnel\n',
+        'no-autoupdate: true\n',
+        'metrics: 127.0.0.1:2000\n',
+        'ingress:\n',
+        f'  - hostname: {hostname}\n',
+        '    service: http://gateway:8080\n',
+        '  - service: http_status:404\n',
+    ]))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['configure', 'up', 'stop', 'status', 'logs'])
@@ -154,6 +210,8 @@ def main():
     else: profiles.discard('local-mail')
     if values['LOOSKI_DIAGNOSTICS_MODE']=='local':profiles.add('observability')
     else:profiles.discard('observability')
+    if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare': profiles.add('public-tunnel')
+    else: profiles.discard('public-tunnel')
     environment['COMPOSE_PROFILES'] = ','.join(sorted(profiles))
     compose = ['docker', 'compose', '--project-directory', str(ROOT), '-f', str(ROOT / 'compose.yaml')]
 
@@ -199,13 +257,19 @@ def main():
                 except subprocess.CalledProcessError:print('Diagnostics unavailable; application startup continues without log storage',flush=True)
             else:run('stop','clickhouse')
             run('up', '-d', '--no-deps', '--wait', 'api', 'web', 'gateway', 'worker')
-            print(f"Ready: http://localhost:{values['LOOSKI_HTTP_PORT']}")
+            if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare':
+                # Recreate so a changed hostname or credential takes effect.
+                run('up', '-d', '--no-deps', '--force-recreate', '--wait', 'tunnel')
+                print(f"Ready: {values['LOOSKI_PUBLIC_URL']} (local gateway http://localhost:{values['LOOSKI_HTTP_PORT']})")
+            else:
+                run('stop', 'tunnel')
+                print(f"Ready: http://localhost:{values['LOOSKI_HTTP_PORT']}")
         elif args.command == 'stop':
             run('stop')
         elif args.command == 'status':
             run('ps', '-a')
         elif args.command == 'logs':
-            run('logs', '--tail', '80', 'api', 'web', 'gateway')
+            run('logs', '--tail', '80', 'api', 'web', 'gateway', *(['tunnel'] if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare' else []))
 
 
 if __name__ == '__main__':

@@ -14,7 +14,7 @@ Date: October 4, 2026. Scope: build-plan step 1 plus a local dependency integrat
 - Official Supabase PostgreSQL `17.6.1.136` and Auth `v2.196.0`, with bootstrap SQL sourced from `self-hosted/v0.8.2`. The required webhooks bootstrap establishes an upstream role used by the supplied roles script; packaging Auth alone must still preserve this bootstrap dependency. Suite-owned initialization does not replace Auth migrations.
 - Database bootstrap completion sentinel plus health checks. An init failure followed by a Postgres restart cannot be mistaken for completed bootstrap. Password-setting SQL suppresses statement logging.
 - Supabase CLI 2.75.0 in a serialized migration job, explicit local DB target, and a fresh migration container for every `make up`. The first suite migration enables PGMQ and a private schema-version table. Runtime role is separate from the migration role and has no schema administration grants.
-- Optional private ClickHouse packaging; collection and retention are not implemented. No API readiness dependency on ClickHouse. Cloudflare ingress example; provisioning is not implemented.
+- Optional private ClickHouse packaging; collection and retention are not implemented. No API readiness dependency on ClickHouse. Optional Cloudflare tunnel connector; tunnel/DNS provisioning is an explicit operator step.
 - Standard AGPLv3 license text, upstream Apache license/attribution, Cargo/pnpm lockfiles, formatting/lint/type-check/test commands, and a GitHub Actions workflow.
 
 ## Validation record

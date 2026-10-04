@@ -56,7 +56,7 @@ A bind conflict should fail with the conflicting setting and a suggested overrid
 
 ## Configuration sources
 
-The scaffold now implements these core configuration sources. Cloudflare provisioning and hosted-mode overlays remain pending.
+The scaffold now implements these core configuration sources, including the optional locally managed Cloudflare tunnel. Hosted-mode overlays remain pending.
 
 | File or mechanism | Owns |
 | --- | --- |
@@ -93,24 +93,26 @@ See [Compose dependency readiness](https://docs.docker.com/compose/how-tos/start
 
 ## Cloudflare Tunnel routing
 
-Proposed default: run cloudflared in the suite network and route one public hostname to `http://gateway:8080`. That route uses an internal service address, not the Mac's published port. If an existing host-run connector is used instead, route it to `http://127.0.0.1:58888` (or the configured override). Do not use `localhost` inside a connector container to refer to another container or the host.
+`LOOSKI_TUNNEL_MODE=cloudflare` runs a pinned cloudflared connector (`tunnel` service, `public-tunnel` profile) on the suite network. It dials out to Cloudflare and routes the `LOOSKI_PUBLIC_URL` hostname to `http://gateway:8080`; no additional host port is published. The tunnel is locally managed: setup renders `.local/<installation>/cloudflared.yml` from the public origin, so the hostname has one source. The default is `disabled`. A host-run connector may instead target `http://127.0.0.1:58888` (or the configured override); never use `localhost` inside a connector container to refer to another container or the host.
 
-Illustrative locally managed tunnel ingress, not a complete deployed configuration:
+Provision the tunnel identity and DNS route once with the Cloudflare account that owns the zone. Setup never creates, rotates or deletes them:
 
-```yaml
-ingress:
-  - hostname: suite.example.com
-    service: http://gateway:8080
-  - service: http_status:404
+```sh
+cloudflared tunnel login                     # authorize the zone; writes ~/.cloudflared/cert.pem
+cloudflared tunnel create looski-suite       # writes ~/.cloudflared/<tunnel-id>.json
+cloudflared tunnel route dns looski-suite suite.example.com
+install -m 600 ~/.cloudflared/<tunnel-id>.json .local/<installation>/cloudflare-tunnel.json
 ```
 
-Provisioning the actual tunnel identity, credentials, and DNS hostname route is also required. An ingress entry alone does not create DNS or a tunnel. An API-managed tunnel may express the same route in its remote configuration; choose one configuration authority, not both.
+Then set `LOOSKI_PUBLIC_URL=https://suite.example.com` and `LOOSKI_TUNNEL_MODE=cloudflare` in `.env` and run `make up`. Setup requires an HTTPS origin on the default port and a private (`0600`) credential file containing the tunnel ID and secret; it never logs the secret. Changing the public origin changes the Auth issuer, so existing sessions end and everyone signs in again. Browser form posts are only accepted from the configured origin, so use the public hostname rather than the loopback port once it is set.
+
+Run exactly one installation per tunnel: Cloudflare load-balances between all connected connectors, so a second installation started with the same credential would receive a share of the traffic. The credential is not part of encrypted recovery snapshots, because a restored copy must not join the live hostname; reissue it from Cloudflare (`cloudflared tunnel token`, or delete and recreate the tunnel and route) when moving the installation.
 
 The suite gateway routes `/api/v1/…` to Rust, the approved public `/auth/v1/…` endpoints through the validated Supabase gateway/Auth path, and frontend routes (including `/auth/confirm`) to SvelteKit. Apply the required prefix preservation/rewrite rules explicitly. Keep Auth administrative endpoints and the Supabase Data API, Studio, PostgreSQL, and ClickHouse off the public route. Validate allowlisted routes and denial behavior rather than exposing the entire upstream Supabase gateway.
 
 Set the Supabase external API URL and issuer expectations, Auth Site URL and allowed redirects, and SvelteKit public origin consistently. Preserve trusted proxy headers correctly; do not trust arbitrary client-supplied forwarded headers. Verify magic links, secure cookies, CSRF/origin checks, and that authenticated responses are not cached publicly. Cloudflare provides HTTPS reachability; Rust still authenticates and authorizes API requests.
 
-See [Cloudflare ingress configuration](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/configuration-file/). Gateway implementation and local/API-managed tunnel provisioning mode remain choices to validate in phase 0.
+See [Cloudflare ingress configuration](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/configuration-file/). Validated October 25, 2026 against `suite.loo.ski` with an isolated installation: public health, system metadata, Auth health and login pages are served with `no-store`; raw Auth admin/token, Data API and `/pg` paths return 404; cross-origin login posts are rejected; password login sets `HttpOnly; Secure; SameSite=Lax` cookies; the SSR workspace list loads; and the raw API rejects cookie-only requests. Email callbacks over the public hostname still require SMTP credentials and are tracked separately.
 
 ## Proposed setup experience
 

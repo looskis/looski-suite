@@ -76,6 +76,39 @@ class SetupConfigurationTests(unittest.TestCase):
             self.assertNotIn(secret,str(failure.exception))
             self.assertEqual(json.loads(output.read_text()),values)
 
+    def test_tunnel_requires_https_origin_and_private_credentials(self):
+        for values in [{'LOOSKI_TUNNEL_MODE':'cloudflare'},{'LOOSKI_TUNNEL_MODE':'cloudflare','LOOSKI_PUBLIC_URL':'https://suite.example.com:8443'},
+                       {'LOOSKI_TUNNEL_MODE':'ngrok','LOOSKI_PUBLIC_URL':'https://suite.example.com'}]:
+            with self.subTest(values=values), patch.dict(os.environ, values), self.assertRaises(SystemExit):
+                dev.configuration()
+        state=self.root/'.local/looski-suite';state.mkdir(parents=True)
+        with patch.dict(os.environ,{'LOOSKI_TUNNEL_MODE':'cloudflare','LOOSKI_PUBLIC_URL':'https://suite.example.com'}):
+            config=dev.configuration()
+        path=state/'cloudflare-tunnel.json'
+        secret='private-tunnel-secret'
+        credentials={'AccountTag':'account','TunnelSecret':secret,'TunnelID':'6f1c2d4e-1111-4222-8333-444455556666'}
+        path.write_text(json.dumps(credentials));path.chmod(0o644)
+        with self.assertRaises(SystemExit) as failure: dev.configure_tunnel(config)
+        self.assertNotIn(secret,str(failure.exception))
+        path.chmod(0o600)
+        dev.configure_tunnel(config)
+        rendered=(state/'cloudflared.yml').read_text()
+        self.assertEqual((state/'cloudflared.yml').stat().st_mode & 0o777,0o600)
+        self.assertIn('tunnel: 6f1c2d4e-1111-4222-8333-444455556666',rendered)
+        self.assertIn('hostname: suite.example.com\n    service: http://gateway:8080',rendered)
+        self.assertNotIn(secret,rendered)
+        for changed in [{'TunnelID':'../other'},{'TunnelSecret':''}]:
+            path.write_text(json.dumps({**credentials,**changed}))
+            with self.assertRaises(SystemExit) as failure: dev.configure_tunnel(config)
+            self.assertNotIn(secret,str(failure.exception))
+
+    def test_disabled_tunnel_never_replaces_existing_credentials(self):
+        state=self.root/'.local/looski-suite';state.mkdir(parents=True)
+        path=state/'cloudflare-tunnel.json'
+        path.write_text('{"kept":true}')
+        dev.configure_tunnel(dev.configuration())
+        self.assertEqual(path.read_text(),'{"kept":true}')
+
     def test_mail_modes_replace_only_the_mail_secret(self):
         state=self.root/'.local/looski-suite';state.mkdir(parents=True)
         config=dev.configuration()

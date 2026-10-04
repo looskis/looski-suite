@@ -1,6 +1,8 @@
-.PHONY: setup up stop status check test format contracts smoke acceptance
+.PHONY: setup smtp up stop status check test format contracts smoke acceptance
 setup:
 	python3 scripts/dev.py configure
+smtp:
+	python3 scripts/configure_smtp.py
 up:
 	python3 scripts/dev.py up
 stop:
