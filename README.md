@@ -70,11 +70,18 @@ curl http://localhost:58888/api/v1/system
 cargo run --locked -p looski -- status
 cargo run --locked -p looski -- mcp
 cargo run --locked -p looski -- openapi
-# Supply an existing session access token in a private file (never in argv):
+# Sign in through the browser, then use the stored login:
+cargo run --locked -p looski -- login
+cargo run --locked -p looski -- whoami
+cargo run --locked -p looski -- workspaces
+cargo run --locked -p looski -- logout
+# Or supply an externally managed access token in a private file (never in argv):
 LOOSKI_ACCESS_TOKEN_FILE=/absolute/path/to/token cargo run --locked -p looski -- workspaces
 ```
 
-The MCP command speaks JSON-RPC on stdin/stdout with diagnostics on stderr. It advertises system/workspace, Contacts, CRM, Tasks, Files, access administration, invitation, jobs and export tools, which call the same HTTP API as the CLI. A local MCP client can launch `target/debug/looski mcp` with `LOOSKI_API_URL=http://localhost:58888`. Set `LOOSKI_ACCESS_TOKEN_FILE` for workspace access; the file is reread on each call so an external session manager can replace it. CLI/MCP login acquisition and refresh are not implemented yet. External OAuth tokens are explicitly rejected until scoped grants exist.
+`looski login` uses authorization code + PKCE (S256) without a local callback. It prints a link to `/cli/authorize` on the installation named by `LOOSKI_API_URL`/`--api-url` (the public origin, default `http://localhost:58888`) and tries to open it; approve it in a browser signed in to that installation, then paste the one-time code (valid five minutes) back into the terminal. The installation mints a new Auth session for the CLI that is independent of the browser session: logging out of either leaves the other signed in. The session is stored per installation origin in the macOS Keychain, or elsewhere in a `0600` file under `$XDG_CONFIG_HOME/looski-suite/sessions/` (default `~/.config`). `LOOSKI_CREDENTIAL_STORE=file` forces the file store (on macOS under `~/Library/Application Support/Looski Suite/`), and `LOOSKI_CONFIG_DIR` relocates it. Access tokens refresh automatically before expiry and after a rejected request, under a cross-process lock so CLI and MCP processes never reuse a rotating refresh token. `looski logout` revokes the CLI session and deletes it locally. Authenticated calls require HTTPS except on loopback.
+
+The MCP command speaks JSON-RPC on stdin/stdout with diagnostics on stderr. It advertises system/workspace, Contacts, CRM, Tasks, Files, access administration, invitation, jobs and export tools, which call the same HTTP API as the CLI. A local MCP client can launch `target/debug/looski mcp` with `LOOSKI_API_URL=http://localhost:58888`; it uses the stored `looski login` session and asks the user to run `looski login` when there is none. `LOOSKI_ACCESS_TOKEN_FILE`, when set, takes precedence; the file is reread on each call so an external session manager can replace it. External OAuth tokens are explicitly rejected until scoped grants exist.
 
 The generated HTTP contract is served at `/api/v1/openapi.json` and checked in at `contracts/openapi.json`. Run `pnpm api:generate` after changing endpoint metadata. `openapi-typescript` generates frontend types; `openapi-fetch` provides typed calls. Public metadata has no bearer security requirement; business operations declare bearer security and enforce current action/resource permissions inside Rust business operations.
 

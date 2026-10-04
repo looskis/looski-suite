@@ -64,7 +64,7 @@ enum Command {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
         #[arg(long)]
         workspace: uuid::Uuid,
         #[command(subcommand)]
@@ -75,7 +75,7 @@ enum Command {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
         #[arg(long)]
         workspace: uuid::Uuid,
         #[command(subcommand)]
@@ -86,7 +86,7 @@ enum Command {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
         #[arg(long)]
         workspace: uuid::Uuid,
         #[command(subcommand)]
@@ -106,7 +106,7 @@ enum Command {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
         #[arg(long)]
         workspace: uuid::Uuid,
         #[command(subcommand)]
@@ -117,7 +117,7 @@ enum Command {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
         #[arg(long)]
         workspace: uuid::Uuid,
         #[command(subcommand)]
@@ -128,7 +128,7 @@ enum Command {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
         #[arg(long)]
         workspace: uuid::Uuid,
         #[command(subcommand)]
@@ -136,19 +136,40 @@ enum Command {
     },
     /// Provision the first owner locally; reads credentials as JSON from stdin.
     BootstrapOwner,
-    /// List permitted workspaces using an access-token file.
+    /// Sign in through the browser and store a CLI/MCP session for this installation.
+    Login {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        /// Name shown on the approval page; defaults to this host's name.
+        #[arg(long)]
+        device_label: Option<String>,
+        /// Print the link without trying to open a browser.
+        #[arg(long)]
+        no_browser: bool,
+    },
+    /// Revoke and forget the stored session for this installation.
+    Logout {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+    },
+    /// Show the signed-in identity and the workspaces it can currently use.
+    Whoami {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+    },
+    /// List permitted workspaces with the stored login or an access-token file.
     Workspaces {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
     },
     /// Workspace Contacts operations. Mutations read their JSON body from stdin.
     Contacts {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
         #[arg(long)]
         workspace: uuid::Uuid,
         #[command(subcommand)]
@@ -159,7 +180,7 @@ enum Command {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
         #[arg(long)]
         workspace: uuid::Uuid,
         #[command(subcommand)]
@@ -170,7 +191,7 @@ enum Command {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
         #[arg(long)]
         workspace: uuid::Uuid,
         #[command(subcommand)]
@@ -181,7 +202,7 @@ enum Command {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
         api_url: String,
         #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
-        token_file: std::path::PathBuf,
+        token_file: Option<std::path::PathBuf>,
         #[arg(long)]
         workspace: uuid::Uuid,
         #[command(subcommand)]
@@ -1122,7 +1143,7 @@ async fn run() -> anyhow::Result<()> {
             workspace,
             action,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             let result = match action {
                 FilesCommand::List {
                     after,
@@ -1198,7 +1219,7 @@ async fn run() -> anyhow::Result<()> {
             workspace,
             action,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             match action {
                 ExportCommand::Collections => println!(
                     "{}",
@@ -1216,6 +1237,46 @@ async fn run() -> anyhow::Result<()> {
         }
 
         Command::Openapi => println!("{}", api::openapi().to_pretty_json()?),
+        Command::Login {
+            api_url,
+            device_label,
+            no_browser,
+        } => {
+            let client = ApiClient::new(&api_url)?;
+            let device_label = device_label.or_else(|| {
+                let host = std::process::Command::new("hostname").output().ok()?;
+                let host = String::from_utf8(host.stdout).ok()?;
+                Some(format!("Looski CLI on {}", host.trim()))
+            });
+            let status = client
+                .login()?
+                .login(client.http()?, device_label, !no_browser)
+                .await?;
+            println!("{}", serde_json::to_string(&status)?);
+        }
+        Command::Logout { api_url } => {
+            let client = ApiClient::new(&api_url)?;
+            let login = client.login()?;
+            let signed_in = login.status()?.is_some();
+            let revoked = login.logout(client.http()?).await?;
+            println!(
+                "{}",
+                serde_json::json!({"origin": login.origin(), "signed_in": false, "was_signed_in": signed_in, "server_revoked": revoked})
+            );
+        }
+        Command::Whoami { api_url } => {
+            let client = ApiClient::new(&api_url)?.with_credentials(None)?;
+            // Proves the session still works and reflects current permissions.
+            let workspaces = client.workspaces().await?;
+            let status = client
+                .login()?
+                .status()?
+                .ok_or_else(|| anyhow::anyhow!("Not signed in. Run `looski login`."))?;
+            println!(
+                "{}",
+                serde_json::json!({"origin": status.origin, "user": status.user, "access_expires_at": status.access_expires_at, "credential_store": status.credential_store, "workspaces": workspaces})
+            );
+        }
         Command::Status { api_url } => {
             let info = ApiClient::new(&api_url)?.system().await?;
             println!("{}", serde_json::to_string_pretty(&info)?);
@@ -1224,7 +1285,7 @@ async fn run() -> anyhow::Result<()> {
             api_url,
             token_file,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             println!(
                 "{}",
                 serde_json::to_string_pretty(&client.workspaces().await?)?
@@ -1236,7 +1297,7 @@ async fn run() -> anyhow::Result<()> {
             workspace,
             action,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             let result = match action {
                 ContactCommand::Organizations { id } => {
                     serde_json::to_value(client.contact_organizations(workspace, id).await?)?
@@ -1370,7 +1431,7 @@ async fn run() -> anyhow::Result<()> {
             workspace,
             action,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             let result = match action {
                 OrganizationCommand::Tags { id } => {
                     serde_json::to_value(client.organizations_tags(workspace, id).await?)?
@@ -1460,7 +1521,7 @@ async fn run() -> anyhow::Result<()> {
             workspace,
             action,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             match action {
                 AccessCommand::PreviewInvitation { id } => println!(
                     "{}",
@@ -1635,7 +1696,7 @@ async fn run() -> anyhow::Result<()> {
             workspace,
             action,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             match action {
                 JobsCommand::List { limit, after } => println!(
                     "{}",
@@ -1681,7 +1742,7 @@ async fn run() -> anyhow::Result<()> {
             workspace,
             action,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             let result = match action {
                 TasksCommand::Types {
                     limit,
@@ -1869,7 +1930,7 @@ async fn run() -> anyhow::Result<()> {
             workspace,
             action,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             match action {
                 CrmCommand::OpportunityTasks {
                     id,
@@ -3147,7 +3208,7 @@ async fn run() -> anyhow::Result<()> {
             workspace,
             action,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             let result = match action {
                 TagCommand::List {
                     limit,
@@ -3199,7 +3260,7 @@ async fn run() -> anyhow::Result<()> {
             workspace,
             action,
         } => {
-            let client = ApiClient::new(&api_url)?.with_token_file(token_file);
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             let result = match action {
                 IntakeCommand::List {
                     limit,
@@ -3252,10 +3313,7 @@ async fn run() -> anyhow::Result<()> {
             api_url,
             token_file,
         } => {
-            let mut client = ApiClient::new(&api_url)?;
-            if let Some(file) = token_file {
-                client = client.with_token_file(file);
-            }
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             McpServer::new(client)
                 .serve(rmcp::transport::stdio())
                 .await?
@@ -3291,7 +3349,7 @@ async fn run() -> anyhow::Result<()> {
                 )
                 .fetch_one(&db)
                 .await?
-                    == 28,
+                    == 29,
                 "Worker requires current schema"
             );
             let invitation_key =
@@ -3351,6 +3409,11 @@ async fn run() -> anyhow::Result<()> {
                     read_jwt_secret()?.as_bytes(),
                     std::env::var("LOOSKI_AUTH_ISSUER")?,
                 ),
+                cli_login: looski::cli_login::Service::new(
+                    std::env::var("LOOSKI_AUTH_INTERNAL_URL")?,
+                    std::env::var("LOOSKI_AUTH_ISSUER")?,
+                    read_jwt_secret()?.as_bytes(),
+                )?,
             };
             let listener = tokio::net::TcpListener::bind(bind).await?;
             tracing::info!(%bind, "API listening");

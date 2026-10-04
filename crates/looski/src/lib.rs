@@ -2,7 +2,9 @@
 pub mod api;
 pub mod application;
 pub mod bootstrap;
+pub mod cli_login;
 pub mod client;
+pub mod credentials;
 pub mod identity;
 pub mod mcp;
 pub mod workspaces;

@@ -1,6 +1,12 @@
 {
   admin off
   auto_https off
+  # Only the tunnel connector and other Compose peers may assert a client
+  # address; Cloudflare overwrites CF-Connecting-IP at its edge.
+  servers {
+    trusted_proxies static private_ranges
+    client_ip_headers CF-Connecting-IP
+  }
 }
 
 :8080 {
@@ -9,7 +15,10 @@
     reverse_proxy api:8080
   }
   handle /api/v1/* {
-    reverse_proxy api:8080
+    # API throttles key on the last X-Forwarded-For entry; send exactly one.
+    reverse_proxy api:8080 {
+      header_up X-Forwarded-For {client_ip}
+    }
   }
   # Auth health is public; sign-in/callbacks run through the web server.
   handle /auth/v1/health {

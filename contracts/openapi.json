@@ -8,6 +8,240 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/cli/authorizations": {
+      "post": {
+        "tags": [
+          "cli"
+        ],
+        "operationId": "cli_authorization_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAuthorization"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Authorization"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cli/sessions": {
+      "post": {
+        "tags": [
+          "cli"
+        ],
+        "operationId": "cli_session_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeCode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CliSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cli/sessions/logout": {
+      "post": {
+        "tags": [
+          "cli"
+        ],
+        "operationId": "cli_session_logout",
+        "responses": {
+          "204": {},
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/cli/sessions/refresh": {
+      "post": {
+        "tags": [
+          "cli"
+        ],
+        "operationId": "cli_session_refresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshSession"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CliSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system": {
       "get": {
         "tags": [
@@ -18180,6 +18414,27 @@
           "fixed"
         ]
       },
+      "Authorization": {
+        "type": "object",
+        "required": [
+          "code",
+          "expires_at",
+          "expires_in"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "One-time code. Display it to its owner; never put it in URLs or logs."
+          },
+          "expires_at": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "ChangeJob": {
         "type": "object",
         "required": [
@@ -18196,6 +18451,35 @@
           }
         },
         "additionalProperties": false
+      },
+      "CliSession": {
+        "type": "object",
+        "description": "A first-party Auth session for the CLI/MCP. The refresh token rotates.",
+        "required": [
+          "access_token",
+          "refresh_token",
+          "token_type",
+          "expires_in",
+          "user"
+        ],
+        "properties": {
+          "access_token": {
+            "type": "string"
+          },
+          "expires_in": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "refresh_token": {
+            "type": "string"
+          },
+          "token_type": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/SessionUser"
+          }
+        }
       },
       "Collection": {
         "type": "string",
@@ -18770,6 +19054,31 @@
             }
           }
         ]
+      },
+      "CreateAuthorization": {
+        "type": "object",
+        "required": [
+          "code_challenge",
+          "code_challenge_method"
+        ],
+        "properties": {
+          "code_challenge": {
+            "type": "string",
+            "description": "BASE64URL(SHA-256(code_verifier)) without padding."
+          },
+          "code_challenge_method": {
+            "type": "string",
+            "description": "Only `S256` is accepted."
+          },
+          "device_label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Caller-reported device name, shown for recognition only."
+          }
+        },
+        "additionalProperties": false
       },
       "CreateFollowup": {
         "type": "object",
@@ -19374,6 +19683,22 @@
             }
           }
         ]
+      },
+      "ExchangeCode": {
+        "type": "object",
+        "required": [
+          "code",
+          "code_verifier"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "code_verifier": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "ExportPage": {
         "type": "object",
@@ -20741,6 +21066,18 @@
         },
         "additionalProperties": false
       },
+      "RefreshSession": {
+        "type": "object",
+        "required": [
+          "refresh_token"
+        ],
+        "properties": {
+          "refresh_token": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
       "Relationship": {
         "type": "object",
         "required": [
@@ -21272,6 +21609,24 @@
           }
         },
         "additionalProperties": false
+      },
+      "SessionUser": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       },
       "SetModule": {
         "type": "object",

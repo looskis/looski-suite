@@ -9,6 +9,7 @@ mod task_configuration;
 mod tasks;
 mod workspace_access;
 // SPDX-License-Identifier: AGPL-3.0-only
+mod cli_login;
 mod contacts;
 mod exports;
 mod files;
@@ -36,6 +37,7 @@ pub struct AppState {
     pub auth_url: String,
     pub verifier: crate::identity::Verifier,
     pub invitation_tokens: crate::workspace_access::invitations::TokenIssuer,
+    pub cli_login: crate::cli_login::Service,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -80,7 +82,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 28)
+        .is_ok_and(|version| version == 29)
     };
     let auth = async {
         state
@@ -210,6 +212,7 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(system))
         .routes(routes!(ready))
         .routes(routes!(workspaces))
+        .merge(cli_login::routes())
         .merge(contacts::routes())
         .merge(organizations::routes())
         .merge(tags::routes())
@@ -279,6 +282,12 @@ mod tests {
                 b"test-key",
                 "http://localhost/auth/v1".into(),
             ),
+            cli_login: crate::cli_login::Service::new(
+                "http://127.0.0.1:1".into(),
+                "http://localhost/auth/v1".into(),
+                b"test-key",
+            )
+            .unwrap(),
         })
     }
 

@@ -3080,18 +3080,10 @@ impl McpServer {
     }
 
     #[tool(
-        description = "List workspaces allowed by the configured first-party session and current suite permissions."
+        description = "List workspaces allowed by the signed-in first-party session and current suite permissions."
     )]
     async fn list_workspaces(&self) -> Result<CallToolResult, ErrorData> {
-        match self.client.workspaces().await {
-            Ok(workspaces) => Ok(CallToolResult::success(vec![ContentBlock::text(
-                serde_json::to_string(&workspaces)
-                    .map_err(|_| ErrorData::internal_error("Could not encode workspaces", None))?,
-            )])),
-            Err(_) => Ok(CallToolResult::error(vec![ContentBlock::text(
-                "Workspace access failed. Check the API and the session in LOOSKI_ACCESS_TOKEN_FILE.",
-            )])),
-        }
+        business_result(self.client.workspaces().await)
     }
     #[tool(
         description = "List permitted workspace contacts with bounded cursor pagination and optional name search."
@@ -3331,6 +3323,6 @@ impl ServerHandler for McpServer {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(Implementation::new("looski-suite", env!("CARGO_PKG_VERSION")))
-            .with_instructions("system_status is public. Business tools use LOOSKI_ACCESS_TOKEN_FILE and the same authorization as the HTTP API. No credentials are accepted as tool arguments.")
+            .with_instructions("system_status is public. Business tools use the session stored by `looski login` (or LOOSKI_ACCESS_TOKEN_FILE when set) and the same authorization as the HTTP API. If a tool reports `unauthenticated`, ask the user to run `looski login` in a terminal. No credentials are accepted as tool arguments.")
     }
 }

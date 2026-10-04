@@ -43,9 +43,12 @@ status = subprocess.check_output([str(binary), 'status', '--api-url', base], tex
 assert json.loads(status) == system
 
 # Real stdio initialization, discovery, and tool call. stdout must remain JSON-RPC.
-with tempfile.TemporaryFile() as errors:
+# Without a token file, use an empty private login store so a developer's own
+# `looski login` cannot change the unauthenticated expectation below.
+with tempfile.TemporaryFile() as errors, tempfile.TemporaryDirectory() as logins:
     process = subprocess.Popen([str(binary), 'mcp', '--api-url', base], stdin=subprocess.PIPE,
-                               stdout=subprocess.PIPE, stderr=errors, text=True, bufsize=1)
+                               stdout=subprocess.PIPE, stderr=errors, text=True, bufsize=1,
+                               env={**os.environ, 'LOOSKI_CONFIG_DIR': logins, 'LOOSKI_CREDENTIAL_STORE': 'file'})
     selector = selectors.DefaultSelector()
     selector.register(process.stdout, selectors.EVENT_READ)
 
@@ -82,7 +85,8 @@ with tempfile.TemporaryFile() as errors:
             assert not access.get('isError')
             assert json.loads(access['content'][0]['text']) == json.loads(expected)
         else:
-            assert access['isError']
+            assert access['isError'] and 'looski login' in access['content'][0]['text']
+            assert access['structuredContent']['code'] == 'unauthenticated'
     finally:
         process.stdin.close()
         try:

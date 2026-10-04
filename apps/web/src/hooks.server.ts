@@ -6,7 +6,8 @@ export const handle: Handle = async ({ event, resolve }) => {
   response.headers.set(
     'Referrer-Policy',
     event.url.pathname.startsWith('/auth/') ||
-      event.url.pathname.startsWith('/invitations/')
+      event.url.pathname.startsWith('/invitations/') ||
+      event.url.pathname.startsWith('/cli/')
       ? 'no-referrer'
       : 'same-origin',
   );

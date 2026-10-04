@@ -4,6 +4,70 @@
  */
 
 export interface paths {
+    "/api/v1/cli/authorizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cli_authorization_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cli/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cli_session_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cli/sessions/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cli_session_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cli/sessions/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cli_session_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system": {
         parameters: {
             query?: never;
@@ -1853,10 +1917,26 @@ export interface components {
         };
         /** @enum {string} */
         AssignmentRule: "initiator" | "context_owner" | "fixed";
+        Authorization: {
+            /** @description One-time code. Display it to its owner; never put it in URLs or logs. */
+            code: string;
+            expires_at: string;
+            /** Format: int64 */
+            expires_in: number;
+        };
         ChangeJob: {
             action: components["schemas"]["JobAction"];
             /** Format: int64 */
             expected_version: number;
+        };
+        /** @description A first-party Auth session for the CLI/MCP. The refresh token rotates. */
+        CliSession: {
+            access_token: string;
+            /** Format: int64 */
+            expires_in: number;
+            refresh_token: string;
+            token_type: string;
+            user: components["schemas"]["SessionUser"];
         };
         /** @enum {string} */
         Collection: "coordination_rules" | "contact_organizations" | "contact_tags" | "organization_tags" | "opportunity_tags" | "deal_tags" | "contacts" | "organizations" | "tags" | "opportunities" | "deals" | "tasks" | "files" | "task_types" | "task_templates" | "task_revisions" | "task_history" | "activity_types" | "activity_history" | "coordination_templates" | "coordination_revisions" | "deal_coordination" | "pipelines" | "stages" | "categories" | "statuses" | "opportunity_contacts" | "opportunity_organizations" | "deal_contacts" | "deal_organizations" | "opportunity_tasks" | "opportunity_history" | "deal_tasks" | "deal_history" | "contact_activities" | "opportunity_activities" | "deal_activities";
@@ -2007,6 +2087,14 @@ export interface components {
             anchor_id: string;
             anchor_kind: components["schemas"]["AnchorKind"];
         };
+        CreateAuthorization: {
+            /** @description BASE64URL(SHA-256(code_verifier)) without padding. */
+            code_challenge: string;
+            /** @description Only `S256` is accepted. */
+            code_challenge_method: string;
+            /** @description Caller-reported device name, shown for recognition only. */
+            device_label?: string | null;
+        };
         CreateFollowup: {
             /** Format: int64 */
             expected_version: number;
@@ -2155,6 +2243,10 @@ export interface components {
             detail: components["schemas"]["LinkEvent"];
             /** @enum {string} */
             kind: "task_link";
+        };
+        ExchangeCode: {
+            code: string;
+            code_verifier: string;
         };
         ExportPage: {
             items: unknown[];
@@ -2528,6 +2620,9 @@ export interface components {
         PreviewInvitation: {
             token: string;
         };
+        RefreshSession: {
+            refresh_token: string;
+        };
         Relationship: {
             /** Format: uuid */
             contact_id: string;
@@ -2664,6 +2759,11 @@ export interface components {
         SendInvitation: {
             /** Format: int64 */
             expected_version: number;
+        };
+        SessionUser: {
+            email?: string | null;
+            /** Format: uuid */
+            id: string;
         };
         SetModule: {
             enabled: boolean;
@@ -2920,6 +3020,204 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    cli_authorization_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAuthorization"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Authorization"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    cli_session_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExchangeCode"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CliSession"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    cli_session_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    cli_session_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshSession"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CliSession"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     getSystem: {
         parameters: {
             query?: never;
