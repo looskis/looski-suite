@@ -361,6 +361,28 @@ impl Login {
         Ok(revoked)
     }
 
+    /// The installation's configured browser origin. A local client may reach
+    /// the API on loopback while browser form posts are only accepted from the
+    /// public origin; fall back to the API address when it is not advertised.
+    async fn approval_base(&self, http: &reqwest::Client) -> reqwest::Url {
+        let advertised = async {
+            let system: crate::api::SystemResponse = http
+                .get(self.base.join("/api/v1/system").ok()?)
+                .send()
+                .await
+                .ok()?
+                .error_for_status()
+                .ok()?
+                .json()
+                .await
+                .ok()?;
+            let url = reqwest::Url::parse(&system.public_url).ok()?;
+            (matches!(url.scheme(), "http" | "https") && url.path() == "/" && url.query().is_none())
+                .then_some(url)
+        };
+        advertised.await.unwrap_or_else(|| self.base.clone())
+    }
+
     /// Interactive authorization-code + PKCE sign-in with a pasted code.
     pub async fn login(
         &self,
@@ -375,7 +397,8 @@ impl Login {
         };
         let verifier = random(32)?;
         let state = random(16)?;
-        let mut url = self.base.join("/cli/authorize")?;
+        let approval = self.approval_base(http).await;
+        let mut url = approval.join("/cli/authorize")?;
         url.query_pairs_mut()
             .append_pair("code_challenge", &crate::cli_login::challenge(&verifier))
             .append_pair("code_challenge_method", "S256")
@@ -386,7 +409,7 @@ impl Login {
         }
         eprintln!(
             "Open this link in a browser signed in to {}:\n\n  {url}\n",
-            self.origin
+            approval.origin().ascii_serialization()
         );
         if open_browser {
             let opener = if cfg!(target_os = "macos") {

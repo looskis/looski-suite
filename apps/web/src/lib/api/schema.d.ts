@@ -2821,6 +2821,11 @@ export interface components {
         };
         SystemResponse: {
             name: string;
+            /**
+             * @description Browser origin for sign-in approval; may differ from the API address a
+             *     local client uses. Absent from older servers.
+             */
+            public_url?: string;
             stage: string;
             version: string;
         };
