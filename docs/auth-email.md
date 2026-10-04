@@ -6,7 +6,7 @@ Set `LOOSKI_MAIL_MODE` in `.env` (or the setup environment), then run `make up`:
 
 - `disabled`: default; no email delivery UI. Auth has an unreachable SMTP endpoint so it cannot fall back to logging verification messages.
 - `local`: loopback development only. Private Mailpit captures messages within the Compose network, with no published inbox/SMTP ports and a maximum of 100 messages. Capture is ephemeral; stopping/recreating may discard it. Do not use real customer mail here.
-- `smtp`: use a provider-neutral SMTP account. Create `.local/<COMPOSE_PROJECT_NAME>/smtp.json` with file permissions `0600`. All six fields are required: `host`, numeric `port` (465), `user`, `password`, `from`, and `sender_name`. The sender must be allowed by the provider. Use an app-specific SMTP credential when required. Never put credentials in `.env`, shell arguments, issue reports or tracked files.
+- `smtp`: use a provider-neutral SMTP account. Run `make smtp` to enter it at a prompt (the password is not echoed); it writes `.local/<COMPOSE_PROJECT_NAME>/smtp.json` with file permissions `0600` and sets `LOOSKI_MAIL_MODE=smtp`. You can also create that file yourself. All six fields are required: `host`, numeric `port` (465), `user`, `password`, `from`, and `sender_name`. The sender must be allowed by the provider. Use an app-specific SMTP credential when required. Never put credentials in `.env`, shell arguments, issue reports or tracked files.
 
 Example shape (placeholder values only):
 

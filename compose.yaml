@@ -234,6 +234,23 @@ services:
       timeout: 3s
       retries: 10
 
+  # Optional public HTTPS ingress. The connector dials out to Cloudflare and
+  # reaches only the suite gateway; no additional host port is published.
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.0
+    restart: unless-stopped
+    logging: *logging
+    profiles: [public-tunnel]
+    command: ["tunnel", "--config", "/run/secrets/cloudflare_config", "run"]
+    secrets: [cloudflare_config, cloudflare_tunnel]
+    depends_on:
+      gateway: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
   # Optional diagnostics never gate API/worker readiness or business writes.
   clickhouse:
     image: clickhouse/clickhouse-server:25.8.4.13
@@ -255,6 +272,10 @@ services:
       retries: 10
 
 secrets:
+  cloudflare_config:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/cloudflared.yml
+  cloudflare_tunnel:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/cloudflare-tunnel.json
   diagnostics_key:
     file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/diagnostics-key
   invitation_key:
