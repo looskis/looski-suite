@@ -21847,6 +21847,10 @@
           "name": {
             "type": "string"
           },
+          "public_url": {
+            "type": "string",
+            "description": "Browser origin for sign-in approval; may differ from the API address a\nlocal client uses. Absent from older servers."
+          },
           "stage": {
             "type": "string"
           },

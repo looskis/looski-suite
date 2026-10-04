@@ -35,6 +35,8 @@ pub struct AppState {
     pub db: PgPool,
     pub http: reqwest::Client,
     pub auth_url: String,
+    /// Canonical browser origin; clients send people here to approve sign-ins.
+    pub public_url: String,
     pub verifier: crate::identity::Verifier,
     pub invitation_tokens: crate::workspace_access::invitations::TokenIssuer,
     pub cli_login: crate::cli_login::Service,
@@ -45,6 +47,10 @@ pub struct SystemResponse {
     pub name: String,
     pub version: String,
     pub stage: String,
+    /// Browser origin for sign-in approval; may differ from the API address a
+    /// local client uses. Absent from older servers.
+    #[serde(default)]
+    pub public_url: String,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -60,12 +66,13 @@ pub struct HealthResponse {
 
 #[utoipa::path(get, path = "/api/v1/system", operation_id = "getSystem", tag = "system",
     responses((status = 200, body = SystemResponse)))]
-async fn system() -> Json<SystemResponse> {
+async fn system(State(state): State<AppState>) -> Json<SystemResponse> {
     let info = crate::application::system_info();
     Json(SystemResponse {
         name: info.name.into(),
         version: info.version.into(),
         stage: info.stage.into(),
+        public_url: state.public_url.clone(),
     })
 }
 
@@ -278,6 +285,7 @@ mod tests {
                 .build()
                 .unwrap(),
             auth_url: "http://127.0.0.1:1".into(),
+            public_url: "http://localhost:58888".into(),
             verifier: crate::identity::Verifier::new(
                 b"test-key",
                 "http://localhost/auth/v1".into(),

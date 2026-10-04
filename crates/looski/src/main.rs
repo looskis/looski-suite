@@ -3405,6 +3405,7 @@ async fn run() -> anyhow::Result<()> {
                     .timeout(Duration::from_secs(2))
                     .build()?,
                 auth_url: std::env::var("LOOSKI_AUTH_INTERNAL_URL")?,
+                public_url: std::env::var("LOOSKI_PUBLIC_URL")?,
                 verifier: looski::identity::Verifier::new(
                     read_jwt_secret()?.as_bytes(),
                     std::env::var("LOOSKI_AUTH_ISSUER")?,
