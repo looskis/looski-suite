@@ -24,8 +24,17 @@ impl std::error::Error for ApiFailure {}
 pub struct ApiClient {
     http: reqwest::Client,
     base_url: reqwest::Url,
-    token_file: Option<std::path::PathBuf>,
+    credentials: Credentials,
     source_interface: &'static str,
+}
+
+#[derive(Clone)]
+enum Credentials {
+    Missing,
+    /// Externally managed access token, reread on every request.
+    TokenFile(std::path::PathBuf),
+    /// Stored `looski login` session, refreshed automatically.
+    Login(std::sync::Arc<crate::credentials::Login>),
 }
 
 impl ApiClient {
@@ -1963,7 +1972,7 @@ impl ApiClient {
                 .timeout(std::time::Duration::from_secs(5))
                 .build()?,
             base_url,
-            token_file: None,
+            credentials: Credentials::Missing,
             source_interface: "cli",
         })
     }
@@ -1973,15 +1982,32 @@ impl ApiClient {
         self
     }
     pub fn with_token_file(mut self, file: std::path::PathBuf) -> Self {
-        self.token_file = Some(file);
+        self.credentials = Credentials::TokenFile(file);
         self
     }
+    /// An explicit token file takes precedence over the stored login.
+    pub fn with_credentials(self, token_file: Option<std::path::PathBuf>) -> anyhow::Result<Self> {
+        Ok(match token_file {
+            Some(file) => self.with_token_file(file),
+            None => {
+                let login = self.login()?;
+                Self {
+                    credentials: Credentials::Login(std::sync::Arc::new(login)),
+                    ..self
+                }
+            }
+        })
+    }
+    /// Stored-login access for this installation's origin.
+    pub fn login(&self) -> anyhow::Result<crate::credentials::Login> {
+        crate::credentials::Login::for_installation(&self.base_url)
+    }
+    pub fn http(&self) -> anyhow::Result<&reqwest::Client> {
+        self.require_secure_transport()?;
+        Ok(&self.http)
+    }
 
-    fn authenticated(
-        &self,
-        method: reqwest::Method,
-        path: &str,
-    ) -> anyhow::Result<reqwest::RequestBuilder> {
+    fn require_secure_transport(&self) -> anyhow::Result<()> {
         let host = self.base_url.host_str().unwrap_or_default();
         let loopback = host == "localhost"
             || host
@@ -1992,25 +2018,44 @@ impl ApiClient {
             self.base_url.scheme() == "https" || loopback,
             "Authenticated API calls require HTTPS except on localhost/loopback"
         );
-        let file = self.token_file.as_ref().ok_or_else(|| {
-            anyhow::anyhow!("Set LOOSKI_ACCESS_TOKEN_FILE to a private session access-token file")
-        })?;
-        let token = std::fs::read_to_string(file)?;
+        Ok(())
+    }
+
+    /// The bearer token is attached when the request is sent, so stored logins
+    /// can refresh first.
+    fn authenticated(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+    ) -> anyhow::Result<reqwest::RequestBuilder> {
+        self.require_secure_transport()?;
+        if matches!(self.credentials, Credentials::Missing) {
+            return Err(ApiFailure {
+                status: 401,
+                code: "unauthenticated".into(),
+                message: "Not signed in. Run `looski login` or set LOOSKI_ACCESS_TOKEN_FILE."
+                    .into(),
+                request_id: None,
+            }
+            .into());
+        }
         Ok(self
             .http
             .request(method, self.base_url.join(path)?)
-            .bearer_auth(token.trim())
             .header("x-looski-interface", self.source_interface))
     }
 
+    async fn token(&self, rejected: Option<&str>) -> anyhow::Result<String> {
+        match &self.credentials {
+            Credentials::TokenFile(file) => Ok(std::fs::read_to_string(file)?.trim().to_owned()),
+            Credentials::Login(login) => login.access_token(&self.http, rejected).await,
+            Credentials::Missing => anyhow::bail!("No credentials are configured"),
+        }
+    }
+
     pub async fn workspaces(&self) -> anyhow::Result<Vec<crate::workspaces::Workspace>> {
-        Ok(self
-            .authenticated(reqwest::Method::GET, "/api/v1/workspaces")?
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?)
+        self.business(self.authenticated(reqwest::Method::GET, "/api/v1/workspaces")?)
+            .await
     }
 
     pub async fn contacts(
@@ -2415,7 +2460,31 @@ impl ApiClient {
         &self,
         request: reqwest::RequestBuilder,
     ) -> anyhow::Result<T> {
-        let response = request.send().await?;
+        fn bearer(request: &mut reqwest::Request, token: &str) -> anyhow::Result<()> {
+            let mut value = reqwest::header::HeaderValue::from_str(&format!("Bearer {token}"))?;
+            value.set_sensitive(true);
+            request
+                .headers_mut()
+                .insert(reqwest::header::AUTHORIZATION, value);
+            Ok(())
+        }
+        let mut request = request.build()?;
+        let token = self.token(None).await?;
+        bearer(&mut request, &token)?;
+        // JSON bodies are clonable; a stored login retries once after a
+        // rejected token in case it was revoked or rotated by another process.
+        let retry = match self.credentials {
+            Credentials::Login(_) => request.try_clone(),
+            _ => None,
+        };
+        let mut response = self.http.execute(request).await?;
+        if response.status() == reqwest::StatusCode::UNAUTHORIZED
+            && let Some(mut retry) = retry
+        {
+            let token = self.token(Some(&token)).await?;
+            bearer(&mut retry, &token)?;
+            response = self.http.execute(retry).await?;
+        }
         if !response.status().is_success() {
             let status = response.status().as_u16();
             let request_id = response
@@ -2424,10 +2493,18 @@ impl ApiClient {
                 .and_then(|v| v.to_str().ok())
                 .map(str::to_owned);
             let error = response.json::<crate::api::ApiError>().await?;
+            let message = match (status, &self.credentials) {
+                (401, Credentials::TokenFile(_)) => format!(
+                    "{} Replace the session in LOOSKI_ACCESS_TOKEN_FILE, or unset it and run `looski login`.",
+                    error.message
+                ),
+                (401, _) => format!("{} Run `looski login` to sign in again.", error.message),
+                _ => error.message,
+            };
             return Err(ApiFailure {
                 status,
                 code: error.code,
-                message: error.message,
+                message,
                 request_id,
             }
             .into());
@@ -2461,5 +2538,21 @@ mod tests {
             .err()
             .unwrap();
         assert!(error.to_string().contains("require HTTPS"));
+    }
+
+    #[tokio::test]
+    async fn missing_credentials_report_login_guidance() {
+        let error = ApiClient::new("http://localhost:1")
+            .unwrap()
+            .workspaces()
+            .await
+            .err()
+            .unwrap();
+        let failure = error.downcast_ref::<ApiFailure>().unwrap();
+        assert_eq!(
+            (failure.status, failure.code.as_str()),
+            (401, "unauthenticated")
+        );
+        assert!(failure.message.contains("looski login"));
     }
 }

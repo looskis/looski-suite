@@ -8,6 +8,7 @@ import {
 } from '@sveltejs/kit';
 import createClient from 'openapi-fetch';
 import type { paths } from '$lib/api/schema';
+import { loginPath } from '$lib/server/return-path';
 
 const accessCookie = 'looski_access';
 const refreshCookie = 'looski_refresh';
@@ -23,7 +24,7 @@ export async function authRequest(
   path: string,
   body?: unknown,
   token?: string,
-  method: 'POST' | 'PUT' = 'POST',
+  method: 'GET' | 'POST' | 'PUT' = 'POST',
 ) {
   return event.fetch(
     `${env.LOOSKI_AUTH_INTERNAL_URL ?? 'http://127.0.0.1:9999'}${path}`,
@@ -74,7 +75,8 @@ export function saveSession(event: RequestEvent, session: Session) {
   });
 }
 
-export async function workspaceList(event: RequestEvent) {
+/** `returnTo` is an already validated same-origin path to resume after sign-in. */
+export async function workspaceList(event: RequestEvent, returnTo?: string) {
   const client = createClient<paths>({
     baseUrl: env.LOOSKI_API_INTERNAL_URL ?? 'http://127.0.0.1:58081',
     fetch: event.fetch,
@@ -96,7 +98,7 @@ export async function workspaceList(event: RequestEvent) {
       const refresh = event.cookies.get(refreshCookie);
       if (!refresh) {
         clearSession(event);
-        redirect(303, '/login');
+        redirect(303, loginPath(returnTo));
       }
       const response = await authRequest(
         event,
@@ -109,7 +111,7 @@ export async function workspaceList(event: RequestEvent) {
         response.status === 403
       ) {
         clearSession(event);
-        redirect(303, '/login');
+        redirect(303, loginPath(returnTo));
       }
       if (!response.ok) error(503, 'Sign-in is temporarily unavailable');
       const session: Session = await response.json();
@@ -124,7 +126,7 @@ export async function workspaceList(event: RequestEvent) {
   }
   if (result.response.status === 401) {
     clearSession(event);
-    redirect(303, '/login');
+    redirect(303, loginPath(returnTo));
   }
   if (!result.data) error(503, 'Workspaces are temporarily unavailable');
   return result.data;
@@ -182,13 +184,27 @@ export async function workspaceClient(event: RequestEvent, workspace: string) {
 }
 
 /** An authenticated identity may accept an invitation before having a workspace. */
-export async function identityClient(event: RequestEvent) {
-  await workspaceList(event);
+export async function identityClient(event: RequestEvent, returnTo?: string) {
+  await workspaceList(event, returnTo);
   const token = event.cookies.get(accessCookie);
-  if (!token) redirect(303, '/login');
+  if (!token) redirect(303, loginPath(returnTo));
   return createClient<paths>({
     baseUrl: env.LOOSKI_API_INTERNAL_URL ?? 'http://127.0.0.1:58081',
     fetch: event.fetch,
     headers: { Authorization: `Bearer ${token}`, 'X-Looski-Interface': 'web' },
   });
+}
+
+/** The verified browser account's current Auth email, for confirmation screens. */
+export async function signedInEmail(event: RequestEvent) {
+  const token = event.cookies.get(accessCookie);
+  if (!token) return null;
+  try {
+    const response = await authRequest(event, '/user', undefined, token, 'GET');
+    if (!response.ok) return null;
+    const user: { email?: unknown } = await response.json();
+    return typeof user.email === 'string' ? user.email : null;
+  } catch {
+    return null;
+  }
 }

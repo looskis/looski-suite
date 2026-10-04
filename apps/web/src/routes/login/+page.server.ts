@@ -4,10 +4,15 @@ import {
   requireSameOrigin,
   saveSession,
 } from '$lib/server/session';
+import { safeReturnPath } from '$lib/server/return-path';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ url }) => ({
   localLogout: url.searchParams.get('logout') === 'local',
+  cliAuthorization:
+    safeReturnPath(url.searchParams.get('next'), url.origin)?.startsWith(
+      '/cli/authorize',
+    ) ?? false,
 });
 
 export const actions: Actions = {
@@ -46,6 +51,11 @@ export const actions: Actions = {
         message: 'Could not sign in. Check your credentials and try again.',
       });
     saveSession(event, await response.json());
-    redirect(303, '/workspaces');
+    // The form posts to its own URL, so `next` arrives with the action URL.
+    redirect(
+      303,
+      safeReturnPath(event.url.searchParams.get('next'), event.url.origin) ??
+        '/workspaces',
+    );
   },
 };

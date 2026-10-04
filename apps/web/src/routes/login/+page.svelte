@@ -10,7 +10,11 @@
     <section>
       <p class="eyebrow">WELCOME BACK</p>
       <h1>Your business starts here.</h1>
-      <p>Sign in to your workspace.</p>
+      <p>
+        {data.cliAuthorization
+          ? 'Sign in to continue authorizing the Looski CLI.'
+          : 'Sign in to your workspace.'}
+      </p>
       {#if data.localLogout}<p role="status">
           You are signed out of this browser. The service could not confirm
           session revocation.

@@ -37,7 +37,7 @@ This is the implementation checklist for the October 12 build request. Accepted 
 - [x] ClickHouse diagnostic ingestion, redaction and outage behavior.
 - [x] Diagnostic resource footprint and complete application regression; recovery checks are tracked separately above.
 - [x] Local full journey, denial/concurrency tests, production build, standards/spec review.
-- [ ] CLI/MCP integrated login and refresh UX; private externally managed first-party token files are implemented and tested.
+- [x] CLI/MCP integrated browser login (PKCE, pasted code), Keychain/private-file storage, locked refresh and logout; externally managed token files remain supported. See [CLI login](cli-login-slice.md).
 - [ ] Public distribution: corresponding-source delivery, complete dependency notices and image/OS advisory review.
 
 ## Subsequent application milestones

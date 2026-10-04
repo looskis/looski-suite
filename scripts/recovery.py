@@ -158,7 +158,7 @@ def create(installation,destination,recipient):
                 maintenance=time.monotonic()
                 status['phase']='capturing';status_write(installation,status)
                 schema=int(installation.sql('SELECT version FROM suite.schema_version WHERE singleton'))
-                if schema not in (23,28):raise ValueError('This recovery runner supports schemas 23 and 28')
+                if schema not in (23,28,29):raise ValueError('This recovery runner supports schemas 23, 28 and 29')
                 postgres=installation.sql('SHOW server_version_num')
                 if not postgres.startswith('17'):raise ValueError('This recovery runner requires PostgreSQL 17')
                 if installation.sql("SELECT count(*) FROM pg_tablespace WHERE spcname NOT IN ('pg_default','pg_global')")!='0':raise ValueError('Custom tablespaces require a separate recovery procedure')

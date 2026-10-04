@@ -34,6 +34,10 @@ phonenumber = "=0.3.10"
 email_address = "=0.2.9"
 
 idna = "=1.1.0"
+getrandom = "=0.4.3"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = { version = "=3.7.0", default-features = false }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

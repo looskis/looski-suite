@@ -90,7 +90,7 @@ def restore(archive,identity,project,port):
     with tempfile.TemporaryDirectory(prefix='looski-restore-') as temporary:
         plaintext=Path(temporary)/'snapshot.tar';encryption.decrypt(archive,plaintext,identity)
         manifest=bundle.inspect(plaintext);metadata=manifest['metadata']
-        if metadata['schema_version'] not in (23,28) or not metadata['postgres_version_num'].startswith('17'):
+        if metadata['schema_version'] not in (23,28,29) or not metadata['postgres_version_num'].startswith('17'):
             raise ValueError('Unsupported recovery schema or PostgreSQL version')
         if metadata['configuration']['COMPOSE_PROJECT_NAME']==project:raise ValueError('Recovery must use a different installation name')
         images=metadata['images']

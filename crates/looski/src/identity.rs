@@ -70,7 +70,7 @@ impl Verifier {
         }
     }
 
-    pub fn verify(&self, token: &str) -> Option<Identity> {
+    fn claims(&self, token: &str) -> Option<Claims> {
         let claims = decode::<Claims>(token, &self.key, &self.validation)
             .ok()?
             .claims;
@@ -84,10 +84,20 @@ impl Verifier {
         {
             return None;
         }
+        Some(claims)
+    }
+
+    pub fn verify(&self, token: &str) -> Option<Identity> {
+        let claims = self.claims(token)?;
         Some(Identity {
             confirmed_email: None,
             issuer: self.issuer.clone(),
             subject: claims.sub.to_string(),
         })
+    }
+
+    /// Upstream session of a first-party token that passes the same checks.
+    pub fn session_id(&self, token: &str) -> Option<Uuid> {
+        Some(self.claims(token)?.session_id)
     }
 }
