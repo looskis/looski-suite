@@ -294,7 +294,7 @@ async fn owner(
     }
     access::require_active_member(db, actor.workspace, id).await
 }
-async fn read_opportunity(
+pub(crate) async fn read_opportunity(
     db: &mut PgConnection,
     actor: &ActorContext<'_>,
     id: Uuid,
@@ -343,6 +343,20 @@ pub async fn save_opportunity(
     key: &str,
     input: OpportunityInput,
 ) -> Result<Opportunity, Error> {
+    let mut tx = pool.begin().await?;
+    let result = save_opportunity_in(&mut tx, actor, id, expected, key, input).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+/// Save within the caller's transaction, such as a durable workflow step.
+pub(crate) async fn save_opportunity_in(
+    db: &mut sqlx::PgConnection,
+    actor: &ActorContext<'_>,
+    id: Option<Uuid>,
+    expected: Option<i64>,
+    key: &str,
+    input: OpportunityInput,
+) -> Result<Opportunity, Error> {
     validate(
         &input.title,
         &input.notes,
@@ -350,9 +364,8 @@ pub async fn save_opportunity(
         &input.currency_code,
         &[&input.expected_close_on],
     )?;
-    let mut tx = pool.begin().await?;
     let (write, read) = mutation(
-        &mut tx,
+        &mut *db,
         actor,
         if id.is_some() {
             "crm.opportunities.update"
@@ -368,7 +381,7 @@ pub async fn save_opportunity(
         id.map(|i| i.to_string()).unwrap_or_else(|| "new".into())
     );
     if let Some(saved) = reliability::replay::<Opportunity>(
-        &mut tx,
+        &mut *db,
         actor.workspace,
         &write,
         &operation,
@@ -377,12 +390,12 @@ pub async fn save_opportunity(
     )
     .await?
     {
-        let current = read_opportunity(&mut tx, actor, saved.id).await?;
+        let current = read_opportunity(&mut *db, actor, saved.id).await?;
         record_scope(&write, current.owner_membership_id)?;
         return Ok(saved);
     }
     let current = if let Some(id) = id {
-        let c = read_opportunity(&mut tx, actor, id).await?;
+        let c = read_opportunity(&mut *db, actor, id).await?;
         record_scope(&write, c.owner_membership_id)?;
         if Some(c.version) != expected || c.archived {
             return Err(Error::Conflict(
@@ -399,12 +412,12 @@ pub async fn save_opportunity(
             .map(|c| c.owner_membership_id)
             .unwrap_or(write.membership_id)
     });
-    owner(&mut tx, actor, &write, &read, owner_id).await?;
+    owner(&mut *db, actor, &write, &read, owner_id).await?;
     let unchanged = current
         .as_ref()
         .is_some_and(|c| c.stage_id == input.stage_id && c.pipeline_id == input.pipeline_id);
     let state = configuration::state(
-        &mut tx,
+        &mut *db,
         actor.workspace,
         Kind::Stage,
         input.pipeline_id,
@@ -413,7 +426,7 @@ pub async fn save_opportunity(
     )
     .await?;
     let id = dao::save_opportunity(
-        &mut tx,
+        &mut *db,
         actor.workspace,
         id,
         owner_id,
@@ -423,7 +436,7 @@ pub async fn save_opportunity(
     )
     .await?;
     let audit = reliability::audit(
-        &mut tx,
+        &mut *db,
         actor,
         &write,
         "crm.opportunity.saved",
@@ -433,7 +446,7 @@ pub async fn save_opportunity(
     .await?;
     if !unchanged {
         dao::opportunity_transition(
-            &mut tx,
+            &mut *db,
             actor.workspace,
             id,
             current.as_ref(),
@@ -442,9 +455,9 @@ pub async fn save_opportunity(
         )
         .await?;
     }
-    let result = dao::opportunity(&mut tx, actor.workspace, id).await?;
+    let result = dao::opportunity(&mut *db, actor.workspace, id).await?;
     reliability::save_replay(
-        &mut tx,
+        &mut *db,
         actor.workspace,
         &write,
         &operation,
@@ -453,8 +466,27 @@ pub async fn save_opportunity(
         &result,
     )
     .await?;
-    tx.commit().await?;
     Ok(result)
+}
+/// Validate a configured pipeline stage for new opportunities, such as a recipe mapping.
+pub(crate) async fn assignable_stage(
+    db: &mut sqlx::PgConnection,
+    actor: &ActorContext<'_>,
+    pipeline: Uuid,
+    stage: Uuid,
+) -> Result<(), Error> {
+    authorize(db, actor, "crm.configuration.read").await?;
+    configuration::state(db, actor.workspace, Kind::Stage, pipeline, stage, false).await?;
+    Ok(())
+}
+/// Validate a deal status a recipe may treat as a milestone.
+pub(crate) async fn milestone_status(
+    db: &mut sqlx::PgConnection,
+    actor: &ActorContext<'_>,
+    status: Uuid,
+) -> Result<(), Error> {
+    authorize(db, actor, "crm.configuration.read").await?;
+    status_jobs::active_status(db, actor.workspace, status).await
 }
 async fn redact_origins(
     db: &mut PgConnection,
@@ -490,7 +522,7 @@ async fn redact_origins(
     }
     Ok(())
 }
-async fn read_deal(
+pub(crate) async fn read_deal(
     db: &mut PgConnection,
     actor: &ActorContext<'_>,
     id: Uuid,
@@ -646,6 +678,16 @@ pub async fn save_deal(
     }
     if current.is_some() && !unchanged {
         status_jobs::schedule(&mut tx, actor, &write, id, input.status_id, audit).await?;
+    }
+    if !unchanged {
+        // A configured milestone commits its durable conversion with the status change.
+        crate::projects::recipes::deal_reached_status(
+            &mut tx,
+            actor.workspace,
+            id,
+            input.status_id,
+        )
+        .await?;
     }
     let mut result = dao::deal(&mut tx, actor.workspace, id).await?;
     redact_origins(&mut tx, actor, std::slice::from_mut(&mut result)).await?;

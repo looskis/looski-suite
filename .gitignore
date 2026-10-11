@@ -1,4 +1,5 @@
 .env
+.env.dev
 .local/
 target/
 node_modules/

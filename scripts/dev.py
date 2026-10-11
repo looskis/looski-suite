@@ -20,23 +20,34 @@ KEYS = ('COMPOSE_PROJECT_NAME', 'LOOSKI_HTTP_PORT', 'LOOSKI_PUBLIC_URL', 'LOOSKI
 TUNNEL_CREDENTIAL_KEYS = {'AccountTag', 'TunnelSecret', 'TunnelID'}
 
 
-def configuration():
+def config_file(dev=False):
+    # The development stack is its own installation with its own settings file.
+    return ROOT / ('.env.dev' if dev else '.env')
+
+
+def settings(config):
     values = {}
-    config = ROOT / '.env'
     if config.exists():
         for line in config.read_text().splitlines():
             if not line.strip() or line.lstrip().startswith('#'):
                 continue
             key, separator, value = line.partition('=')
             if not separator or key not in KEYS:
-                raise SystemExit('Use only the documented non-secret settings in .env')
+                raise SystemExit(f'Use only the documented non-secret settings in {config.name}')
             values[key] = value
+    return values
+
+
+def configuration(dev=False):
+    values = settings(config_file(dev))
     values.update({k: os.environ[k] for k in KEYS if k in os.environ})
-    values.setdefault('COMPOSE_PROJECT_NAME', 'looski-suite')
-    values.setdefault('LOOSKI_HTTP_PORT', '58888')
+    values.setdefault('COMPOSE_PROJECT_NAME', 'looski-suite-dev' if dev else 'looski-suite')
+    values.setdefault('LOOSKI_HTTP_PORT', '58889' if dev else '58888')
     values.setdefault('LOOSKI_PUBLIC_URL', f"http://localhost:{values['LOOSKI_HTTP_PORT']}")
     if not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,62}', values['COMPOSE_PROJECT_NAME']):
         raise SystemExit('COMPOSE_PROJECT_NAME must contain lowercase letters, digits, hyphens, or underscores')
+    if dev and values['COMPOSE_PROJECT_NAME'] == settings(config_file()).get('COMPOSE_PROJECT_NAME', 'looski-suite'):
+        raise SystemExit('The development stack needs its own COMPOSE_PROJECT_NAME; it must never replace the primary installation')
     if not values['LOOSKI_HTTP_PORT'].isdigit() or not 1024 <= int(values['LOOSKI_HTTP_PORT']) <= 65535:
         raise SystemExit('LOOSKI_HTTP_PORT must be between 1024 and 65535')
     values.setdefault('LOOSKI_MAIL_MODE', 'disabled')
@@ -65,7 +76,7 @@ def configuration():
     return values
 
 
-def configure(values):
+def configure(values, config):
     directory = ROOT / '.local' / values['COMPOSE_PROJECT_NAME'] / 'secrets'
     expected = {'db_password', 'runtime_password', 'jwt_secret', 'database_url', 'migration_url'}
     if directory.exists():
@@ -110,7 +121,6 @@ def configure(values):
         with os.fdopen(descriptor,'w') as stream:stream.write(diagnostics_key+'\n')
     configure_mail(values)
     configure_tunnel(values)
-    config = ROOT / '.env'
     if not config.exists():
         with config.open('x') as stream:
             os.chmod(stream.name, 0o600)
@@ -201,10 +211,18 @@ def configure_tunnel(values):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['configure', 'up', 'stop', 'status', 'logs'])
+    parser.add_argument('command', choices=['configure', 'up', 'migrate', 'stop', 'status', 'logs'])
+    parser.add_argument('--dev', action='store_true', help='the hot-reloading development stack (.env.dev)')
     args = parser.parse_args()
-    values = configuration()
+    values = configuration(args.dev)
     environment = {**os.environ, **values}
+    # Default attestations give each unchanged rebuild a new image ID and delete the old
+    # one. Running containers would keep a missing ID, which backups cannot capture.
+    environment['BUILDX_NO_DEFAULT_ATTESTATIONS'] = '1'
+    if args.dev:
+        scheme = urlsplit(values['LOOSKI_PUBLIC_URL']).scheme
+        environment['LOOSKI_DEV_WEB_SCHEME'] = scheme
+        environment['LOOSKI_DEV_GATEWAY_WEB'] = 'web.dev-https.caddy' if scheme == 'https' else 'web.caddy'
     profiles = set(filter(None, environment.get('COMPOSE_PROFILES', '').split(',')))
     if values['LOOSKI_MAIL_MODE'] == 'local': profiles.add('local-mail')
     else: profiles.discard('local-mail')
@@ -213,7 +231,8 @@ def main():
     if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare': profiles.add('public-tunnel')
     else: profiles.discard('public-tunnel')
     environment['COMPOSE_PROFILES'] = ','.join(sorted(profiles))
-    compose = ['docker', 'compose', '--project-directory', str(ROOT), '-f', str(ROOT / 'compose.yaml')]
+    compose = ['docker', 'compose', '--project-directory', str(ROOT), '-f', str(ROOT / 'compose.yaml'),
+               *(['-f', str(ROOT / 'compose.dev.yaml')] if args.dev else [])]
 
     def run(*arguments, capture=False):
         return subprocess.run([*compose, *arguments], cwd=ROOT, env=environment,
@@ -225,7 +244,7 @@ def main():
     with (state / 'setup.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         if args.command in ('configure', 'up'):
-            configure(values)
+            configure(values, config_file(args.dev))
         if args.command == 'configure':
             run('config', '--quiet')
         elif args.command == 'up':
@@ -256,6 +275,8 @@ def main():
                 try:run('up','-d','--no-deps','--wait','--wait-timeout','45','clickhouse')
                 except subprocess.CalledProcessError:print('Diagnostics unavailable; application startup continues without log storage',flush=True)
             else:run('stop','clickhouse')
+            if args.dev:
+                print('Waiting for the API, worker and web to build; the first Rust build takes several minutes (make dev-logs)', flush=True)
             run('up', '-d', '--no-deps', '--wait', 'api', 'web', 'gateway', 'worker')
             if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare':
                 # Recreate so a changed hostname or credential takes effect.
@@ -264,10 +285,17 @@ def main():
             else:
                 run('stop', 'tunnel')
                 print(f"Ready: http://localhost:{values['LOOSKI_HTTP_PORT']}")
+        elif args.command == 'migrate':
+            # Applies new migration files without a full restart. The API and worker recover on their own.
+            run('build', 'migrate')
+            run('up', '--no-deps', '--force-recreate', '--exit-code-from', 'migrate', 'migrate')
         elif args.command == 'stop':
             run('stop')
         elif args.command == 'status':
             run('ps', '-a')
+        elif args.command == 'logs' and args.dev:
+            # Follow build errors and reloads as they happen.
+            run('logs', '--follow', '--tail', '80', 'api', 'worker', 'web')
         elif args.command == 'logs':
             run('logs', '--tail', '80', 'api', 'web', 'gateway', *(['tunnel'] if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare' else []))
 

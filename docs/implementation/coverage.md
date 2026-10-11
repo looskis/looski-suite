@@ -42,13 +42,13 @@ This is the implementation checklist for the October 12 build request. Accepted 
 
 ## Subsequent application milestones
 
-- [ ] Forms and versioned submissions/intake.
-- [ ] CMS drafts/revisions/publishing.
-- [ ] Projects and boards over shared Tasks.
-- [ ] Knowledge base and SOPs.
-- [ ] Helpdesk and restricted customer replies.
-- [ ] Time tracking.
-- [ ] Scheduling and atomic booking/form intake with durable CRM follow-up.
+- [x] Forms and versioned submissions/intake. See [Forms](forms-slice.md).
+- [x] CMS drafts/revisions/media/publishing and public pages with embedded forms. See [CMS](cms-slice.md).
+- [x] Projects and boards over shared Tasks. See [Projects](projects-slice.md).
+- [x] Knowledge base and SOPs. See [Knowledge base](knowledge-slice.md).
+- [x] Helpdesk and restricted customer replies. See [Helpdesk](helpdesk-slice.md): upgraded/fresh-install API and browser journeys, real Chrome, full application regression and isolated recovery passed.
+- [x] Time tracking: manual entries, durable timers, billable totals, budgets, optional Projects, scoped export and all staff interfaces. See [milestones 7–8](time-scheduling-slice.md).
+- [x] Scheduling and atomic booking/form intake with durable CRM follow-up: concurrency/DST/buffers, reminder fencing, browser/API/CLI/MCP, upgraded and fresh installs, full sequential regression and isolated recovery passed. See [milestones 7–8](time-scheduling-slice.md).
 
 ## Verification boundaries
 

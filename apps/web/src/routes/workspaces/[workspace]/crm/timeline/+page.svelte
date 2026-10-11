@@ -38,6 +38,32 @@
             : ''} · happened {event.snapshot.occurred_at}
         </p>
         <p class="body">{event.snapshot.body}</p>
+      {:else if item.event.kind === 'appointment'}
+        <p>
+          <a href={`${root}/scheduling/${item.event.detail.appointment.id}`}
+            >{item.event.detail.appointment.name}</a
+          >
+          · {item.event.detail.action} · {item.event.detail.starts_at}
+        </p>
+        {#if item.event.detail.appointment.intake}<details>
+            <summary>Intake answers</summary>
+            <dl>
+              {#each Object.entries(item.event.detail.appointment.intake.answers) as [key, value]}<dt
+                >
+                  {key}
+                </dt>
+                <dd>
+                  {typeof value === 'string' ? value : JSON.stringify(value)}
+                </dd>{/each}
+            </dl>
+          </details>{/if}
+      {:else if item.event.kind === 'ticket'}
+        <h2>
+          <a href={`${root}/helpdesk/${item.event.detail.ticket_id}`}
+            >{item.event.detail.subject}</a
+          >
+        </h2>
+        <p>Support · {item.event.detail.action.replaceAll('_', ' ')}</p>
       {:else if item.event.kind === 'transition'}
         <h2>
           {data.page.anchor_kind === 'deal'

@@ -27,6 +27,8 @@ pub struct TimelineQuery {
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(tag = "kind", content = "detail", rename_all = "snake_case")]
 pub enum EventDetail {
+    Ticket(crate::helpdesk::TicketEvent),
+    Appointment(Box<crate::scheduling::AppointmentTimeline>),
     Activity(ActivityChange),
     Transition(Transition),
     Task(tasks::TaskChange),
@@ -172,7 +174,17 @@ fn parse_cursor(
     parent: Uuid,
 ) -> Result<(&str, Uuid), Error> {
     let parts = value.split(':').collect::<Vec<_>>();
-    if parts.len() != 5 || !["activity", "transition", "task_link", "task"].contains(&parts[3]) {
+    if parts.len() != 5
+        || ![
+            "activity",
+            "transition",
+            "task_link",
+            "task",
+            "ticket",
+            "appointment",
+        ]
+        .contains(&parts[3])
+    {
         return Err(Error::Invalid("Invalid timeline cursor"));
     }
     let uuid = |v: &str| Uuid::parse_str(v).map_err(|_| Error::Invalid("Invalid timeline cursor"));
@@ -204,7 +216,29 @@ pub async fn list(
     let mut after = None;
     if let Some(cursor) = q.after.as_deref() {
         let (kind, id) = parse_cursor(cursor, actor.workspace, q.anchor_kind, a.id)?;
-        let event = if kind == "task" {
+        let event = if kind == "ticket" {
+            if q.anchor_kind != AnchorKind::Contact {
+                return Err(Error::NotFound);
+            }
+            crate::helpdesk::history(&mut tx, actor, &a.family, None, Some(id), 1)
+                .await?
+                .pop()
+                .map(|(position, event)| VisibleEvent {
+                    position,
+                    event: EventDetail::Ticket(event),
+                })
+        } else if kind == "appointment" {
+            if q.anchor_kind != AnchorKind::Contact {
+                return Err(Error::NotFound);
+            }
+            crate::scheduling::history(&mut tx, actor, &a.family, None, Some(id), 1)
+                .await?
+                .pop()
+                .map(|(position, event)| VisibleEvent {
+                    position,
+                    event: EventDetail::Appointment(Box::new(event)),
+                })
+        } else if kind == "task" {
             if !sources.tasks {
                 return Err(Error::NotFound);
             }
@@ -295,6 +329,44 @@ pub async fn list(
                 break;
             }
         }
+    }
+    if q.anchor_kind == AnchorKind::Contact {
+        events.extend(
+            crate::helpdesk::history(
+                &mut tx,
+                actor,
+                &a.family,
+                after.as_ref(),
+                None,
+                (n + 1) as i64,
+            )
+            .await?
+            .into_iter()
+            .map(|(position, event)| VisibleEvent {
+                position,
+                event: EventDetail::Ticket(event),
+            }),
+        );
+        trim(&mut events, n + 1);
+    }
+    if q.anchor_kind == AnchorKind::Contact {
+        events.extend(
+            crate::scheduling::history(
+                &mut tx,
+                actor,
+                &a.family,
+                after.as_ref(),
+                None,
+                (n + 1) as i64,
+            )
+            .await?
+            .into_iter()
+            .map(|(position, event)| VisibleEvent {
+                position,
+                event: EventDetail::Appointment(Box::new(event)),
+            }),
+        );
+        trim(&mut events, n + 1);
     }
     let more = events.len() > n;
     events.truncate(n);

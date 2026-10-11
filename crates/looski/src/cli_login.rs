@@ -469,7 +469,7 @@ pub struct Throttle(std::sync::Arc<std::sync::Mutex<Windows>>);
 impl Throttle {
     const WINDOW: std::time::Duration = std::time::Duration::from_secs(60);
     const CLIENTS: usize = 4096;
-    fn admit(&self, bucket: &'static str, client: &str, limit: u32) -> bool {
+    pub(crate) fn admit(&self, bucket: &'static str, client: &str, limit: u32) -> bool {
         let now = std::time::Instant::now();
         let mut table = self
             .0

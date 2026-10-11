@@ -3,7 +3,7 @@
 use crate::{
     access,
     application::{ActorContext, OperationError as Error},
-    contacts, crm, tags, tasks,
+    cms, contacts, crm, forms, helpdesk, knowledge, projects, tags, tasks,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -50,6 +50,29 @@ pub enum Collection {
     ContactActivities,
     OpportunityActivities,
     DealActivities,
+    Forms,
+    FormVersions,
+    FormSubmissions,
+    CmsContentTypes,
+    CmsEntries,
+    CmsRevisions,
+    CmsMedia,
+    Projects,
+    ProjectMembers,
+    ProjectColumns,
+    ProjectCards,
+    ProjectComments,
+    AppointmentTypes,
+    Appointments,
+    AppointmentEvents,
+    TimeEntries,
+    TimeBudgets,
+    HelpdeskTickets,
+    HelpdeskMessages,
+    KnowledgeCollections,
+    KnowledgeCollectionMembers,
+    KnowledgeDocuments,
+    KnowledgeRevisions,
 }
 #[derive(Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -110,6 +133,27 @@ impl Collection {
             Self::ContactActivities => (true, true, false, "crm.activities.read"),
             Self::OpportunityActivities => (true, true, false, "crm.activities.read"),
             Self::DealActivities => (true, true, false, "crm.activities.read"),
+            Self::Forms => (false, true, false, "forms.read"),
+            Self::FormVersions => (true, false, false, "forms.read"),
+            Self::FormSubmissions => (true, false, false, "forms.submissions.read"),
+            Self::CmsContentTypes => (false, true, false, "cms.read"),
+            Self::CmsEntries => (false, true, false, "cms.drafts.read"),
+            Self::CmsRevisions => (true, false, false, "cms.drafts.read"),
+            Self::CmsMedia => (false, true, false, "cms.read"),
+            Self::Projects => (false, true, false, "projects.read"),
+            Self::ProjectMembers => (true, false, false, "projects.read"),
+            Self::ProjectColumns => (true, false, false, "projects.read"),
+            Self::ProjectCards => (true, false, true, "projects.read"),
+            Self::ProjectComments => (true, false, false, "projects.read"),
+            Self::AppointmentTypes | Self::Appointments => (false, true, false, "scheduling.read"),
+            Self::AppointmentEvents => (true, false, false, "scheduling.read"),
+            Self::TimeEntries | Self::TimeBudgets => (false, true, false, "time.read"),
+            Self::HelpdeskTickets => (false, true, false, "helpdesk.read"),
+            Self::HelpdeskMessages => (true, false, false, "helpdesk.read"),
+            Self::KnowledgeCollections => (false, true, false, "knowledge.read"),
+            Self::KnowledgeCollectionMembers => (true, false, false, "knowledge.read"),
+            Self::KnowledgeDocuments => (false, true, false, "knowledge.read"),
+            Self::KnowledgeRevisions => (true, false, false, "knowledge.read"),
         };
         CollectionSpec {
             collection: self,
@@ -138,6 +182,12 @@ impl Collection {
             Self::CoordinationRules | Self::CoordinationTemplates | Self::CoordinationRevisions => {
                 &["tasks.configuration.read"]
             }
+            // Answers are keyed by fields defined in the version they answered.
+            Self::FormSubmissions => &["forms.read"],
+            // Drafts are read through the CMS's own permission pair.
+            Self::CmsEntries | Self::CmsRevisions => &["cms.read"],
+            // Cards and comments are visible only with their shared task.
+            Self::ProjectCards | Self::ProjectComments => &["tasks.read"],
             _ => &[],
         }
     }
@@ -156,6 +206,29 @@ impl Collection {
                 | Self::TaskTemplates
                 | Self::TaskRevisions
                 | Self::TaskHistory
+                | Self::Forms
+                | Self::FormVersions
+                | Self::FormSubmissions
+                | Self::CmsContentTypes
+                | Self::CmsEntries
+                | Self::CmsRevisions
+                | Self::CmsMedia
+                | Self::Projects
+                | Self::ProjectMembers
+                | Self::ProjectColumns
+                | Self::ProjectCards
+                | Self::ProjectComments
+                | Self::AppointmentTypes
+                | Self::Appointments
+                | Self::AppointmentEvents
+                | Self::TimeEntries
+                | Self::TimeBudgets
+                | Self::HelpdeskTickets
+                | Self::HelpdeskMessages
+                | Self::KnowledgeCollections
+                | Self::KnowledgeCollectionMembers
+                | Self::KnowledgeDocuments
+                | Self::KnowledgeRevisions
         )
     }
 }
@@ -250,6 +323,29 @@ pub async fn catalog(
         Collection::ContactActivities.spec(),
         Collection::OpportunityActivities.spec(),
         Collection::DealActivities.spec(),
+        Collection::Forms.spec(),
+        Collection::FormVersions.spec(),
+        Collection::FormSubmissions.spec(),
+        Collection::CmsContentTypes.spec(),
+        Collection::CmsEntries.spec(),
+        Collection::CmsRevisions.spec(),
+        Collection::CmsMedia.spec(),
+        Collection::Projects.spec(),
+        Collection::ProjectMembers.spec(),
+        Collection::ProjectColumns.spec(),
+        Collection::ProjectCards.spec(),
+        Collection::ProjectComments.spec(),
+        Collection::AppointmentTypes.spec(),
+        Collection::Appointments.spec(),
+        Collection::AppointmentEvents.spec(),
+        Collection::TimeEntries.spec(),
+        Collection::TimeBudgets.spec(),
+        Collection::HelpdeskTickets.spec(),
+        Collection::HelpdeskMessages.spec(),
+        Collection::KnowledgeCollections.spec(),
+        Collection::KnowledgeCollectionMembers.spec(),
+        Collection::KnowledgeDocuments.spec(),
+        Collection::KnowledgeRevisions.spec(),
     ])
 }
 fn query<T: DeserializeOwned>(input: &ExportRequest) -> Result<T, Error> {
@@ -487,6 +583,59 @@ pub async fn page(
             )
             .await?,
         ),
+        Collection::Forms => forms::export_forms(pool, actor, query(&input)?).await?,
+        Collection::FormVersions => {
+            forms::export_versions(pool, actor, parent, query(&input)?).await?
+        }
+        Collection::FormSubmissions => {
+            value(forms::submissions(pool, actor, parent, query(&input)?).await?)
+        }
+        Collection::CmsContentTypes => value(cms::list_types(pool, actor, query(&input)?).await?),
+        Collection::CmsEntries => cms::export_entries(pool, actor, query(&input)?).await?,
+        Collection::CmsRevisions => {
+            value(cms::revisions(pool, actor, parent, query(&input)?).await?)
+        }
+        Collection::CmsMedia => value(cms::list_media(pool, actor, query(&input)?).await?),
+        Collection::Projects => value(projects::list(pool, actor, query(&input)?).await?),
+        Collection::ProjectMembers => {
+            projects::export_members(pool, actor, parent, query(&input)?).await?
+        }
+        Collection::ProjectColumns => {
+            projects::export_columns(pool, actor, parent, query(&input)?).await?
+        }
+        Collection::ProjectCards => {
+            value(projects::cards(pool, actor, parent, query(&input)?).await?)
+        }
+        Collection::ProjectComments => {
+            value(projects::project_comments(pool, actor, parent, query(&input)?).await?)
+        }
+        Collection::AppointmentTypes => {
+            value(crate::scheduling::types(pool, actor, query(&input)?).await?)
+        }
+        Collection::Appointments => {
+            value(crate::scheduling::list(pool, actor, query(&input)?).await?)
+        }
+        Collection::AppointmentEvents => {
+            value(crate::scheduling::events(pool, actor, parent, query(&input)?).await?)
+        }
+        Collection::TimeEntries => value(crate::time::list(pool, actor, query(&input)?).await?),
+        Collection::TimeBudgets => value(crate::time::budgets(pool, actor, query(&input)?).await?),
+        Collection::HelpdeskTickets => value(helpdesk::list(pool, actor, query(&input)?).await?),
+        Collection::HelpdeskMessages => {
+            value(helpdesk::messages(pool, actor, parent, query(&input)?).await?)
+        }
+        Collection::KnowledgeCollections => {
+            value(knowledge::list_collections(pool, actor, query(&input)?).await?)
+        }
+        Collection::KnowledgeCollectionMembers => {
+            knowledge::export_members(pool, actor, parent, query(&input)?).await?
+        }
+        Collection::KnowledgeDocuments => {
+            knowledge::export_documents(pool, actor, query(&input)?).await?
+        }
+        Collection::KnowledgeRevisions => {
+            value(knowledge::revisions(pool, actor, parent, query(&input)?).await?)
+        }
     };
     let source: SourcePage = serde_json::from_value(result).expect("public page contract");
     // Current authority is checked again after the owning read; there is no cached grant in a cursor.

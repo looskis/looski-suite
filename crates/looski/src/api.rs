@@ -10,13 +10,20 @@ mod tasks;
 mod workspace_access;
 // SPDX-License-Identifier: AGPL-3.0-only
 mod cli_login;
+mod cms;
 mod contacts;
 mod exports;
 mod files;
+mod forms;
+mod helpdesk;
 mod intake;
 mod invitations;
+mod knowledge;
 mod organizations;
+mod projects;
+mod scheduling;
 mod tags;
+mod time;
 use axum::{
     Json, Router,
     extract::State,
@@ -40,6 +47,8 @@ pub struct AppState {
     pub verifier: crate::identity::Verifier,
     pub invitation_tokens: crate::workspace_access::invitations::TokenIssuer,
     pub cli_login: crate::cli_login::Service,
+    /// Per-client admission for unauthenticated public endpoints.
+    pub public: crate::cli_login::Throttle,
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -89,7 +98,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 29)
+        .is_ok_and(|version| version == 36)
     };
     let auth = async {
         state
@@ -237,6 +246,13 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .merge(tasks::routes())
         .merge(task_configuration::routes())
         .merge(intake::routes())
+        .merge(forms::routes())
+        .merge(cms::routes())
+        .merge(projects::routes())
+        .merge(knowledge::routes())
+        .merge(time::routes())
+        .merge(scheduling::routes())
+        .merge(helpdesk::routes())
 }
 
 pub fn openapi() -> utoipa::openapi::OpenApi {
@@ -296,6 +312,7 @@ mod tests {
                 b"test-key",
             )
             .unwrap(),
+            public: crate::cli_login::Throttle::default(),
         })
     }
 

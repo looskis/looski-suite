@@ -4,11 +4,13 @@ import getpass
 import json
 import os
 import subprocess
+import sys
 
 from dev import ROOT, configuration
 
 if __name__ == '__main__':
-    config = configuration()
+    # --dev provisions the development stack's own first owner.
+    config = configuration('--dev' in sys.argv[1:])
     print(f"First owner for {config['COMPOSE_PROJECT_NAME']}")
     print('Use your own email. This local operator command confirms it without sending mail.')
     data = {

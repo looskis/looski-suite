@@ -1,0 +1,17 @@
+# Milestone 6 — web customer support
+
+Implemented and verified November 1, 2026. See the [checkpoint](helpdesk-slice.md) for behavior, interface coverage, evidence and limits.
+
+Helpdesk owns tickets, immutable messages and staff-only article references. It works with every other optional application disabled. Shared Contacts remains optional for association; a submitted name or address never resolves identity or grants access.
+
+The first customer journey uses the build plan's securely scoped reply mechanism: a random 256-bit access code grants read/reply to exactly one ticket. The browser generates it on the server and sends it in a header; only its SHA-256 digest is persisted. It never appears in URLs, audit, exports or logs. A requester saves their ticket address and code, or uses the HttpOnly, same-site cookie scoped to that ticket. Possession is authority, not proof of identity. No email-based lookup or recovery is offered. Staff can permanently revoke the code. General authenticated external memberships and the customer portal remain future work.
+
+An administrator explicitly opens a public intake page. Disabling intake prevents new tickets but preserves existing replies; disabling Helpdesk closes all staff and customer operations. Public traffic is throttled. Creation retries use the code as their stable identity and reject changed content. Reply retries are ticket-scoped and store only hashes and message IDs. Current authority is always checked before replay.
+
+Tickets have open, waiting and resolved statuses, optional active staff assignees and a reversible archive state. A customer reply reopens a resolved or waiting ticket. Staff can reply publicly or append an internal note; neither kind can be converted or edited. Customer DTOs contain only the subject, status and public messages: no internal notes, staff identities, contact associations, article links, counters or timestamps affected by private work. Staff edits use optimistic versions. Archived tickets refuse replies and customer reads; restoring does not reverse explicit access revocation.
+
+Staff permissions are helpdesk.read, helpdesk.manage and helpdesk.reply (workspace or assigned); helpdesk.configure is workspace-only. Each operation independently checks action and read scope. Knowledge references are resolved through knowledge::previews under the viewing staff member's current authority. Contact links require Contacts authority; contact timelines compose only independently permitted Helpdesk events. No customer knowledge access is introduced.
+
+Deliver staff web/API/CLI/MCP parity, public web/API creation/read/reply, paginated ticket/message export, migration and recovery coverage. Explicit exclusions: email intake/delivery, attachments, SLAs, automation, teams, customer account directories, full portal, message editing/deletion and permanent ticket deletion.
+
+Acceptance: complete standalone support journey; private notes absent from every customer response including pagination and retries; cross-ticket/workspace denial; revoked code and staff permission removal take effect immediately; retries and concurrent edits; archive/restore and module disable/re-enable; article visibility and contact merge references; escaped stored markup and same-origin posts; export, backup/restore, CLI/MCP parity and measured representative latency. Email is a separately tested future provider integration.

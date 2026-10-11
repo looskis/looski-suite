@@ -26,8 +26,8 @@ class Fixture:
     def sql(self,statement):
         return subprocess.check_output(['docker','compose','exec','-T','db','psql','-U','postgres','-d','postgres','-At','-v','ON_ERROR_STOP=1'],input=statement,text=True,cwd=ROOT,env=self.environment).strip()
 
-    def call(self,path,method='GET',body=None,expected=200,key=None,authenticated=True):
-        headers={'Content-Type':'application/json'}
+    def call(self,path,method='GET',body=None,expected=200,key=None,authenticated=True,headers=None):
+        headers={'Content-Type':'application/json',**(headers or {})}
         if authenticated: headers['Authorization']='Bearer '+self.token
         if key: headers['Idempotency-Key']=key
         request=Request(self.base+path,method=method,headers=headers,data=None if body is None else json.dumps(body).encode())

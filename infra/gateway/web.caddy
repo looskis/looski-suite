@@ -1,0 +1,6 @@
+(web) {
+  reverse_proxy web:3000 {
+    # Public pages forward this to API throttles; send exactly one entry.
+    header_up X-Forwarded-For {client_ip}
+  }
+}

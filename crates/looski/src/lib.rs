@@ -32,3 +32,15 @@ pub mod exports;
 pub mod files;
 
 pub mod diagnostics;
+
+pub mod cms;
+pub mod forms;
+pub mod helpdesk;
+pub mod knowledge;
+pub mod mail;
+pub mod projects;
+pub mod rich_text;
+
+pub mod time;
+
+pub mod scheduling;

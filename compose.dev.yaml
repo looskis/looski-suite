@@ -1,0 +1,61 @@
+# Development overlay (`make dev`): the API and worker rebuild and restart from
+# this checkout, and Vite serves SvelteKit with hot module replacement. Use a
+# separate installation identity; never apply this to a business installation.
+
+x-rust-dev: &rust-dev
+  build:
+    context: .
+    dockerfile: infra/dev/Dockerfile.rust
+  init: true
+  volumes:
+    - .:/src
+    - cargo-target:/cargo-target
+    - cargo-home:/cargo-home
+
+services:
+  api:
+    <<: *rust-dev
+    healthcheck:
+      # The first debug build compiles every dependency.
+      start_period: 30m
+      start_interval: 5s
+
+  worker:
+    <<: *rust-dev
+    healthcheck:
+      start_period: 30m
+      start_interval: 5s
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/dev/Dockerfile.web
+    init: true
+    environment:
+      LOOSKI_DEV_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58889}
+      LOOSKI_DEV_WEB_SCHEME: ${LOOSKI_DEV_WEB_SCHEME:-http}
+      LOOSKI_DEV_TLS_DIR: /run/looski-dev
+    tmpfs:
+      - /run/looski-dev:size=64k,mode=0700
+    volumes:
+      - .:/src
+      - web-root-modules:/src/node_modules
+      - web-app-modules:/src/apps/web/node_modules
+      - web-svelte-kit:/src/apps/web/.svelte-kit
+      - pnpm-store:/pnpm-store
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSk --max-time 4 $${LOOSKI_DEV_WEB_SCHEME}://127.0.0.1:3000/health/live"]
+      start_period: 10m
+      start_interval: 5s
+
+  gateway:
+    volumes:
+      - ./infra/gateway/${LOOSKI_DEV_GATEWAY_WEB:-web.caddy}:/etc/caddy/web.caddy:ro
+
+volumes:
+  cargo-target:
+  cargo-home:
+  web-root-modules:
+  web-app-modules:
+  web-svelte-kit:
+  pnpm-store:

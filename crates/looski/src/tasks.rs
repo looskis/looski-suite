@@ -22,7 +22,7 @@ pub enum Status {
     Cancelled,
 }
 impl Status {
-    pub(super) fn key(self) -> &'static str {
+    pub(crate) fn key(self) -> &'static str {
         match self {
             Self::Open => "open",
             Self::InProgress => "in_progress",
@@ -122,7 +122,7 @@ fn limit(value: Option<i64>) -> Result<i64, Error> {
     }
     Ok(n)
 }
-fn date(value: Option<&str>) -> Result<(), Error> {
+pub(crate) fn date(value: Option<&str>) -> Result<(), Error> {
     if let Some(v) = value {
         let parts: Vec<_> = v.split('-').collect();
         if parts.len() != 3
@@ -203,11 +203,20 @@ pub async fn list(
         return Err(Error::Invalid("Search must be at most 200 bytes"));
     }
     let mut tx = pool.begin().await?;
-    let a = require(&mut tx, actor, "tasks.read").await?;
+    list_in(&mut tx, actor, query, n).await
+}
+/// One authorized page inside a composition caller's transaction.
+pub(crate) async fn list_in(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    query: TaskQuery,
+    n: i64,
+) -> Result<TaskPage, Error> {
+    let a = require(db, actor, "tasks.read").await?;
     if let Some(id) = query.after {
-        read(&mut tx, actor, id).await?;
+        read(db, actor, id).await?;
     }
-    let mut items = dao::list(&mut tx, actor.workspace, &a, &query, n + 1).await?;
+    let mut items = dao::list(db, actor.workspace, &a, &query, n + 1).await?;
     let next_cursor = if items.len() > n as usize {
         items.pop();
         items.last().map(|t| t.id)
@@ -380,6 +389,44 @@ pub(crate) async fn create_in_transaction(
     let assignee = input.assigned_membership_id.unwrap_or(write.membership_id);
     assignment(db, actor, &write, &read, assignee).await?;
     persist(db, actor, &write, None, assignee, &input, None).await
+}
+/// Assignment, deadline and lifecycle changes a composition caller may request.
+/// A `None` keeps the current value; `due_on` of `Some(None)` clears the deadline.
+#[derive(Default)]
+pub(crate) struct TaskPlan {
+    pub assignee: Option<Uuid>,
+    pub due_on: Option<Option<String>>,
+    pub status: Option<Status>,
+}
+/// Change a task's plan under the caller's transaction. Current Tasks authority,
+/// scope, archive state and assignment rules are established here, not by the caller.
+pub(crate) async fn plan_in_transaction(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    id: Uuid,
+    expected: Option<i64>,
+    plan: TaskPlan,
+) -> Result<Task, Error> {
+    let (write, read_access) = mutation(db, actor, "tasks.update").await?;
+    let current = read(db, actor, id).await?;
+    scope(&write, &current)?;
+    if expected.is_some_and(|v| v != current.version) || current.archived {
+        return Err(Error::Conflict(
+            "Task changed or is archived; reload before editing",
+        ));
+    }
+    let assignee = plan.assignee.unwrap_or(current.assigned_membership_id);
+    assignment(db, actor, &write, &read_access, assignee).await?;
+    let input = TaskInput {
+        type_id: None,
+        title: current.title,
+        notes: current.notes,
+        assigned_membership_id: Some(assignee),
+        due_on: plan.due_on.unwrap_or(current.due_on),
+        status: plan.status.unwrap_or(current.status),
+    };
+    validate(&input)?;
+    persist(db, actor, &write, Some(id), assignee, &input, None).await
 }
 async fn assignment(
     db: &mut PgConnection,

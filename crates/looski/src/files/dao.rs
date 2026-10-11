@@ -56,6 +56,20 @@ pub(super) async fn list(
             .collect(),
     )
 }
+pub(super) async fn active_digest(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    id: Uuid,
+) -> Result<(i64, String), Error> {
+    sqlx::query_as(
+        "SELECT byte_length,sha256 FROM files.files WHERE workspace_id=$1 AND id=$2 AND archived_at IS NULL",
+    )
+    .bind(workspace)
+    .bind(id)
+    .fetch_optional(db)
+    .await?
+    .ok_or(Error::NotFound)
+}
 pub(super) async fn content(
     db: &mut PgConnection,
     workspace: Uuid,

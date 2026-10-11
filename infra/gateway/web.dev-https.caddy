@@ -1,0 +1,12 @@
+# Development stack with an HTTPS public origin: Vite serves a throwaway
+# certificate on the private Compose network.
+(web) {
+  reverse_proxy https://web:3000 {
+    # Public pages forward this to API throttles; send exactly one entry.
+    header_up X-Forwarded-For {client_ip}
+    transport http {
+      tls_insecure_skip_verify
+      versions 1.1
+    }
+  }
+}

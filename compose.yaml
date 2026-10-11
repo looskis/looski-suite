@@ -180,8 +180,9 @@ services:
       LOOSKI_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
       LOOSKI_DIAGNOSTICS_MODE: ${LOOSKI_DIAGNOSTICS_MODE:-local}
       LOOSKI_DIAGNOSTICS_KEY_FILE: /run/secrets/diagnostics_key
+      LOOSKI_SMTP_CONFIG_FILE: /run/secrets/auth_mail
       RUST_LOG: info
-    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key]
+    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key, auth_mail]
     tmpfs:
       - /run/looski:size=64k,mode=0755
     depends_on:
@@ -228,6 +229,7 @@ services:
       supabase-gateway: { condition: service_healthy }
     volumes:
       - ./infra/gateway/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./infra/gateway/web.caddy:/etc/caddy/web.caddy:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/health/live"]
       interval: 5s

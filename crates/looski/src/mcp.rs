@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 use crate::client::ApiClient;
+mod cms;
+mod forms;
+mod helpdesk;
+mod knowledge;
+mod projects;
+mod scheduling;
+mod time;
 use rmcp::{
     ErrorData, ServerHandler,
     handler::server::router::tool::ToolRouter,
@@ -3298,7 +3305,14 @@ impl McpServer {
     pub fn new(client: ApiClient) -> Self {
         Self {
             client: client.for_mcp(),
-            tool_router: Self::tool_router(),
+            tool_router: Self::tool_router()
+                + Self::forms_tools()
+                + Self::cms_tools()
+                + Self::projects_tools()
+                + Self::knowledge_tools()
+                + Self::time_tools()
+                + Self::scheduling_tools()
+                + Self::helpdesk_tools(),
         }
     }
 

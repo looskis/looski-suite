@@ -35,6 +35,7 @@ email_address = "=0.2.9"
 
 idna = "=1.1.0"
 getrandom = "=0.4.3"
+lettre = { version = "=0.11.23", default-features = false, features = ["builder", "smtp-transport", "hostname", "tokio1", "tokio1-rustls", "rustls-tls"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = { version = "=3.7.0", default-features = false }

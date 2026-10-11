@@ -138,6 +138,15 @@ pub async fn get(pool: &PgPool, actor: &ActorContext<'_>, id: Uuid) -> Result<In
     tx.commit().await?;
     Ok(item)
 }
+/// Current intake state for a workflow resuming after review.
+pub(crate) async fn get_in(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    id: Uuid,
+) -> Result<Intake, Error> {
+    let read = access::require(db, actor.identity, actor.workspace, "contacts.intake.read").await?;
+    dao::get(db, actor.workspace, id, &read, false).await
+}
 async fn replay_access(
     db: &mut PgConnection,
     actor: &ActorContext<'_>,
@@ -155,6 +164,18 @@ async fn replay_access(
 }
 pub async fn submit(
     pool: &PgPool,
+    actor: &ActorContext<'_>,
+    key: &str,
+    input: SubmitIntake,
+) -> Result<Intake, Error> {
+    let mut tx = pool.begin().await?;
+    let result = submit_in(&mut tx, actor, key, input).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+/// Submit within the caller's transaction, such as a durable workflow step.
+pub(crate) async fn submit_in(
+    db: &mut PgConnection,
     actor: &ActorContext<'_>,
     key: &str,
     input: SubmitIntake,
@@ -178,16 +199,15 @@ pub async fn submit(
             "Shared-identifier creation requires an explicit review decision",
         ));
     }
-    let mut tx = pool.begin().await?;
     let write = access::require(
-        &mut tx,
+        &mut *db,
         actor.identity,
         actor.workspace,
         "contacts.intake.create",
     )
     .await?;
     let read = access::require(
-        &mut tx,
+        &mut *db,
         actor.identity,
         actor.workspace,
         "contacts.intake.read",
@@ -197,7 +217,7 @@ pub async fn submit(
         return Err(Error::Forbidden);
     }
     if let Some(saved) = reliability::replay::<Intake>(
-        &mut tx,
+        &mut *db,
         actor.workspace,
         &write,
         "contacts.intake.submit",
@@ -206,18 +226,18 @@ pub async fn submit(
     )
     .await?
     {
-        replay_access(&mut tx, actor, saved.id, &write, &read, &saved).await?;
+        replay_access(&mut *db, actor, saved.id, &write, &read, &saved).await?;
         return Ok(saved);
     }
     let can_auto =
-        match access::require(&mut tx, actor.identity, actor.workspace, "contacts.read").await {
+        match access::require(&mut *db, actor.identity, actor.workspace, "contacts.read").await {
             Ok(authority) => authority.workspace_wide,
             Err(Error::Forbidden) => false,
             Err(error) => return Err(error),
         };
     let mut contact = None;
     if let Some(id) = input.contact_id {
-        let c = visible_contact(&mut tx, actor, id, true).await?;
+        let c = visible_contact(&mut *db, actor, id, true).await?;
         if !c.archived && identifiers(&input.proposed).is_ok() {
             contact = Some(c.id)
         }
@@ -225,13 +245,15 @@ pub async fn submit(
         && can_auto
         && !identifiers.is_empty()
     {
-        super::dao::lock_identifiers(&mut tx, actor.workspace, &identifiers).await?;
-        let matches = super::dao::matches(&mut tx, actor.workspace, &identifiers).await?;
-        let case_review = dao::has_case_suggestions(&mut tx, actor.workspace, &identifiers).await?;
+        super::dao::lock_identifiers(&mut *db, actor.workspace, &identifiers).await?;
+        let matches = super::dao::matches(&mut *db, actor.workspace, &identifiers).await?;
+        let case_review =
+            dao::has_case_suggestions(&mut *db, actor.workspace, &identifiers).await?;
         if matches.len() == 1 && !case_review {
-            match visible_contact(&mut tx, actor, matches[0], true).await {
+            match visible_contact(&mut *db, actor, matches[0], true).await {
                 Ok(c) if !c.archived => {
-                    if super::dao::matches(&mut tx, actor.workspace, &identifiers).await? == matches
+                    if super::dao::matches(&mut *db, actor.workspace, &identifiers).await?
+                        == matches
                     {
                         contact = Some(c.id)
                     }
@@ -240,7 +262,7 @@ pub async fn submit(
                 Err(e) => return Err(e),
             }
         } else if matches.is_empty() && !case_review {
-            match super::create_in_transaction(&mut tx, actor, &input.proposed).await {
+            match super::create_in_transaction(&mut *db, actor, &input.proposed).await {
                 Ok(c) => contact = Some(c.id),
                 Err(Error::Forbidden | Error::Invalid(_)) => {}
                 Err(e) => return Err(e),
@@ -248,7 +270,7 @@ pub async fn submit(
         }
     }
     let id = dao::insert(
-        &mut tx,
+        &mut *db,
         actor.workspace,
         write.membership_id,
         &input,
@@ -256,7 +278,7 @@ pub async fn submit(
     )
     .await?;
     reliability::audit(
-        &mut tx,
+        &mut *db,
         actor,
         &write,
         "contacts.intake_submitted",
@@ -264,9 +286,9 @@ pub async fn submit(
         serde_json::json!({"resolved":contact.is_some()}),
     )
     .await?;
-    let result = dao::get(&mut tx, actor.workspace, id, &read, false).await?;
+    let result = dao::get(&mut *db, actor.workspace, id, &read, false).await?;
     reliability::save_replay(
-        &mut tx,
+        &mut *db,
         actor.workspace,
         &write,
         "contacts.intake.submit",
@@ -275,7 +297,6 @@ pub async fn submit(
         &result,
     )
     .await?;
-    tx.commit().await?;
     Ok(result)
 }
 pub async fn resolve(
