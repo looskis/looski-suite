@@ -36,8 +36,37 @@ try:
 finally:f.sql("INSERT INTO suite.role_permissions(workspace_id,role_id,permission_key) VALUES('"+f.workspace+"','"+role+"','workspace.data.export')")
 print('PASS: explicit export permission is required across transports; ordinary reads remain independent')
 
+forms=next(m for m in f.call(base+'/modules') if m['key']=='forms')
+if not forms['enabled']:f.call(base+'/modules/forms','PATCH',{'enabled':True,'expected_version':forms['version']},key=key())
+export_form=create('/forms',{'name':'Export form','draft':{'fields':[{'key':'note','label':'Note','kind':'short_text'}]}})
+cms=next(m for m in f.call(base+'/modules') if m['key']=='cms')
+if not cms['enabled']:f.call(base+'/modules/cms','PATCH',{'enabled':True,'expected_version':cms['version']},key=key())
+export_type=create('/cms/types',{'name':'Export type','fields':[{'key':'note','label':'Note','kind':'text'}]})
+export_entry=create('/cms/entries',{'type_id':export_type['id'],'title':'Export entry','slug':'export-entry'})
+projects_module=next(m for m in f.call(base+'/modules') if m['key']=='projects')
+if not projects_module['enabled']:f.call(base+'/modules/projects','PATCH',{'enabled':True,'expected_version':projects_module['version']},key=key())
+export_project=create('/projects',{'name':'Export project'})
+knowledge_module=next(m for m in f.call(base+'/modules') if m['key']=='knowledge')
+if not knowledge_module['enabled']:f.call(base+'/modules/knowledge','PATCH',{'enabled':True,'expected_version':knowledge_module['version']},key=key())
+export_shelf=create('/knowledge/collections',{'name':'Export shelf'})
+export_article=create('/knowledge/documents',{'collection_id':export_shelf['id'],'title':'Export article','body':'Words'})
+helpdesk_module=next(m for m in f.call(base+'/modules') if m['key']=='helpdesk')
+if not helpdesk_module['enabled']:f.call(base+'/modules/helpdesk','PATCH',{'enabled':True,'expected_version':helpdesk_module['version']},key=key())
+helpdesk_settings=f.call(base+'/helpdesk/settings')
+if not helpdesk_settings['accepting']:helpdesk_settings=f.call(base+'/helpdesk/settings','PUT',{'accepting':True,'expected_version':helpdesk_settings['version']},key=key())
+export_ticket=f.call('/api/v1/public/helpdesk/intake/'+helpdesk_settings['public_key'],'POST',{'subject':'Export ticket','requester_name':'Exporter','body':'Export question'},authenticated=False,headers={'X-Ticket-Key':secrets.token_hex(32)})
+for selected in ['time','scheduling']:
+ module=next(m for m in f.call(base+'/modules') if m['key']==selected)
+ if not module['enabled']:f.call(base+'/modules/'+selected,'PATCH',{'enabled':True,'expected_version':module['version']},key=key())
+f.call(base+'/time/entries','POST',{'description':'Export time','work_on':'2026-11-01','billable':True,'duration_ms':60000},key=key())
+f.call(base+'/time/budgets','POST',{'name':'Export budget','from_on':'2026-11-01','through_on':'2026-11-30','budget_ms':3600000,'billable_only':False,'archived':False},key=key())
+import datetime
+booking_type=f.call(base+'/scheduling/types','POST',{'settings':{'name':'Export booking','timezone':'UTC','duration_minutes':15,'weekly':[{'weekday':i,'start':0,'end':1440} for i in range(1,8)],'accepting':True}},key=key())
+date=(datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(days=3)).date().isoformat()
+slots=f.call('/api/v1/public/scheduling/types/'+booking_type['public_key']+'/slots?date='+date,authenticated=False)
+export_booking=f.call('/api/v1/public/scheduling/types/'+booking_type['public_key']+'/book','POST',{'starts_at':slots[0]['starts_at'],'attendee_name':'Exporter','attendee_email':'export@example.invalid'},authenticated=False,headers={'X-Booking-Key':secrets.token_hex(32)})
 catalog=f.call(base+'/exports/collections')
-parents={'contact_organizations':contact['id'],'contact_tags':contact['id'],'organization_tags':organization['id'],'task_history':task['id'],'contact_activities':contact['id']}
+parents={'appointment_events':export_booking['id'],'helpdesk_messages':export_ticket['id'],'knowledge_collection_members':export_shelf['id'],'knowledge_revisions':export_article['id'],'project_members':export_project['id'],'project_columns':export_project['id'],'project_cards':export_project['id'],'project_comments':export_project['id'],'cms_revisions':export_entry['id'],'form_versions':export_form['id'],'form_submissions':export_form['id'],'contact_organizations':contact['id'],'contact_tags':contact['id'],'organization_tags':organization['id'],'task_history':task['id'],'contact_activities':contact['id']}
 for name in ['opportunity_contacts','opportunity_organizations','opportunity_tasks','opportunity_history','opportunity_tags','opportunity_activities']:parents[name]=opportunity['id']
 for name in ['deal_contacts','deal_organizations','deal_tasks','deal_history','deal_tags','deal_activities','deal_coordination']:parents[name]=deal['id']
 for name,table in [('task_revisions','tasks.templates'),('coordination_revisions','crm.coordination_templates'),('activity_history','crm.activities')]:

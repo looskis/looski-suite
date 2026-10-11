@@ -102,13 +102,19 @@ Implement web tickets, assignment, status, internal notes, and customer replies.
 
 Acceptance: an external requester can access only their authorized ticket content, internal notes remain private, and the helpdesk works without CRM or Knowledge Base. Treat email intake and delivery as a separately tested integration with an existing provider.
 
+Implementation and verification: [Helpdesk checkpoint](implementation/helpdesk-slice.md). The first web journey uses a revocable ticket-scoped access code; broader authenticated customer access and email integration remain separate work.
+
 ## Milestone 7 — Add time tracking
+
+Implemented and verified November 1, 2026. See the [implementation checkpoint](implementation/time-scheduling-slice.md) for behavior, evidence and limits.
 
 Implement timers, manual time, billable flags, budgets, and reports, with optional project association.
 
 Acceptance: users can track unassigned work with Projects disabled; timer transitions preserve duration correctly; permitted project totals agree with individual entries; export and access restrictions work.
 
 ## Milestone 8 — Add scheduling and the complete intake journey
+
+Implemented and verified November 1, 2026. See the [implementation checkpoint](implementation/time-scheduling-slice.md) for behavior, evidence and limits.
 
 Implement availability, appointment types, booking pages, basic attendee intake, buffers, cancellation, rescheduling, and reminders. Scheduling works with Forms and CRM disabled. Custom intake uses Forms when enabled; sales follow-up uses CRM when enabled.
 

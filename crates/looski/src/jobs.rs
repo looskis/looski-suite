@@ -30,6 +30,12 @@ pub struct Job {
     pub context: Option<crate::crm::status_jobs::JobContext>,
     pub invitation_context:
         Option<crate::workspace_access::invitations::delivery::InvitationJobContext>,
+    #[serde(default)]
+    pub forms_context: Option<crate::forms::recipes::RunContext>,
+    #[serde(default)]
+    pub notification_context: Option<crate::mail::NotificationContext>,
+    #[serde(default)]
+    pub projects_context: Option<crate::projects::recipes::DealConversionContext>,
     pub id: Uuid,
     pub kind: String,
     pub state: String,
@@ -118,6 +124,15 @@ pub async fn get(pool: &PgPool, actor: &ActorContext<'_>, id: Uuid) -> Result<Jo
             job.invitation_context =
                 crate::workspace_access::invitations::delivery::context(&mut tx, actor, id).await?
         }
+        "forms.crm_inquiry" => {
+            job.forms_context = crate::forms::recipes::context(&mut tx, actor, id).await?
+        }
+        "mail.notification" => {
+            job.notification_context = crate::mail::context(&mut tx, actor, id).await?
+        }
+        "projects.deal_conversion" => {
+            job.projects_context = crate::projects::recipes::context(&mut tx, actor, id).await?
+        }
         _ => return Err(Error::NotFound),
     }
     Ok(job)
@@ -154,8 +169,10 @@ pub async fn change(
     let a = require(&mut tx, actor, "workspace.jobs.manage").await?;
     require(&mut tx, actor, "workspace.jobs.read").await?;
     let current = dao::lock(&mut tx, actor.workspace, id).await?;
-    if matches!(&input.action, JobAction::Resume) && current.kind == "crm.coordination" {
-        modules::require_crm(&mut tx, actor).await?;
+    if matches!(&input.action, JobAction::Resume)
+        && !modules_ready(&mut tx, actor.workspace, &current.kind, id).await?
+    {
+        return Err(Error::Forbidden);
     }
     let operation = format!("jobs.change:{id}");
     let request = serde_json::to_value(&input).expect("job serializes");
@@ -214,14 +231,79 @@ pub(crate) async fn enqueue(
 ) -> Result<Uuid, Error> {
     dao::enqueue(db, actor, a, dedup, "crm.coordination").await
 }
-pub(crate) async fn block_crm(db: &mut PgConnection, workspace: Uuid) -> Result<(), Error> {
-    dao::block_crm(db, workspace).await
+/// Block queued work depending on a newly disabled application; resuming it is
+/// an explicit administrative action after re-enabling.
+pub(crate) async fn block_module(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    module: &str,
+) -> Result<(), Error> {
+    let kinds: &[&str] = match module {
+        "crm" => &[
+            "crm.coordination",
+            "forms.crm_inquiry",
+            "scheduling.crm_inquiry",
+            "projects.deal_conversion",
+        ],
+        "forms" => &["forms.crm_inquiry"],
+        "scheduling" => &["scheduling.crm_inquiry", "scheduling.reminder"],
+        "projects" => &["projects.deal_conversion"],
+        _ => &[],
+    };
+    dao::block_module(db, workspace, kinds, module).await
+}
+/// Applications a job kind needs; a notification needs its purpose's owner.
+async fn modules_ready(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    kind: &str,
+    id: Uuid,
+) -> Result<bool, Error> {
+    let purpose;
+    let required: Vec<&str> = match kind {
+        "crm.coordination" => vec!["crm"],
+        "forms.crm_inquiry" => vec!["forms", "crm"],
+        "scheduling.crm_inquiry" => {
+            if crate::scheduling::needs_forms(db, workspace, id).await? {
+                vec!["scheduling", "crm", "forms"]
+            } else {
+                vec!["scheduling", "crm"]
+            }
+        }
+        "scheduling.reminder" => vec!["scheduling"],
+        "projects.deal_conversion" => vec!["projects", "crm"],
+        "mail.notification" => {
+            purpose = dao::purpose(db, workspace, id).await?;
+            vec![purpose.split('.').next().unwrap_or_default()]
+        }
+        _ => vec![],
+    };
+    for module in required {
+        if !modules::enabled(db, workspace, module).await? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn enqueue_recorded(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    user: Uuid,
+    member: Uuid,
+    issuer: &str,
+    subject: &str,
+    dedup: &str,
+    kind: &str,
+) -> Result<Uuid, Error> {
+    dao::enqueue_recorded(db, workspace, user, member, issuer, subject, dedup, kind).await
 }
 /// Process at most one notification. The database lease/fence owns execution,
 /// so a stale worker cannot commit after another worker reclaims its job.
 pub async fn run_once(
     pool: &PgPool,
     mailer: &crate::workspace_access::invitations::delivery::Mailer,
+    outbox: &crate::mail::Outbox,
 ) -> Result<bool, Error> {
     let Some(message) = dao::notification(pool).await? else {
         return Ok(false);
@@ -229,27 +311,47 @@ pub async fn run_once(
     let Some(claim) = dao::claim(pool, message).await? else {
         return Ok(true);
     };
-    if let Err(error) = execute(pool, &claim, mailer).await {
-        let (code, retry) = match error {
-            Error::Forbidden => ("authority", false),
-            Error::NotFound | Error::Conflict(_) => ("unavailable", false),
-            Error::Invalid(_) => ("invalid_input", false),
-            Error::Database(_) => ("database", true),
-            Error::Unavailable => ("provider", true),
+    if let Err(stop) = execute(pool, &claim, mailer, outbox).await {
+        let (code, retry) = match stop {
+            Stop::ModuleDisabled => ("module_disabled", false),
+            Stop::Failed(Error::Forbidden) => ("authority", false),
+            Stop::Failed(Error::NotFound | Error::Conflict(_)) => ("unavailable", false),
+            Stop::Failed(Error::Invalid(_)) => ("invalid_input", false),
+            Stop::Failed(Error::Database(_)) => ("database", true),
+            Stop::Failed(Error::Unavailable) => ("provider", true),
         };
         dao::failure(pool, &claim, code, retry).await?;
     }
     Ok(true)
 }
+enum Stop {
+    ModuleDisabled,
+    Failed(Error),
+}
+impl From<Error> for Stop {
+    fn from(error: Error) -> Self {
+        Self::Failed(error)
+    }
+}
+impl From<sqlx::Error> for Stop {
+    fn from(error: sqlx::Error) -> Self {
+        Self::Failed(error.into())
+    }
+}
 async fn execute(
     pool: &PgPool,
     claim: &dao::Claim,
     mailer: &crate::workspace_access::invitations::delivery::Mailer,
-) -> Result<(), Error> {
+    outbox: &crate::mail::Outbox,
+) -> Result<(), Stop> {
     let mut tx = pool.begin().await?;
     modules::lock_workspace(&mut tx, claim.workspace).await?;
     if !dao::fenced(&mut tx, claim).await? {
         return Ok(());
+    }
+    // The workspace lock serializes this check with application disablement.
+    if !modules_ready(&mut tx, claim.workspace, &claim.kind, claim.id).await? {
+        return Err(Stop::ModuleDisabled);
     }
     let identity = Identity::resume(&claim.identity);
     let actor = ActorContext {
@@ -258,19 +360,21 @@ async fn execute(
         request_id: claim.id,
         source_interface: "worker",
     };
-    let authority = access::require(
-        &mut tx,
-        &identity,
-        claim.workspace,
-        match claim.kind.as_str() {
-            "crm.coordination" => "crm.deals.coordination.apply",
-            "workspace.invitation_email" => "workspace.access.admin",
-            _ => return Err(Error::NotFound),
-        },
-    )
-    .await?;
+    let permission = match claim.kind.as_str() {
+        "crm.coordination" => "crm.deals.coordination.apply",
+        "workspace.invitation_email" => "workspace.access.admin",
+        "forms.crm_inquiry" => "forms.recipes.manage",
+        "scheduling.crm_inquiry" => "scheduling.recipes.manage",
+        "scheduling.reminder" => "scheduling.manage",
+        "projects.deal_conversion" => "projects.recipes.manage",
+        "mail.notification" => {
+            crate::mail::authority(&dao::purpose(&mut tx, claim.workspace, claim.id).await?)
+        }
+        _ => return Err(Error::NotFound.into()),
+    };
+    let authority = access::require(&mut tx, &identity, claim.workspace, permission).await?;
     if authority.user_id != claim.user || authority.membership_id != claim.member {
-        return Err(Error::Forbidden);
+        return Err(Error::Forbidden.into());
     }
     match claim.kind.as_str() {
         "crm.coordination" => crate::crm::status_jobs::execute(&mut tx, &actor, claim.id).await?,
@@ -280,10 +384,19 @@ async fn execute(
             )
             .await?
         }
-        _ => return Err(Error::NotFound),
+        "forms.crm_inquiry" => crate::forms::recipes::execute(&mut tx, &actor, claim.id).await?,
+        "scheduling.crm_inquiry" => crate::scheduling::execute(&mut tx, &actor, claim.id).await?,
+        "scheduling.reminder" => {
+            crate::scheduling::reminder(&mut tx, &actor, claim.id, outbox).await?
+        }
+        "projects.deal_conversion" => {
+            crate::projects::recipes::execute(&mut tx, &actor, claim.id).await?
+        }
+        "mail.notification" => crate::mail::execute(&mut tx, &actor, claim.id, outbox).await?,
+        _ => return Err(Error::NotFound.into()),
     }
     if !dao::finish(&mut tx, claim).await? {
-        return Err(Error::Conflict("Job lease expired"));
+        return Err(Error::Conflict("Job lease expired").into());
     }
     reliability::audit(
         &mut tx,
@@ -305,6 +418,21 @@ pub(crate) async fn enqueue_invitation(
     dedup: &str,
 ) -> Result<Uuid, Error> {
     dao::enqueue(db, actor, a, dedup, "workspace.invitation_email").await
+}
+/// Resume a blocked or exhausted job from the owning module's retry operation.
+pub(crate) async fn resume_in(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    id: Uuid,
+) -> Result<(), Error> {
+    let current = dao::lock(db, workspace, id).await?;
+    if !["blocked", "exhausted"].contains(&current.state.as_str()) {
+        return Err(Error::Conflict("Only blocked or exhausted jobs can resume"));
+    }
+    if !modules_ready(db, workspace, &current.kind, id).await? {
+        return Err(Error::Forbidden);
+    }
+    dao::resume(db, workspace, id).await
 }
 pub(crate) async fn record(db: &mut PgConnection, workspace: Uuid, id: Uuid) -> Result<Job, Error> {
     dao::get(db, workspace, id).await

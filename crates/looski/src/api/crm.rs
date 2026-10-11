@@ -683,6 +683,25 @@ async fn set_crm(
         crate::modules::set(&state.db, &actor, "crm", key(&headers)?, input).await?,
     ))
 }
+#[utoipa::path(patch,path="/api/v1/workspaces/{workspace_id}/modules/{module_key}",operation_id="setModule",tag="workspaces",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("module_key"=String,Path),("Idempotency-Key"=String,Header)),request_body=crate::modules::SetModule,responses((status=200,body=crate::modules::Module),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
+async fn set_module(
+    State(state): State<AppState>,
+    Path((workspace, module)): Path<(Uuid, String)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<crate::modules::SetModule>,
+) -> Result<Json<crate::modules::Module>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = ActorContext {
+        identity: &identity,
+        workspace,
+        request_id: request_id.0,
+        source_interface: source_interface(&headers),
+    };
+    Ok(Json(
+        crate::modules::set(&state.db, &actor, &module, key(&headers)?, input).await?,
+    ))
+}
 #[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/crm/opportunities/{id}/tags",operation_id="crm_opportunity_tags",tag="crm",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("id"=Uuid,Path)),responses((status=200,body=Vec<crate::tags::Tag>),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError),(status=503,body=ApiError)))]
 async fn opportunity_tags(
     State(state): State<AppState>,
@@ -1257,4 +1276,5 @@ pub(super) fn routes() -> OpenApiRouter<AppState> {
         .routes(routes!(deal_history))
         .routes(routes!(modules))
         .routes(routes!(set_crm))
+        .routes(routes!(set_module))
 }

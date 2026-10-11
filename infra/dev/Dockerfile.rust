@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1
+# Development only: the API/worker are rebuilt from the bind-mounted checkout.
+FROM rust:1.97.1-bookworm
+ARG TARGETARCH
+ARG WATCHEXEC_VERSION=2.8.0
+RUN set -eu; \
+    case "$TARGETARCH" in \
+      arm64) triple=aarch64-unknown-linux-musl; sum=3961878b21e3c1729279322f4007dd5bbf0032110fbcb5e7b983946a9ceb3bf6 ;; \
+      amd64) triple=x86_64-unknown-linux-musl; sum=35ea667cbe4bc96c23ba2a1f46c94c46bc385b67165e3bf621c0e7e4959aa99b ;; \
+      *) echo "unsupported architecture $TARGETARCH" >&2; exit 1 ;; \
+    esac; \
+    archive="watchexec-${WATCHEXEC_VERSION}-${triple}.tar.xz"; \
+    curl -fsSLo "/tmp/$archive" "https://github.com/watchexec/watchexec/releases/download/v${WATCHEXEC_VERSION}/$archive"; \
+    echo "$sum  /tmp/$archive" | sha256sum -c -; \
+    tar -xJf "/tmp/$archive" -C /usr/local/bin --strip-components=1 "watchexec-${WATCHEXEC_VERSION}-${triple}/watchexec"; \
+    rm "/tmp/$archive"
+# A shared Cargo home also shares its download lock between API and worker.
+ENV CARGO_HOME=/cargo-home CARGO_TARGET_DIR=/cargo-target PATH=/cargo-target/debug:/usr/local/cargo/bin:$PATH
+WORKDIR /src
+COPY infra/api/entrypoint.sh /usr/local/bin/looski-entrypoint
+COPY infra/dev/rust.sh /usr/local/bin/looski-dev
+ENTRYPOINT ["/bin/sh", "/usr/local/bin/looski-dev"]

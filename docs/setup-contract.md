@@ -106,6 +106,8 @@ install -m 600 ~/.cloudflared/<tunnel-id>.json .local/<installation>/cloudflare-
 
 Then set `LOOSKI_PUBLIC_URL=https://suite.example.com` and `LOOSKI_TUNNEL_MODE=cloudflare` in `.env` and run `make up`. Setup requires an HTTPS origin on the default port and a private (`0600`) credential file containing the tunnel ID and secret; it never logs the secret. Changing the public origin changes the Auth issuer, so existing sessions end and everyone signs in again. Browser form posts are only accepted from the configured origin, so use the public hostname rather than the loopback port once it is set.
 
+The hot-reloading development stack (`make dev`) is a separate installation with its own `.env.dev`, tunnel and hostname; it renders its connector configuration the same way.
+
 Run exactly one installation per tunnel: Cloudflare load-balances between all connected connectors, so a second installation started with the same credential would receive a share of the traffic. The credential is not part of encrypted recovery snapshots, because a restored copy must not join the live hostname; reissue it from Cloudflare (`cloudflared tunnel token`, or delete and recreate the tunnel and route) when moving the installation.
 
 The suite gateway routes `/api/v1/…` to Rust, the approved public `/auth/v1/…` endpoints through the validated Supabase gateway/Auth path, and frontend routes (including `/auth/confirm`) to SvelteKit. Apply the required prefix preservation/rewrite rules explicitly. Keep Auth administrative endpoints and the Supabase Data API, Studio, PostgreSQL, and ClickHouse off the public route. Validate allowlisted routes and denial behavior rather than exposing the entire upstream Supabase gateway.

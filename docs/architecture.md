@@ -249,6 +249,7 @@ Ordinary application routes remain unavailable while disabled. A separate, permi
 | --- | --- | --- |
 | Scheduling | Forms and CRM | Forms adds custom intake; CRM records sales follow-up. Basic attendee fields belong to Scheduling. |
 | Forms | CRM and Scheduling | A standalone submission can create an inquiry; scheduling can attach a form to a booking. |
+| CMS | Forms and CRM | A published form can be embedded in content; its submissions reach CRM through the Forms recipe. |
 | Projects | CRM | A configured deal milestone can create a delivery project. |
 | Knowledge Base | CMS | Editing implementation can be reused without requiring the CMS application. |
 | Helpdesk | CRM and Knowledge Base | Customer sales context and suggested articles. |
@@ -264,13 +265,17 @@ Contacts owns workspace-scoped people, organizations, and their relationships. T
 | --- | --- |
 | Contacts | Stable contact and organization identifiers, business contact details, relationships, matching and merge policy. |
 | Forms | Definitions, versions, submissions, original answers. |
-| Scheduling | Availability, appointment types, appointments, attendee snapshots, lifecycle and slot reservation rules. |
+| CMS | Content types, entry drafts, immutable revisions, media records and public page rendering. File bytes remain owned by Files. |
+| Scheduling | Host calendars, IANA local availability, appointment types, exclusive buffered reservations, attendee snapshots, scoped booking codes, lifecycle events and generation-fenced reminders. Booking intake composes Forms and CRM through their interfaces. |
 | CRM | Inquiries, opportunities for potential business, distinct live/historical deals, pipelines/statuses, sales activities, and configured transitions. Qualification uses opportunities; no separate lead table. |
 | Tasks | Shared task records, assignment, due dates, and completion lifecycle, with typed links from owning modules. |
-| Projects | Project grouping, boards, and delivery views over shared Tasks. |
+| Projects | Project grouping, membership, boards, delivery views and comments over shared Tasks, reached only through the Tasks interface. Task records stay in `tasks`. |
+| Knowledge base | Collections and their member lists, documents, immutable revisions and their full-text index. It reads no other application's tables and uses the neutral rich text parser. |
+| Helpdesk | Tickets, immutable public replies/internal notes, ticket-scoped customer access codes, staff-only article links and metadata-only support events. Contact and article visibility stays with the owning module. |
+| Time tracking | Own-member timers and manual entries, exact elapsed milliseconds, billable flags, explicit work dates, budgets and scoped reports. Optional project references use Projects authorization. |
 | Workflow foundation | Configured recipes, mapping revisions, run/step status, idempotency and retry metadata. |
 
-Accepted ownership: a minimal shared Tasks capability owns dedicated task records used by CRM and Projects, while Projects owns project/board grouping. Introduce task storage with the first CRM follow-up; CRM must remain useful with Projects disabled. Neither task storage nor Projects is implemented yet. See the [task design](crm-plan.md#tasks-and-configuration-building-blocks).
+Accepted ownership: a minimal shared Tasks capability owns dedicated task records used by CRM and Projects, while Projects owns project/board grouping. Introduce task storage with the first CRM follow-up; CRM must remain useful with Projects disabled. Both capabilities are implemented; see the [Projects checkpoint](implementation/projects-slice.md). See the [task design](crm-plan.md#tasks-and-configuration-building-blocks).
 
 A module may preserve a historical snapshot when needed, such as the attendee details supplied at booking time. Label that snapshot as historical rather than presenting it as a second authoritative contact record. The contact timeline composes authorized records from their owning modules; timeline visibility does not grant access to all linked content or submission answers.
 

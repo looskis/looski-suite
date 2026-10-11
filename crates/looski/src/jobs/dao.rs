@@ -107,9 +107,45 @@ pub(super) async fn resume(db: &mut PgConnection, ws: Uuid, id: Uuid) -> Result<
     sqlx::query("UPDATE suite.jobs SET state='queued',attempts=0,error_code=NULL,message_id=$3,lease_token=NULL,lease_until=NULL,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2").bind(ws).bind(id).bind(message).execute(&mut *db).await?;
     event(db, ws, id).await
 }
-pub(super) async fn block_crm(db: &mut PgConnection, ws: Uuid) -> Result<(), Error> {
-    sqlx::query("WITH locked AS MATERIALIZED (SELECT id,message_id FROM suite.jobs WHERE workspace_id=$1 AND kind='crm.coordination' AND state IN ('queued','running') ORDER BY id FOR UPDATE), removed AS MATERIALIZED (SELECT pgmq.delete('looski_jobs',message_id) FROM locked WHERE message_id IS NOT NULL), changed AS (UPDATE suite.jobs SET state='blocked',error_code='module_disabled',message_id=NULL,lease_token=NULL,lease_until=NULL,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id IN (SELECT id FROM locked) AND (SELECT count(*) FROM removed)>=0 RETURNING workspace_id,id,state,attempts,error_code) INSERT INTO suite.job_events(workspace_id,job_id,state,attempt,error_code) SELECT workspace_id,id,state,attempts,error_code FROM changed").bind(ws).execute(db).await?;
+/// Kinds whose execution depends on an application, including notifications
+/// whose purpose that application owns.
+pub(super) async fn block_module(
+    db: &mut PgConnection,
+    ws: Uuid,
+    kinds: &[&str],
+    purpose: &str,
+) -> Result<(), Error> {
+    sqlx::query("WITH locked AS MATERIALIZED (SELECT j.id,j.message_id FROM suite.jobs j WHERE j.workspace_id=$1 AND j.state IN ('queued','running') AND (j.kind=ANY($2) OR ($3='forms.' AND j.kind='scheduling.crm_inquiry' AND EXISTS(SELECT 1 FROM scheduling.appointments a WHERE a.workspace_id=j.workspace_id AND a.recipe_job_id=j.id AND a.form_id IS NOT NULL)) OR (j.kind='mail.notification' AND EXISTS(SELECT 1 FROM suite.outbound_messages o WHERE o.workspace_id=j.workspace_id AND o.job_id=j.id AND starts_with(o.purpose,$3)))) ORDER BY j.id FOR UPDATE OF j), removed AS MATERIALIZED (SELECT pgmq.delete('looski_jobs',message_id) FROM locked WHERE message_id IS NOT NULL), changed AS (UPDATE suite.jobs SET state='blocked',error_code='module_disabled',message_id=NULL,lease_token=NULL,lease_until=NULL,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id IN (SELECT id FROM locked) AND (SELECT count(*) FROM removed)>=0 RETURNING workspace_id,id,state,attempts,error_code) INSERT INTO suite.job_events(workspace_id,job_id,state,attempt,error_code) SELECT workspace_id,id,state,attempts,error_code FROM changed").bind(ws).bind(kinds).bind(format!("{purpose}.")).execute(db).await?;
     Ok(())
+}
+/// Enqueue under authority recorded by the owning module, such as an activated
+/// recipe or a notification recipient. Execution re-checks that authority.
+#[allow(clippy::too_many_arguments)]
+pub(super) async fn enqueue_recorded(
+    db: &mut PgConnection,
+    ws: Uuid,
+    user: Uuid,
+    member: Uuid,
+    issuer: &str,
+    subject: &str,
+    dedup: &str,
+    kind: &str,
+) -> Result<Uuid, Error> {
+    let id = Uuid::new_v4();
+    let message = send(db, id).await?;
+    sqlx::query("INSERT INTO suite.jobs(id,workspace_id,kind,deduplication_key,actor_user_id,actor_membership_id,actor_issuer,actor_subject,message_id) VALUES($1,$2,$9,$3,$4,$5,$6,$7,$8)").bind(id).bind(ws).bind(dedup).bind(user).bind(member).bind(issuer).bind(subject).bind(message).bind(kind).execute(&mut *db).await?;
+    event(db, ws, id).await?;
+    Ok(id)
+}
+pub(super) async fn purpose(db: &mut PgConnection, ws: Uuid, id: Uuid) -> Result<String, Error> {
+    sqlx::query_scalar(
+        "SELECT purpose FROM suite.outbound_messages WHERE workspace_id=$1 AND job_id=$2",
+    )
+    .bind(ws)
+    .bind(id)
+    .fetch_optional(db)
+    .await?
+    .ok_or(Error::NotFound)
 }
 pub(super) struct Notification {
     id: Option<Uuid>,
@@ -147,7 +183,7 @@ pub(super) async fn claim(
     notification: Notification,
 ) -> Result<Option<Claim>, Error> {
     let mut tx = pool.begin().await?;
-    let row=sqlx::query("SELECT kind,workspace_id,state,attempts,message_id,lease_until>clock_timestamp() AS leased,actor_issuer,actor_subject,actor_user_id,actor_membership_id FROM suite.jobs WHERE id=$1 FOR UPDATE").bind(notification.id).fetch_optional(&mut *tx).await?;
+    let row=sqlx::query("SELECT GREATEST(0,ceil(extract(epoch FROM available_at-clock_timestamp())))::integer AS delay,kind,workspace_id,state,attempts,message_id,lease_until>clock_timestamp() AS leased,actor_issuer,actor_subject,actor_user_id,actor_membership_id FROM suite.jobs WHERE id=$1 FOR UPDATE").bind(notification.id).fetch_optional(&mut *tx).await?;
     let Some(row) = row else {
         sqlx::query("SELECT pgmq.delete('looski_jobs',$1)")
             .bind(notification.message)
@@ -170,6 +206,16 @@ pub(super) async fn claim(
         return Ok(None);
     }
     if row.try_get::<Option<bool>, _>("leased")?.unwrap_or(false) {
+        return Ok(None);
+    }
+    let delay: i32 = row.try_get("delay")?;
+    if delay > 0 {
+        sqlx::query("SELECT pgmq.set_vt('looski_jobs',$1,$2)")
+            .bind(notification.message)
+            .bind(delay)
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
         return Ok(None);
     }
     let attempts: i32 = row.try_get("attempts")?;
@@ -217,7 +263,7 @@ pub(super) async fn failure(
         return Ok(());
     }
     if retry && c.attempt < 5 {
-        sqlx::query("SELECT pgmq.set_vt('looski_jobs',message_id,$3) FROM suite.jobs WHERE workspace_id=$1 AND id=$2").bind(c.workspace).bind(c.id).bind(if c.kind=="workspace.invitation_email" {30_i32<<c.attempt} else {1_i32<<c.attempt}).execute(&mut *tx).await?;
+        sqlx::query("SELECT pgmq.set_vt('looski_jobs',message_id,$3) FROM suite.jobs WHERE workspace_id=$1 AND id=$2").bind(c.workspace).bind(c.id).bind(if matches!(c.kind.as_str(),"workspace.invitation_email"|"mail.notification"|"scheduling.reminder") {30_i32<<c.attempt} else {1_i32<<c.attempt}).execute(&mut *tx).await?;
         sqlx::query("UPDATE suite.jobs SET state='queued',lease_token=NULL,lease_until=NULL,error_code=$3,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2").bind(c.workspace).bind(c.id).bind(code).execute(&mut *tx).await?;
         event(&mut tx, c.workspace, c.id).await?;
     } else {

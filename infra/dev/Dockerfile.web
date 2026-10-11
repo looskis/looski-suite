@@ -1,0 +1,9 @@
+# syntax=docker/dockerfile:1
+# Development only: Vite serves SvelteKit from the bind-mounted checkout.
+FROM node:26.3.1-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends curl openssl \
+    && rm -rf /var/lib/apt/lists/*
+RUN npm install -g pnpm@11.24.0
+WORKDIR /src
+COPY infra/dev/web.sh /usr/local/bin/looski-dev
+CMD ["/bin/sh", "/usr/local/bin/looski-dev"]

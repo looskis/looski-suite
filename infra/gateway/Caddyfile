@@ -9,6 +9,9 @@
   }
 }
 
+# Defines the `web` upstream: the packaged server, or Vite in the development stack.
+import /etc/caddy/web.caddy
+
 :8080 {
   header Cache-Control "no-store"
   handle /health/* {
@@ -29,13 +32,23 @@
     path /auth/v1/verify
   }
   handle @emailFallback {
-    reverse_proxy web:3000
+    import web
   }
   @private path /auth/v1 /auth/v1/* /rest/v1 /rest/v1/* /storage/v1 /storage/v1/* /pg/*
   handle @private {
     respond "Not found" 404
   }
+  # Public forms run on no session: staff cookies never reach their renderer.
+  handle /f/* {
+    request_header -Cookie
+    import web
+  }
+  # Published content is the same: its renderer never sees a staff session.
+  handle /c/* {
+    request_header -Cookie
+    import web
+  }
   handle {
-    reverse_proxy web:3000
+    import web
   }
 }

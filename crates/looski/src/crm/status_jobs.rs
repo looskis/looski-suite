@@ -170,6 +170,13 @@ pub(crate) async fn save_in_transaction(
     Ok(result)
 }
 
+pub(super) async fn active_status(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    status: Uuid,
+) -> Result<(), Error> {
+    dao::active_status(db, workspace, status).await
+}
 pub(super) async fn schedule(
     db: &mut PgConnection,
     actor: &ActorContext<'_>,

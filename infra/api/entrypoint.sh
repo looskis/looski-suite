@@ -14,6 +14,10 @@ if [ "${1:-}" = api ] || [ "${1:-}" = worker ]; then
   install -D -o 10001 -g 10001 -m 0400 "$LOOSKI_INVITATION_KEY_FILE" /run/looski/invitation_key
   export LOOSKI_INVITATION_KEY_FILE=/run/looski/invitation_key
 fi
+if [ "${1:-}" = worker ] && [ -r "${LOOSKI_SMTP_CONFIG_FILE:-/nonexistent}" ]; then
+  install -D -o 10001 -g 10001 -m 0400 "$LOOSKI_SMTP_CONFIG_FILE" /run/looski/smtp_config
+  export LOOSKI_SMTP_CONFIG_FILE=/run/looski/smtp_config
+fi
 if [ "${LOOSKI_DIAGNOSTICS_MODE:-disabled}" = local ]; then
   if [ -r "${LOOSKI_DIAGNOSTICS_KEY_FILE:-/nonexistent}" ]; then
     install -D -o 10001 -g 10001 -m 0400 "$LOOSKI_DIAGNOSTICS_KEY_FILE" /run/looski/diagnostics_key

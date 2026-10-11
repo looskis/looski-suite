@@ -63,6 +63,24 @@
       >{/if}
   </p>{/if}
 
+{#if data.job.forms_context}<p>
+    Form response: <a
+      href={`/workspaces/${data.workspace.id}/forms/${data.job.forms_context.form_id}/submissions/${data.job.forms_context.submission_id}`}
+      >open submission</a
+    >
+    ·
+    <a
+      href={`/workspaces/${data.workspace.id}/forms/${data.job.forms_context.form_id}/recipe`}
+      >recipe runs</a
+    >
+  </p>{/if}
+{#if data.job.projects_context}<p>
+    Deal-to-project conversion:
+    <a
+      href={`/workspaces/${data.workspace.id}/projects/recipes/${data.job.projects_context.recipe_id}`}
+      >recipe runs</a
+    >
+  </p>{/if}
 {#if data.job.invitation_context}<p>
     <a
       href={`/workspaces/${data.workspace.id}/access/invitations/${data.job.invitation_context.invitation_id}`}

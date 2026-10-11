@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 use crate::api::SystemResponse;
+mod cms;
+mod forms;
+mod helpdesk;
+mod knowledge;
+mod projects;
+mod scheduling;
+mod time;
 
 #[derive(Debug, serde::Serialize)]
 pub struct ApiFailure {

@@ -117,14 +117,44 @@ A scheduled meeting or service commitment with a time, participants, and current
 **Booking**:
 The reservation that creates an appointment. Rescheduling changes the existing appointment rather than creating an unrelated customer interaction.
 
+**Booking access code**:
+A private code that grants view, reschedule and cancellation access to one appointment. It does not prove attendee identity or grant staff, contact or intake access.
+
+**Time entry**:
+Recorded work attributed to a member and an explicit work date, with an elapsed duration and billable flag. It can optionally belong to a project.
+
+**Time budget**:
+A planned duration for a date range and optional project, compared with the permitted recorded work in that range. It is not an invoice or money budget.
+
 **Project**:
 A body of work organized for delivery, containing tasks and associated records.
 
 **Ticket**:
 A customer support request tracked through assignment and resolution.
 
+**Ticket access code**:
+A private code that lets its holder read the customer-visible conversation and reply to one ticket. It grants no workspace or contact access and is not a login identity.
+
+**Internal note**:
+A support message visible only to staff who may read the ticket. It is separate from a customer-visible reply.
+
 **Contact timeline**:
 A chronological view of business interactions associated with a contact, limited to records the viewer may access.
+
+## Knowledge
+
+**Knowledge base**:
+A workspace's internal library of articles and standard operating procedures, separate from content published through the CMS.
+
+**Collection**:
+A group of documents in the knowledge base, open to the workspace or restricted to the members listed on it.
+
+**Document**:
+An article or standard operating procedure in one collection at a time, with immutable revisions.
+_Avoid_: Page or entry, which belong to the CMS.
+
+**Revision**:
+An immutable saved version of a document. Restoring one copies it into a new revision and never rewrites history.
 
 ## Connected work
 

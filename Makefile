@@ -1,4 +1,4 @@
-.PHONY: setup smtp up stop status check test format contracts smoke acceptance
+.PHONY: setup smtp up stop status dev dev-migrate dev-stop dev-status dev-logs dev-check check test format contracts smoke acceptance
 setup:
 	python3 scripts/dev.py configure
 smtp:
@@ -9,6 +9,18 @@ stop:
 	python3 scripts/dev.py stop
 status:
 	python3 scripts/dev.py status
+dev:
+	python3 scripts/dev.py --dev up
+dev-migrate:
+	python3 scripts/dev.py --dev migrate
+dev-stop:
+	python3 scripts/dev.py --dev stop
+dev-status:
+	python3 scripts/dev.py --dev status
+dev-logs:
+	python3 scripts/dev.py --dev logs
+dev-check:
+	python3 scripts/dev_smoke.py
 format:
 	cargo fmt --all
 	pnpm format

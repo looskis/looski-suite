@@ -40,7 +40,7 @@
           name="parent_id"
           bind:value={parentId}
           required
-          placeholder="UUID of the contact, deal, task or template"
+          placeholder="UUID of the contact, deal, task, template or form"
         /></label
       >{/if}
     {#if spec?.supports_archive_selection}<label

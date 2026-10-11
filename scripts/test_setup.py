@@ -38,12 +38,28 @@ class SetupConfigurationTests(unittest.TestCase):
             with self.subTest(values=values), patch.dict(os.environ, values), self.assertRaises(SystemExit):
                 dev.configuration()
 
+    def test_development_stack_is_a_separate_installation(self):
+        (self.root / '.env').write_text('COMPOSE_PROJECT_NAME=looski-suite\nLOOSKI_PUBLIC_URL=http://localhost:58888\n')
+        config = dev.configuration(dev=True)
+        self.assertEqual((config['COMPOSE_PROJECT_NAME'], config['LOOSKI_PUBLIC_URL']),
+                         ('looski-suite-dev', 'http://localhost:58889'))
+        (self.root / '.env.dev').write_text('LOOSKI_HTTP_PORT=58890\nLOOSKI_PUBLIC_URL=http://localhost:58890\n')
+        self.assertEqual(dev.configuration(dev=True)['LOOSKI_HTTP_PORT'], '58890')
+        self.assertEqual(dev.configuration()['LOOSKI_HTTP_PORT'], '58888')
+
+    def test_development_stack_never_targets_the_primary_installation(self):
+        for primary, values in [('', {'COMPOSE_PROJECT_NAME': 'looski-suite'}),
+                                ('COMPOSE_PROJECT_NAME=business\n', {'COMPOSE_PROJECT_NAME': 'business'})]:
+            (self.root / '.env').write_text(primary)
+            with self.subTest(values=values), patch.dict(os.environ, values), self.assertRaises(SystemExit):
+                dev.configuration(dev=True)
+
     def test_partial_secrets_are_not_rotated(self):
         directory = self.root / '.local/looski-suite/secrets'
         directory.mkdir(parents=True)
         (directory / 'db_password').write_text('existing')
         with self.assertRaises(SystemExit):
-            dev.configure(dev.configuration())
+            dev.configure(dev.configuration(), dev.config_file())
         self.assertEqual((directory / 'db_password').read_text(), 'existing')
 
     def test_compose_configuration_keeps_mail_mode_across_service_restarts(self):

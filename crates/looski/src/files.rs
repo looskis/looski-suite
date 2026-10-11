@@ -205,6 +205,29 @@ pub async fn content(
         content_base64: STANDARD.encode(bytes),
     })
 }
+/// A file the actor may read right now, for another module to adopt.
+pub(crate) async fn readable(
+    db: &mut sqlx::PgConnection,
+    actor: &ActorContext<'_>,
+    id: Uuid,
+) -> Result<FileRecord, Error> {
+    let read = access::require(db, actor.identity, actor.workspace, "files.read").await?;
+    dao::get(db, actor.workspace, id, &read, false).await
+}
+/// Verified bytes of an active file, with no actor. Callers own the decision that
+/// these bytes may be released; CMS media is the only one and goes through its own checks.
+pub(crate) async fn active_bytes(
+    db: &mut sqlx::PgConnection,
+    workspace: Uuid,
+    id: Uuid,
+) -> Result<Vec<u8>, Error> {
+    let (byte_length, sha256) = dao::active_digest(db, workspace, id).await?;
+    let bytes = dao::content(db, workspace, id).await?;
+    if bytes.len() as i64 != byte_length || digest(&bytes) != sha256 {
+        return Err(Error::Unavailable);
+    }
+    Ok(bytes)
+}
 async fn mutation(
     db: &mut sqlx::PgConnection,
     actor: &ActorContext<'_>,

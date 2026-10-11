@@ -71,7 +71,8 @@ def approve(challenge,state,device=None,opener=None,origin=None):
     opener=opener or browser;q=query(challenge,state,device)
     with opener.open(f.base+'/cli/authorize?'+q,timeout=20) as r:
         page=r.read().decode();assert 'Authorize the Looski CLI?' in page and email in page and r.headers.get('Cache-Control')=='no-store'
-        assert r.headers.get('Referrer-Policy')=='no-referrer'
+        # no-referrer would make browsers post Origin: null, which CSRF refuses.
+        assert r.headers.get('Referrer-Policy')=='same-origin'
     form={'code_challenge':challenge,'code_challenge_method':'S256','state':state,**({'device':device} if device else {})}
     try:r=opener.open(Request(f.base+'/cli/authorize?/approve&'+q,data=urlencode(form).encode(),headers={'Origin':origin or f.base,'Accept':'text/html'}),timeout=20)
     except HTTPError as failure:return failure.status

@@ -246,14 +246,40 @@ async fn save(
     new: Option<NewParticipant>,
     edit: Option<EditParticipant>,
 ) -> Result<Participant, Error> {
+    let mut tx = pool.begin().await?;
+    let result = save_in(&mut tx, actor, target, parent_id, id, key, new, edit).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+/// Add a participant within the caller's transaction, such as a workflow step.
+pub(crate) async fn create_in(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    target: Target,
+    parent_id: Uuid,
+    key: &str,
+    input: NewParticipant,
+) -> Result<Participant, Error> {
+    save_in(db, actor, target, parent_id, None, key, Some(input), None).await
+}
+#[allow(clippy::too_many_arguments)]
+async fn save_in(
+    db: &mut PgConnection,
+    actor: &ActorContext<'_>,
+    target: Target,
+    parent_id: Uuid,
+    id: Option<Uuid>,
+    key: &str,
+    new: Option<NewParticipant>,
+    edit: Option<EditParticipant>,
+) -> Result<Participant, Error> {
     let request = if let Some(n) = &new {
         serde_json::to_value(n)
     } else {
         serde_json::to_value(&edit)
     }
     .expect("participant input serializes");
-    let mut tx = pool.begin().await?;
-    let (write, read) = super::mutation(&mut tx, actor, target.manage(), target.read()).await?;
+    let (write, read) = super::mutation(&mut *db, actor, target.manage(), target.read()).await?;
     let operation = format!(
         "{}.{}:{parent_id}:{}",
         target.label(),
@@ -261,7 +287,7 @@ async fn save(
         id.map(|v| v.to_string()).unwrap_or_default()
     );
     let saved = reliability::replay::<SavedParticipant>(
-        &mut tx,
+        &mut *db,
         actor.workspace,
         &write,
         &operation,
@@ -269,12 +295,12 @@ async fn save(
         &request,
     )
     .await?;
-    let (version, archived) = parent(&mut tx, actor, target, parent_id, &write).await?;
-    parent(&mut tx, actor, target, parent_id, &read).await?;
+    let (version, archived) = parent(&mut *db, actor, target, parent_id, &write).await?;
+    parent(&mut *db, actor, target, parent_id, &read).await?;
     if let Some(saved) = saved {
         if saved.promoted
             && !access::require(
-                &mut tx,
+                &mut *db,
                 actor.identity,
                 actor.workspace,
                 target.kind().permission(),
@@ -285,12 +311,12 @@ async fn save(
             return Err(Error::Forbidden);
         }
         let saved = saved.result;
-        references::require(&mut tx, actor, target.kind(), saved.reference_id).await?;
-        references::require(&mut tx, actor, target.kind(), saved.canonical_id).await?;
+        references::require(&mut *db, actor, target.kind(), saved.reference_id).await?;
+        references::require(&mut *db, actor, target.kind(), saved.canonical_id).await?;
         return Ok(saved);
     }
     let previous = if let Some(id) = id {
-        Some(dao::get(&mut tx, actor.workspace, target, parent_id, id).await?)
+        Some(dao::get(&mut *db, actor.workspace, target, parent_id, id).await?)
     } else {
         None
     };
@@ -319,7 +345,7 @@ async fn save(
             e.is_primary == Some(true) && (!p.is_primary || p.ended),
         )
     };
-    let reference = references::for_mutation(&mut tx, actor, target.kind(), reference_id).await?;
+    let reference = references::for_mutation(&mut *db, actor, target.kind(), reference_id).await?;
     if expected != version {
         return Err(Error::Conflict(
             "Record changed; reload before changing participants",
@@ -332,7 +358,7 @@ async fn save(
     }
     if promote
         && !access::require(
-            &mut tx,
+            &mut *db,
             actor.identity,
             actor.workspace,
             target.kind().permission(),
@@ -350,7 +376,7 @@ async fn save(
             ));
         }
         duplicate(
-            &mut tx,
+            &mut *db,
             actor,
             target,
             parent_id,
@@ -369,7 +395,7 @@ async fn save(
         reference_id
     };
     if previous.is_none()
-        && dao::by_reference(&mut tx, actor.workspace, target, parent_id, reference_id)
+        && dao::by_reference(&mut *db, actor.workspace, target, parent_id, reference_id)
             .await?
             .is_some()
     {
@@ -378,14 +404,14 @@ async fn save(
         ));
     }
     let id = id.unwrap_or_else(Uuid::new_v4);
-    let audit=reliability::audit(&mut tx,actor,&write,&format!("{}.saved",target.label()),parent_id,serde_json::json!({"association_id":id,"reference_id":reference_id,"role_label":label.trim(),"is_primary":primary,"ended":ended})).await?;
+    let audit=reliability::audit(&mut *db,actor,&write,&format!("{}.saved",target.label()),parent_id,serde_json::json!({"association_id":id,"reference_id":reference_id,"role_label":label.trim(),"is_primary":primary,"ended":ended})).await?;
     if primary {
-        for demoted in dao::demote(&mut tx, actor.workspace, target, parent_id, id).await? {
-            dao::history(&mut tx, actor.workspace, target, &demoted, audit).await?;
+        for demoted in dao::demote(&mut *db, actor.workspace, target, parent_id, id).await? {
+            dao::history(&mut *db, actor.workspace, target, &demoted, audit).await?;
         }
     }
     dao::save(
-        &mut tx,
+        &mut *db,
         actor.workspace,
         target,
         parent_id,
@@ -398,13 +424,13 @@ async fn save(
         previous.is_some(),
     )
     .await?;
-    dao::touch(&mut tx, actor.workspace, target, parent_id).await?;
-    let row = dao::get(&mut tx, actor.workspace, target, parent_id, id).await?;
-    dao::history(&mut tx, actor.workspace, target, &row, audit).await?;
-    let reference = references::require(&mut tx, actor, target.kind(), reference_id).await?;
+    dao::touch(&mut *db, actor.workspace, target, parent_id).await?;
+    let row = dao::get(&mut *db, actor.workspace, target, parent_id, id).await?;
+    dao::history(&mut *db, actor.workspace, target, &row, audit).await?;
+    let reference = references::require(&mut *db, actor, target.kind(), reference_id).await?;
     let result = project(row, reference);
     reliability::save_replay(
-        &mut tx,
+        &mut *db,
         actor.workspace,
         &write,
         &operation,
@@ -416,7 +442,6 @@ async fn save(
         },
     )
     .await?;
-    tx.commit().await?;
     Ok(result)
 }
 pub async fn create(

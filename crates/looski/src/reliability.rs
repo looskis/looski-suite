@@ -88,3 +88,15 @@ pub(crate) async fn redact_contact_replays(
   .bind(workspace).bind(id.to_string()).bind(format!("contacts.update:{id}")).bind(format!("contacts.archive:{id}")).execute(db).await?;
     Ok(())
 }
+
+/// Delete a removed comment's retry payloads, which hold its text.
+pub(crate) async fn redact_comment_replays(
+    db: &mut PgConnection,
+    workspace: Uuid,
+    comment: Uuid,
+    card: Uuid,
+) -> Result<(), Error> {
+    sqlx::query("UPDATE suite.idempotency_records SET request='{}'::jsonb,result='{}'::jsonb,invalidated_at=clock_timestamp() WHERE workspace_id=$1 AND (operation_key=$3 OR operation_key=$4) AND result->>'id'=$2 AND invalidated_at IS NULL")
+        .bind(workspace).bind(comment.to_string()).bind(format!("projects.comment.create:{card}")).bind(format!("projects.comment.edit:{comment}")).execute(db).await?;
+    Ok(())
+}
