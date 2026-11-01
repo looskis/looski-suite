@@ -2,6 +2,8 @@
 
 Business software that works independently and together. Rust/Axum owns business operations; SvelteKit renders the web application. PostgreSQL, Supabase Auth, and PGMQ form the local foundation.
 
+**Development preview — November 1, 2026.** This version is available for evaluation and development. It is not a stable production release. Local application, browser, fresh-install and recovery checks have passed; GitHub CI on this revision, external email/public authentication callbacks, dependency/container review and distribution packaging remain release gates. The preview targets local self-hosting; hosted Supabase is not yet validated. See the [build coverage](docs/implementation/coverage.md) for supported workflows and verification boundaries.
+
 **Local suite build:** Shared Contacts/Organizations, Tasks/Files, CRM, Forms, CMS, Projects, the knowledge base, Helpdesk, Time tracking and Scheduling have browser, API, CLI and local stdio MCP staff journeys. The build includes versioned intake, booking-owned CRM follow-up, local authentication/reminder mail, durable jobs, encrypted recovery and optional ClickHouse diagnostics. See [coverage and release boundaries](docs/implementation/coverage.md); external SMTP/public callbacks, hosted migration and public distribution still require their release checks.
 
 ## Start locally
