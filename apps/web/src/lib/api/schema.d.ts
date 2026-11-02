@@ -68,6 +68,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/connectors/communications/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["communications_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/cms/{public_key}": {
         parameters: {
             query?: never;
@@ -722,6 +738,102 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["archiveContentType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/communications/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["communications_accounts"];
+        put?: never;
+        post: operations["communications_connect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/communications/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["communications_update_account"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/communications/accounts/{id}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["communications_sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/communications/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["communications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/communications/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["communications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["communications_update"];
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/communications/conversations/{id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["communications_messages"];
+        put?: never;
+        post: operations["communications_send"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3456,6 +3568,24 @@ export interface components {
             display_name: string;
             token: string;
         };
+        Account: {
+            capabilities: components["schemas"]["Capabilities"];
+            connector_key: string;
+            /** Format: int64 */
+            cursor: number;
+            enabled: boolean;
+            /** Format: uuid */
+            id: string;
+            installation_id: string;
+            name: string;
+            /** Format: uuid */
+            owner_membership_id: string;
+            provider: string;
+            shared: boolean;
+            sync_error?: string | null;
+            /** Format: int64 */
+            version: number;
+        };
         Activity: {
             /** Format: uuid */
             anchor_id: string;
@@ -3756,6 +3886,15 @@ export interface components {
             label: string;
             starts_at: string;
         };
+        Capabilities: {
+            attachments: boolean;
+            calls: boolean;
+            channels: string[];
+            delivery_receipts: boolean;
+            read_receipts: boolean;
+            send_text: boolean;
+            subjects: boolean;
+        };
         Card: {
             /** @description False when Tasks assigned this to someone outside the project. */
             assignee_in_project: boolean;
@@ -3808,7 +3947,7 @@ export interface components {
             user: components["schemas"]["SessionUser"];
         };
         /** @enum {string} */
-        Collection: "coordination_rules" | "contact_organizations" | "contact_tags" | "organization_tags" | "opportunity_tags" | "deal_tags" | "contacts" | "organizations" | "tags" | "opportunities" | "deals" | "tasks" | "files" | "task_types" | "task_templates" | "task_revisions" | "task_history" | "activity_types" | "activity_history" | "coordination_templates" | "coordination_revisions" | "deal_coordination" | "pipelines" | "stages" | "categories" | "statuses" | "opportunity_contacts" | "opportunity_organizations" | "deal_contacts" | "deal_organizations" | "opportunity_tasks" | "opportunity_history" | "deal_tasks" | "deal_history" | "contact_activities" | "opportunity_activities" | "deal_activities" | "forms" | "form_versions" | "form_submissions" | "cms_content_types" | "cms_entries" | "cms_revisions" | "cms_media" | "projects" | "project_members" | "project_columns" | "project_cards" | "project_comments" | "appointment_types" | "appointments" | "appointment_events" | "time_entries" | "time_budgets" | "helpdesk_tickets" | "helpdesk_messages" | "knowledge_collections" | "knowledge_collection_members" | "knowledge_documents" | "knowledge_revisions";
+        Collection: "coordination_rules" | "contact_organizations" | "contact_tags" | "organization_tags" | "opportunity_tags" | "deal_tags" | "contacts" | "organizations" | "tags" | "opportunities" | "deals" | "tasks" | "files" | "task_types" | "task_templates" | "task_revisions" | "task_history" | "activity_types" | "activity_history" | "coordination_templates" | "coordination_revisions" | "deal_coordination" | "pipelines" | "stages" | "categories" | "statuses" | "opportunity_contacts" | "opportunity_organizations" | "deal_contacts" | "deal_organizations" | "opportunity_tasks" | "opportunity_history" | "deal_tasks" | "deal_history" | "contact_activities" | "opportunity_activities" | "deal_activities" | "forms" | "form_versions" | "form_submissions" | "cms_content_types" | "cms_entries" | "cms_revisions" | "cms_media" | "projects" | "project_members" | "project_columns" | "project_cards" | "project_comments" | "appointment_types" | "appointments" | "appointment_events" | "time_entries" | "time_budgets" | "communication_conversations" | "communication_messages" | "helpdesk_tickets" | "helpdesk_messages" | "knowledge_collections" | "knowledge_collection_members" | "knowledge_documents" | "knowledge_revisions";
         CollectionSpec: {
             collection: components["schemas"]["Collection"];
             dependent_read_permissions: string[];
@@ -3872,6 +4011,11 @@ export interface components {
              */
             expected_version?: number | null;
             mapping: components["schemas"]["Mapping"];
+        };
+        ConnectAccount: {
+            connector_key: string;
+            name: string;
+            shared?: boolean;
         };
         Contact: {
             archived: boolean;
@@ -3993,6 +4137,27 @@ export interface components {
         };
         ContentTypePage: {
             items: components["schemas"]["ContentType"][];
+            /** Format: uuid */
+            next_cursor?: string | null;
+        };
+        Conversation: {
+            /** Format: uuid */
+            account_id: string;
+            archived: boolean;
+            channel: string;
+            /** Format: uuid */
+            contact_id?: string | null;
+            created_at: string;
+            /** Format: uuid */
+            id: string;
+            provider_thread_id: string;
+            subject: string;
+            updated_at: string;
+            /** Format: int64 */
+            version: number;
+        };
+        Conversations: {
+            items: components["schemas"]["Conversation"][];
             /** Format: uuid */
             next_cursor?: string | null;
         };
@@ -4435,6 +4600,10 @@ export interface components {
             detail: components["schemas"]["TicketEvent"];
             /** @enum {string} */
             kind: "ticket";
+        } | {
+            detail: components["schemas"]["TimelineMessage"];
+            /** @enum {string} */
+            kind: "communication";
         } | {
             detail: components["schemas"]["AppointmentTimeline"];
             /** @enum {string} */
@@ -5025,6 +5194,28 @@ export interface components {
             source_version: number;
             /** Format: int64 */
             survivor_version: number;
+        };
+        Message: {
+            body: string;
+            /** Format: uuid */
+            conversation_id: string;
+            created_at: string;
+            direction: string;
+            /** Format: uuid */
+            id: string;
+            job_error?: string | null;
+            /** Format: uuid */
+            job_id?: string | null;
+            job_state?: string | null;
+            metadata: unknown;
+            provider_message_id?: string | null;
+            sender?: string | null;
+            state: string;
+        };
+        Messages: {
+            items: components["schemas"]["Message"][];
+            /** Format: uuid */
+            next_cursor?: string | null;
         };
         MinuteWindow: {
             /** Format: int32 */
@@ -5801,6 +5992,9 @@ export interface components {
             /** Format: int64 */
             expected_version: number;
         };
+        SendMessage: {
+            body: string;
+        };
         SessionUser: {
             email?: string | null;
             /** Format: uuid */
@@ -5900,6 +6094,11 @@ export interface components {
             contact_id?: string | null;
             proposed: components["schemas"]["ContactInput"];
             source_ref: string;
+        };
+        SyncResult: {
+            /** Format: int64 */
+            cursor: number;
+            processed: number;
         };
         SystemResponse: {
             name: string;
@@ -6167,6 +6366,17 @@ export interface components {
             event: components["schemas"]["EventDetail"];
             recorded_at: string;
         };
+        TimelineMessage: {
+            body: string;
+            channel: string;
+            /** Format: uuid */
+            conversation_id: string;
+            direction: string;
+            /** Format: uuid */
+            message_id: string;
+            state: string;
+            subject: string;
+        };
         TimelinePage: {
             /** Format: uuid */
             anchor_id: string;
@@ -6194,6 +6404,20 @@ export interface components {
             to_id: string;
             to_label: string;
             to_outcome?: components["schemas"]["Outcome"] | null;
+        };
+        UpdateAccount: {
+            enabled: boolean;
+            /** Format: int64 */
+            expected_version: number;
+            name: string;
+            shared: boolean;
+        };
+        UpdateConversation: {
+            archived: boolean;
+            /** Format: uuid */
+            contact_id?: string | null;
+            /** Format: int64 */
+            expected_version: number;
         };
         UpdateTicket: {
             archived: boolean;
@@ -6407,6 +6631,80 @@ export interface operations {
                 };
             };
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    communications_event: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Connector-Signature"?: string | null;
+                "X-Blueski-Signature"?: string | null;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9984,6 +10282,665 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContentType"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    communications_accounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    communications_connect: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectAccount"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    communications_update_account: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAccount"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Account"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    communications_sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    communications_list: {
+        parameters: {
+            query?: {
+                after?: string;
+                limit?: number;
+                contact_id?: string;
+                archived?: boolean;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversations"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    communications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    communications_update: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateConversation"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    communications_messages: {
+        parameters: {
+            query?: {
+                after?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Messages"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    communications_send: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendMessage"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
                 };
             };
             400: {

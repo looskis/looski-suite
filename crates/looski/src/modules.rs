@@ -13,6 +13,7 @@ use utoipa::ToSchema;
 /// Selectable applications, in roadmap order.
 pub(crate) const APPLICATIONS: &[(&str, &str)] = &[
     ("crm", "CRM"),
+    ("communications", "Communications"),
     ("forms", "Forms"),
     ("cms", "CMS"),
     ("projects", "Projects"),

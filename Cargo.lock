@@ -1557,6 +1557,7 @@ dependencies = [
  "clap",
  "email_address",
  "getrandom 0.4.3",
+ "hmac 0.13.0",
  "http-body",
  "idna",
  "jsonwebtoken",

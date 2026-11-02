@@ -11,6 +11,7 @@ mod workspace_access;
 // SPDX-License-Identifier: AGPL-3.0-only
 mod cli_login;
 mod cms;
+mod communications;
 mod contacts;
 mod exports;
 mod files;
@@ -98,7 +99,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 36)
+        .is_ok_and(|version| version == 37)
     };
     let auth = async {
         state
@@ -253,6 +254,7 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .merge(time::routes())
         .merge(scheduling::routes())
         .merge(helpdesk::routes())
+        .merge(communications::routes())
 }
 
 pub fn openapi() -> utoipa::openapi::OpenApi {

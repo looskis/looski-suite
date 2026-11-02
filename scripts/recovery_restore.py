@@ -90,7 +90,7 @@ def restore(archive,identity,project,port):
     with tempfile.TemporaryDirectory(prefix='looski-restore-') as temporary:
         plaintext=Path(temporary)/'snapshot.tar';encryption.decrypt(archive,plaintext,identity)
         manifest=bundle.inspect(plaintext);metadata=manifest['metadata']
-        if metadata['schema_version'] not in (23,28,29,30,31,32,33,34,35,36) or not metadata['postgres_version_num'].startswith('17'):
+        if metadata['schema_version'] not in (23,28,29,30,31,32,33,34,35,36,37) or not metadata['postgres_version_num'].startswith('17'):
             raise ValueError('Unsupported recovery schema or PostgreSQL version')
         if metadata['configuration']['COMPOSE_PROJECT_NAME']==project:raise ValueError('Recovery must use a different installation name')
         images=metadata['images']
@@ -102,6 +102,8 @@ def restore(archive,identity,project,port):
     values={'COMPOSE_PROJECT_NAME':project,'LOOSKI_HTTP_PORT':str(port),'LOOSKI_PUBLIC_URL':'http://localhost:'+str(port),'LOOSKI_MAIL_MODE':'disabled','LOOSKI_AUTH_MAIL_ENABLED':'false','LOOSKI_DIAGNOSTICS_MODE':'disabled'}
     installation=Installation(values,recipe)
     restored_secrets=json.loads((target/'secrets.json').read_text())
+    if 'communications' in restored_secrets:
+        write_private(installation.state/'communications.json',json.dumps(restored_secrets['communications']))
     for name in CORE_SECRETS:
         value=secrets.token_hex(32)+'\n' if name=='jwt_secret' else restored_secrets['core'][name]
         write_private(installation.state/'secrets'/name,value)
@@ -188,6 +190,8 @@ INSERT INTO suite.job_events(workspace_id,job_id,state,attempt,error_code) SELEC
 DELETE FROM auth.refresh_tokens; DELETE FROM auth.sessions; DELETE FROM auth.one_time_tokens;
 UPDATE auth.users SET confirmation_token='',recovery_token='',email_change_token_current='',email_change_token_new='',phone_change_token='',reauthentication_token='';
 COMMIT;""",user="supabase_admin")
+        if metadata['schema_version'] >= 37:
+            installation.sql("UPDATE communications.accounts SET enabled=false,version=version+1")
         report.update(state='verified_isolated',verified_tables=len(restored_counts),verified_files=restored_counts.get('files.contents',0),quarantined_jobs=pending,elapsed_seconds=round(time.monotonic()-started,3),session_policy='signing key rotated; sessions, refresh tokens and pending one-time links invalidated',workers='disabled',mail='disabled',routing='not switched')
         report_path.write_text(json.dumps(report,indent=2));report_path.chmod(0o600)
         for name in ('database.dump','roles.sql','secrets.json','images.tar.gz',*PGMQ_TABLES):(target/name).unlink()

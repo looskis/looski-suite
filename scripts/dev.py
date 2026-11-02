@@ -131,6 +131,9 @@ def configure(values, config):
         if diagnostics_file.read_text().strip()!=diagnostics_key:raise SystemExit('Diagnostics key does not match this installation')
     else:
         write_private(diagnostics_file, diagnostics_key+'\n')
+    communications = directory.parent / "communications.json"
+    if not communications.exists():
+        write_private(communications, "[]\n")
     configure_mail(values)
     configure_tunnel(values)
     claim = directory.parent / 'owner-claim.json'
