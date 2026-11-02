@@ -63,6 +63,17 @@ export function startChannels(app, config) {
             );
             // Observe a queued STOP/HUMAN before generating replies to earlier
             // messages in the same imported page.
+            const staffReply = page.items.some(
+              (m) =>
+                m.direction === 'outbound' &&
+                Date.parse(m.created_at) >= Date.parse(config.channelsSince) &&
+                !app.store.db
+                  .query(
+                    "SELECT 1 FROM processing WHERE json_extract(state,'$.outboundId')=?",
+                  )
+                  .get(m.id),
+            );
+            if (staffReply) session.handoff = true;
             const lastControl = page.items
               .filter(
                 (m) =>

@@ -364,3 +364,54 @@ test('recommendation prose accompanying tool calls is visible to the visitor', a
   expect(text).toContain('Blueski connects');
   expect(text).toContain('What would you');
 });
+
+test('a staff reply pauses earlier pending texts in the same poll', async () => {
+  const store = new Store(':memory:');
+  const id = randomUUID(),
+    account = randomUUID(),
+    sent = [];
+  const now = new Date().toISOString(),
+    messages = [
+      {
+        id: randomUUID(),
+        direction: 'inbound',
+        body: 'Help me with AI',
+        metadata: {
+          provider_timestamp: now,
+          thread_kind: 'direct',
+          membership_complete: true,
+          classification_conflict: false,
+        },
+      },
+      {
+        id: randomUUID(),
+        direction: 'outbound',
+        body: 'Kevin here, I can help.',
+        created_at: now,
+        metadata: {},
+      },
+    ];
+  const app = {
+    store,
+    busy: new Set(),
+    suite: {
+      workspace: async (path, options) => {
+        if (options?.method === 'POST') {
+          sent.push(options.body.body);
+          return { id: randomUUID() };
+        }
+        if (path.startsWith('communications/conversations?'))
+          return { items: [{ id, account_id: account, channel: 'imessage' }] };
+        return { items: messages };
+      },
+    },
+  };
+  const stop = startChannels(app, {
+    autoReplyAccounts: [account],
+    channelsSince: new Date(Date.now() - 60000).toISOString(),
+  });
+  for (let i = 0; i < 20 && !store.get(id).handoff; i++) await Bun.sleep(5);
+  stop();
+  expect(store.get(id).handoff).toBe(true);
+  expect(sent.length).toBe(0);
+});
