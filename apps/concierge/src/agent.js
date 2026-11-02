@@ -72,16 +72,22 @@ export function executeTool(name, args, session, catalog) {
     throw new Error('invalid_tool');
   switch (name) {
     case 'show_contact_form':
-      if (!session.lead) session.cards.push({ type: 'contact' });
+      if (!session.lead && !session.cards.some((c) => c.type === 'contact'))
+        session.cards.push({ type: 'contact' });
       return { displayed: !session.lead, already_saved: !!session.lead };
     case 'recommend_tools': {
       const names = Array.isArray(args.names) ? args.names.slice(0, 3) : [];
       const matches = catalog.filter((t) => names.includes(t.name));
+      session.cards = session.cards.filter(
+        (c) =>
+          c.type !== 'tool' || !matches.some((t) => t.name === c.tool.name),
+      );
       session.cards.push(...matches.map((tool) => ({ type: 'tool', tool })));
       return { displayed: matches.map((t) => t.name) };
     }
     case 'show_demo_booking':
-      session.cards.push({ type: 'booking' });
+      if (!session.cards.some((c) => c.type === 'booking'))
+        session.cards.push({ type: 'booking' });
       return { displayed: true, booked: false };
     case 'remember_need':
       if (
@@ -93,7 +99,8 @@ export function executeTool(name, args, session, catalog) {
       session.facts = { need: args.need, route: args.route };
       return { saved: true };
     case 'offer_human':
-      session.cards.push({ type: 'human' });
+      if (!session.cards.some((c) => c.type === 'human'))
+        session.cards.push({ type: 'human' });
       return { displayed: true };
     default:
       throw new Error('unknown_tool');

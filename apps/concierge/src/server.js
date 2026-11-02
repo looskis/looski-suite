@@ -172,7 +172,7 @@ export function createApp(
       });
     if (!store.consume(`minute:${network}`, 40, 60000))
       return reply({ error: 'Please wait a minute before trying again.' }, 429);
-    if (voiceActive.has(id) && action !== 'slots')
+    if (voiceActive.has(id))
       return reply(
         { error: 'End voice before continuing in chat or saving details.' },
         409,

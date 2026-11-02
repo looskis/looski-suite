@@ -20,7 +20,11 @@ test('tool calls cannot execute arbitrary operations or invent catalog entries',
     catalog,
   );
   expect(s.cards).toEqual([{ type: 'tool', tool: catalog[0] }]);
+  executeTool('recommend_tools', { names: ['blueski'] }, s, catalog);
+  expect(s.cards.length).toBe(1);
   executeTool('show_demo_booking', {}, s, catalog);
+  executeTool('show_demo_booking', {}, s, catalog);
+  expect(s.cards.filter((c) => c.type === 'booking').length).toBe(1);
   expect(s.booking).toBeUndefined();
 });
 test('authentication denies missing, mismatched and malformed credentials', () => {
@@ -199,7 +203,7 @@ test('historical imports, groups and missing classification never trigger replie
   ).toBe(false);
 });
 
-test('active voice prevents contact mutation while state and slots stay available', async () => {
+test('active voice prevents contact mutation while state stays available', async () => {
   const app = createApp(config, new Store(':memory:'), {});
   const id = randomUUID();
   app.voiceActive.add(id);
