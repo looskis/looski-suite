@@ -55,7 +55,7 @@ if not helpdesk_module['enabled']:f.call(base+'/modules/helpdesk','PATCH',{'enab
 helpdesk_settings=f.call(base+'/helpdesk/settings')
 if not helpdesk_settings['accepting']:helpdesk_settings=f.call(base+'/helpdesk/settings','PUT',{'accepting':True,'expected_version':helpdesk_settings['version']},key=key())
 export_ticket=f.call('/api/v1/public/helpdesk/intake/'+helpdesk_settings['public_key'],'POST',{'subject':'Export ticket','requester_name':'Exporter','body':'Export question'},authenticated=False,headers={'X-Ticket-Key':secrets.token_hex(32)})
-for selected in ['time','scheduling']:
+for selected in ['time','scheduling','communications']:
  module=next(m for m in f.call(base+'/modules') if m['key']==selected)
  if not module['enabled']:f.call(base+'/modules/'+selected,'PATCH',{'enabled':True,'expected_version':module['version']},key=key())
 f.call(base+'/time/entries','POST',{'description':'Export time','work_on':'2026-11-01','billable':True,'duration_ms':60000},key=key())
@@ -73,6 +73,10 @@ for name,table in [('task_revisions','tasks.templates'),('coordination_revisions
  parents[name]=f.sql("SELECT id FROM "+table+" WHERE workspace_id='"+f.workspace+"' ORDER BY id LIMIT 1")
  assert parents[name],name+' requires the earlier capability fixtures'
 for spec in catalog:
+ # Provider-backed conversation/message fixtures and permission checks live in
+ # communications_smoke.py. An absent conversation must never export messages.
+ if spec['collection']=='communication_messages':
+  page(spec['collection'],404,parent_id='00000000-0000-0000-0000-000000000000');continue
  selection={'limit':1}
  if spec['parent_required']:selection['parent_id']=parents[spec['collection']]
  result=page(spec['collection'],**selection)
@@ -81,7 +85,7 @@ for spec in catalog:
  if result['next']:
   next_page=f.call(base+'/exports/page','POST',result['next']);assert len(next_page['items'])<=1
   assert next_page['items']!=result['items']
-print('PASS: all documented collections return bounded public-contract pages with stable manifests and usable continuations')
+print('PASS: collection exports return bounded public-contract pages; absent conversation parents are denied')
 
 exported=next(c for c in all_items('contacts') if c['id']==contact['id']);assert exported==contact
 exported=next(o for o in all_items('opportunities') if o['id']==opportunity['id']);assert exported==opportunity
