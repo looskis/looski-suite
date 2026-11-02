@@ -239,3 +239,48 @@ test('cancellation only acts on the current session booking and supports replay'
   expect(calls).toBe(1);
   expect(store.get(body.session).booking).toBeNull();
 });
+
+import { startChannels } from './channels.js';
+test('a queued STOP suppresses earlier unanswered texts before any model call', async () => {
+  const store = new Store(':memory:');
+  const id = randomUUID(),
+    account = randomUUID(),
+    sent = [];
+  const metadata = {
+    provider_timestamp: new Date().toISOString(),
+    thread_kind: 'direct',
+    membership_complete: true,
+    classification_conflict: false,
+  };
+  const messages = ['Please help me with AI', 'STOP'].map((body) => ({
+    id: randomUUID(),
+    direction: 'inbound',
+    body,
+    metadata,
+  }));
+  const app = {
+    store,
+    busy: new Set(),
+    suite: {
+      workspace: async (path, options) => {
+        if (options?.method === 'POST') {
+          sent.push(options.body.body);
+          return { id: randomUUID() };
+        }
+        if (path.startsWith('communications/conversations?'))
+          return { items: [{ id, account_id: account, channel: 'imessage' }] };
+        return { items: messages };
+      },
+    },
+  };
+  const stop = startChannels(app, {
+    autoReplyAccounts: [account],
+    channelsSince: new Date(Date.now() - 60000).toISOString(),
+  });
+  for (let i = 0; i < 20 && !sent.length; i++) await Bun.sleep(5);
+  stop();
+  expect(sent.length).toBe(1);
+  expect(sent[0]).toContain('paused');
+  expect(store.get(id).stopped).toBe(true);
+  expect(store.get(id).messages[0].text).toBe('STOP');
+});
