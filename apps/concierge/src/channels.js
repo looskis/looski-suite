@@ -33,7 +33,11 @@ export function startChannels(app, config) {
           `communications/conversations?limit=100${after ? `&after=${after}` : ''}`,
         );
         for (const conversation of page.items) {
-          if (conversation.account_id === config.websiteAccount) {
+          if (
+            [config.websiteAccount, config.phoneAccount].includes(
+              conversation.account_id,
+            )
+          ) {
             const visitor = app.store.get(conversation.provider_thread_id);
             if (visitor.contactId && !conversation.contact_id) {
               await app.suite.workspace(
@@ -53,13 +57,16 @@ export function startChannels(app, config) {
           }
           if (!config.autoReplyAccounts?.includes(conversation.account_id))
             continue;
-          const id = conversation.id;
+          const id =
+            conversation.channel === 'email'
+              ? conversation.provider_thread_id
+              : conversation.id;
           if (app.busy.has(id)) continue;
           app.busy.add(id);
           try {
             const session = app.store.get(id);
             const page = await app.suite.workspace(
-              `communications/conversations/${id}/messages?limit=100${session.messageCursor ? `&after=${session.messageCursor}` : ''}`,
+              `communications/conversations/${conversation.id}/messages?limit=100${session.messageCursor ? `&after=${session.messageCursor}` : ''}`,
             );
             // Observe a queued STOP/HUMAN before generating replies to earlier
             // messages in the same imported page.
@@ -144,7 +151,7 @@ export function startChannels(app, config) {
                 app.store.save(session);
               }
               const outbound = await app.suite.workspace(
-                `communications/conversations/${id}/messages`,
+                `communications/conversations/${conversation.id}/messages`,
                 {
                   method: 'POST',
                   key: `concierge-reply-${message.id}`,

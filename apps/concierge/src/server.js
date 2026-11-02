@@ -6,7 +6,19 @@ import { Suite } from './suite.js';
 import { respond } from './agent.js';
 import { voiceHandlers } from './voice.js';
 import { startChannels } from './channels.js';
+import {
+  mailAuthorized,
+  receiveMail,
+  receiveReceipt,
+  queueMail,
+  startMail,
+} from './mail.js';
 import { blueskiBridge } from './bridge.js';
+import {
+  phoneHandlers,
+  phoneSecretMatches,
+  verifyPhoneCall,
+} from './retell.js';
 
 export const digest = (text) => createHash('sha256').update(text).digest('hex');
 export const authorized = (supplied, expected) =>
@@ -72,6 +84,22 @@ export function createApp(
     const url = new URL(req.url);
     if (url.pathname === '/healthz')
       return reply({ status: 'ok', service: 'looski-suite-concierge' });
+    if (url.pathname === '/mail/inbound' || url.pathname === '/mail/receipt') {
+      if (
+        req.method !== 'POST' ||
+        !mailAuthorized(req.headers.get('authorization'), config.mailSecret)
+      )
+        return reply({ error: 'Unauthorized' }, 401);
+      try {
+        const message = JSON.parse(await readBounded(req, 12000000));
+        if (url.pathname === '/mail/inbound')
+          receiveMail(store, config, message);
+        else receiveReceipt(store, message);
+        return reply({ ok: true });
+      } catch {
+        return reply({ error: 'Invalid mail' }, 400);
+      }
+    }
     if (!authorized(req.headers.get('authorization'), config.bridgeKey))
       return reply({ error: 'Unauthorized' }, 401);
     if (url.pathname.startsWith('/blueski/')) return blueskiBridge(req, config);
@@ -125,6 +153,35 @@ export function createApp(
           .get(body.thread_id)
       )
         return reply({ error: 'Not found' }, 404);
+      if (session.channel === 'email') {
+        const thread = store.db
+          .query('SELECT * FROM mail_threads WHERE id=?')
+          .get(session.id);
+        if (!thread || body.channel !== 'email')
+          return reply({ error: 'Invalid email thread' }, 409);
+        try {
+          return reply(
+            queueMail(
+              store,
+              config,
+              thread,
+              body.client_ref,
+              body.body,
+              fingerprint,
+            ),
+          );
+        } catch {
+          return reply({ error: 'Email conflict or unavailable' }, 409);
+        }
+      }
+      if (session.channel === 'phone')
+        return reply(
+          {
+            error:
+              'Phone conversations require a callback; text delivery is unavailable.',
+          },
+          409,
+        );
       session.handoff = true;
       session.messages.push({
         id: body.client_ref,
@@ -253,6 +310,7 @@ export function createApp(
         const intake = await suite.capture(session, lead, requestId);
         session.lead = lead;
         session.intakeId = intake.id;
+        session.notifyLead = true;
         session.contactId = intake.contact_id;
         session.cards = session.cards.filter((c) => c.type !== 'contact');
         session.messages.push({
@@ -299,6 +357,10 @@ export function createApp(
         store.save(session);
         const receipt = await suite.book(session, body.startsAt, requestId);
         session.booking = { id: receipt.id, startsAt: body.startsAt };
+        (session.mailEvents ||= []).push({
+          booking: session.booking,
+          cancelled: false,
+        });
         session.cards = session.cards.filter((c) => c.type !== 'booking');
         session.messages.push({
           id: randomUUID(),
@@ -321,6 +383,10 @@ export function createApp(
           `Demo cancelled: ${session.booking.id}.`,
           'outbound',
         );
+        (session.mailEvents ||= []).push({
+          booking: session.booking,
+          cancelled: true,
+        });
         session.booking = null;
         delete session.bookingIntent;
         session.messages.push({
@@ -438,10 +504,44 @@ if (import.meta.main) {
   if (!config.bridgeKey || config.bridgeKey.length < 32 || !config.modelKey)
     throw new Error('Missing private concierge configuration');
   const app = createApp(config);
+  const browserVoice = voiceHandlers(app, config);
+  const telephone = phoneHandlers(app, config);
+  const transport = (ws) =>
+    ws.data.channel === 'phone' ? telephone : browserVoice;
   Bun.serve({
     hostname: '127.0.0.1',
     port: config.port || 58900,
-    fetch(req, server) {
+    async fetch(req, server) {
+      const path = new URL(req.url).pathname;
+      // Override any account-wide Retell webhook without accepting business
+      // mutations from it. Live transcripts arrive on the authenticated socket.
+      if (path.startsWith('/retell-events/')) {
+        if (
+          req.method !== 'POST' ||
+          !phoneSecretMatches(
+            path.slice('/retell-events/'.length),
+            config.retellSecret,
+          )
+        )
+          return reply({ error: 'Unauthorized' }, 401);
+        return new Response(null, { status: 204 });
+      }
+      if (path.startsWith('/retell/')) {
+        const parts = path.split('/');
+        if (
+          parts.length !== 4 ||
+          !phoneSecretMatches(parts[2], config.retellSecret)
+        )
+          return reply({ error: 'Unauthorized' }, 401);
+        try {
+          const call = await verifyPhoneCall(config, parts[3]);
+          if (!call) return reply({ error: 'Unauthorized call' }, 403);
+          if (server.upgrade(req, { data: { channel: 'phone', call } })) return;
+        } catch {
+          return reply({ error: 'Call unavailable' }, 503);
+        }
+        return reply({ error: 'WebSocket required' }, 400);
+      }
       if (new URL(req.url).pathname === '/voice') {
         if (!config.origins?.includes(req.headers.get('origin')))
           return reply({ error: 'Unauthorized origin' }, 403);
@@ -450,10 +550,16 @@ if (import.meta.main) {
       }
       return app.handle(req);
     },
-    websocket: voiceHandlers(app, config),
-    maxRequestBodySize: 14000,
+    websocket: {
+      maxPayloadLength: 131072,
+      open: (ws) => transport(ws).open(ws),
+      message: (ws, data) => transport(ws).message(ws, data),
+      close: (ws) => transport(ws).close(ws),
+    },
+    maxRequestBodySize: 12000000,
     idleTimeout: 60,
   });
   startChannels(app, config);
+  startMail(app, config);
   console.log('Looski Suite concierge listening on loopback');
 }
