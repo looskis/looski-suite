@@ -79,7 +79,7 @@ services:
       GOTRUE_SITE_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
       GOTRUE_URI_ALLOW_LIST: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/confirm
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_JWT_ISSUER: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1
+      GOTRUE_JWT_ISSUER: ${LOOSKI_AUTH_ISSUER:-${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1}
       GOTRUE_JWT_ADMIN_ROLES: service_role
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
@@ -147,7 +147,7 @@ services:
       LOOSKI_AUTH_MAIL_ENABLED: ${LOOSKI_AUTH_MAIL_ENABLED:-false}
       LOOSKI_INVITATION_KEY_FILE: /run/secrets/invitation_key
       LOOSKI_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
-      LOOSKI_AUTH_ISSUER: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1
+      LOOSKI_AUTH_ISSUER: ${LOOSKI_AUTH_ISSUER:-${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1}
       LOOSKI_JWT_SECRET_FILE: /run/secrets/jwt_secret
       LOOSKI_DIAGNOSTICS_MODE: ${LOOSKI_DIAGNOSTICS_MODE:-local}
       LOOSKI_DIAGNOSTICS_KEY_FILE: /run/secrets/diagnostics_key
@@ -177,6 +177,7 @@ services:
       LOOSKI_INVITATION_KEY_FILE: /run/secrets/invitation_key
       LOOSKI_JWT_SECRET_FILE: /run/secrets/jwt_secret
       LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
+      LOOSKI_AUTH_ISSUER: ${LOOSKI_AUTH_ISSUER:-${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1}
       LOOSKI_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
       LOOSKI_DIAGNOSTICS_MODE: ${LOOSKI_DIAGNOSTICS_MODE:-local}
       LOOSKI_DIAGNOSTICS_KEY_FILE: /run/secrets/diagnostics_key
@@ -192,6 +193,31 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  owner-setup:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.api
+    restart: unless-stopped
+    logging: *logging
+    command: ["setup-server", "--bind", "0.0.0.0:8080"]
+    environment:
+      LOOSKI_DATABASE_URL_FILE: /run/secrets/database_url
+      LOOSKI_JWT_SECRET_FILE: /run/secrets/jwt_secret
+      LOOSKI_OWNER_CLAIM_FILE: /run/secrets/owner_claim
+      LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
+      LOOSKI_AUTH_ISSUER: ${LOOSKI_AUTH_ISSUER:-${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1}
+      LOOSKI_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
+    secrets: [database_url, jwt_secret, owner_claim]
+    tmpfs:
+      - /run/looski:size=64k,mode=0755
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--max-time", "4", "http://127.0.0.1:8080/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   web:
     build:
@@ -274,6 +300,10 @@ services:
       retries: 10
 
 secrets:
+  owner_claim:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/owner-claim.json
+  cloudflare_token:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/cloudflare-token
   cloudflare_config:
     file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/cloudflared.yml
   cloudflare_tunnel:

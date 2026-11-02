@@ -4,6 +4,7 @@ No decryption identity is included in an archive. Decrypted data is published
 only after age verifies the complete authenticated stream.
 """
 import os
+import json
 import re
 import stat
 import subprocess
@@ -11,10 +12,14 @@ import tempfile
 from pathlib import Path
 from dev import ROOT
 
-IMAGE = 'looski-suite-recovery-tools:1.3.2'
+RELEASE = ROOT / 'release.json'
+IMAGE = json.loads(RELEASE.read_text())['recovery_image'] if RELEASE.exists() else 'looski-suite-recovery-tools:1.3.2'
 
 
 def build_tools():
+    if RELEASE.exists():
+        subprocess.run(['docker', 'pull', IMAGE], check=True)
+        return
     subprocess.run(['docker', 'build', '-f', str(ROOT/'infra/recovery/Dockerfile'),
                     '-t', IMAGE, str(ROOT)], check=True)
 

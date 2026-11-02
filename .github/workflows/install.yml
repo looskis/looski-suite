@@ -1,0 +1,14 @@
+name: Agent installation acceptance
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - run: python3 scripts/install.py install --project looski-installer-identity-check --port 58888
+      - run: python3 scripts/installer_smoke.py .
+      - if: always()
+        run: python3 scripts/install.py stop

@@ -12,7 +12,7 @@ October 12, 2026. First usable foundation slice; not completion of phase 0/1.
 
 ## Operator bootstrap
 
-Run `python3 scripts/bootstrap_owner.py` locally after `make up`. Docker access to this installation is the operator authority. There is no bootstrap HTTP endpoint, anonymous first-visitor grant, or automatic signup. The command explicitly confirms the initial email on the operator's authority; it is not the future recipient-verification flow for staff invitations.
+Run `python3 scripts/bootstrap_owner.py` locally after `make up`. Docker access to this installation is the operator authority. The operator CLI remains supported. The distribution preview also has a separate, explicitly enabled, expiring owner-claim service (see [setup contract](setup-contract.md#agent-distribution-preview)); it shares the permanent bootstrap latch and does not grant access to anonymous first visitors or enable general signup. The command explicitly confirms the initial email on the operator's authority; it is not the future recipient-verification flow for staff invitations.
 
 The command locks a permanent singleton installation row, creates an upstream Auth user through its admin API, and atomically inserts the application user/mapping, workspace, membership, Owner role, `workspace.read` assignment, audit event, and consumed bootstrap latch. Role names grant nothing by themselves. Owner currently has only the single implemented permission; new capabilities must introduce deliberate grants in later migrations/operations. Ordinary role presets and CRM visibility remain open decisions.
 

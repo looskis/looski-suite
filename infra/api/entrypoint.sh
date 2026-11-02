@@ -2,13 +2,17 @@
 set -eu
 # File-backed Compose secrets retain host UID/mode on Linux. Root performs only
 # this handoff into ephemeral storage; the API itself runs as UID/GID 10001.
-if [ "${1:-}" = api ] || [ "${1:-}" = bootstrap-owner ] || [ "${1:-}" = worker ]; then
+if [ "${1:-}" = api ] || [ "${1:-}" = bootstrap-owner ] || [ "${1:-}" = worker ] || [ "${1:-}" = setup-server ]; then
   install -D -o 10001 -g 10001 -m 0400 "$LOOSKI_DATABASE_URL_FILE" /run/looski/database_url
   export LOOSKI_DATABASE_URL_FILE=/run/looski/database_url
 fi
-if [ "${1:-}" = api ] || [ "${1:-}" = bootstrap-owner ] || [ "${1:-}" = worker ]; then
+if [ "${1:-}" = api ] || [ "${1:-}" = bootstrap-owner ] || [ "${1:-}" = worker ] || [ "${1:-}" = setup-server ]; then
   install -D -o 10001 -g 10001 -m 0400 "$LOOSKI_JWT_SECRET_FILE" /run/looski/jwt_secret
   export LOOSKI_JWT_SECRET_FILE=/run/looski/jwt_secret
+fi
+if [ "${1:-}" = setup-server ]; then
+  install -D -o 10001 -g 10001 -m 0400 "$LOOSKI_OWNER_CLAIM_FILE" /run/looski/owner_claim
+  export LOOSKI_OWNER_CLAIM_FILE=/run/looski/owner_claim
 fi
 if [ "${1:-}" = api ] || [ "${1:-}" = worker ]; then
   install -D -o 10001 -g 10001 -m 0400 "$LOOSKI_INVITATION_KEY_FILE" /run/looski/invitation_key

@@ -44,6 +44,7 @@ impl Outbox {
         smtp: Option<&str>,
         auth_url: String,
         public_url: String,
+        issuer: String,
         secret: &[u8],
     ) -> anyhow::Result<Self> {
         let transport = match smtp {
@@ -76,7 +77,7 @@ impl Outbox {
                 .timeout(std::time::Duration::from_secs(10))
                 .redirect(reqwest::redirect::Policy::none())
                 .build()?,
-            issuer: format!("{public_url}/auth/v1"),
+            issuer,
             auth_url,
             public_url,
             admin_key: EncodingKey::from_secret(secret),

@@ -11,7 +11,7 @@ FORMAT='looski-recovery'
 VERSION=5
 # Deliberately exclude mutable installation data and unrelated research.
 RECIPE_ROOTS=('Cargo.toml','Cargo.lock','package.json','pnpm-lock.yaml','pnpm-workspace.yaml',
-              'compose.yaml','Makefile','LICENSE','NOTICE','TRADEMARKS.md','README.md','.dockerignore',
+              'compose.yaml','compose.managed.yaml','release.json','looski-admin','INSTALL.md','Makefile','LICENSE','NOTICE','TRADEMARKS.md','README.md','.dockerignore',
               '.env.example','.prettierrc.json','.prettierignore','rust-toolchain.toml',
               'crates','apps','infra','scripts','supabase','contracts','docs')
 EXCLUDED={'.git','.local','.agents','.codex','.aws','node_modules','.svelte-kit','build',

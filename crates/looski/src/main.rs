@@ -136,6 +136,11 @@ enum Command {
     },
     /// Provision the first owner locally; reads credentials as JSON from stdin.
     BootstrapOwner,
+    /// Serve the explicitly enabled, expiring first-owner claim flow.
+    SetupServer {
+        #[arg(long, default_value = "127.0.0.1:8080")]
+        bind: SocketAddr,
+    },
     /// Sign in through the browser and store a CLI/MCP session for this installation.
     Login {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
@@ -5822,6 +5827,7 @@ async fn run() -> anyhow::Result<()> {
                 std::env::var("LOOSKI_AUTH_MAIL_ENABLED").as_deref() == Ok("true"),
                 std::env::var("LOOSKI_AUTH_INTERNAL_URL")?,
                 std::env::var("LOOSKI_PUBLIC_URL")?,
+                std::env::var("LOOSKI_AUTH_ISSUER")?,
                 read_jwt_secret()?.as_bytes(),
                 invitation_key.trim().as_bytes(),
             )?;
@@ -5834,6 +5840,7 @@ async fn run() -> anyhow::Result<()> {
                 smtp.as_deref(),
                 std::env::var("LOOSKI_AUTH_INTERNAL_URL")?,
                 std::env::var("LOOSKI_PUBLIC_URL")?,
+                std::env::var("LOOSKI_AUTH_ISSUER")?,
                 read_jwt_secret()?.as_bytes(),
             )?;
             let diagnostics = looski::diagnostics::Diagnostics::from_environment();
@@ -5904,6 +5911,7 @@ async fn run() -> anyhow::Result<()> {
             .with_graceful_shutdown(shutdown())
             .await?;
         }
+        Command::SetupServer { bind } => looski::setup::serve(bind).await?,
         Command::BootstrapOwner => {
             let input = serde_json::from_reader(std::io::stdin())?;
             let database_url = std::fs::read_to_string(std::env::var("LOOSKI_DATABASE_URL_FILE")?)?;

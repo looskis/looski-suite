@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-//! Local operator entry point. Deliberately has no HTTP or MCP equivalent.
+//! Owner provisioning, shared by the local operator and expiring setup service.
 use anyhow::{Context, ensure};
 use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::Deserialize;

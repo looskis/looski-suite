@@ -6,7 +6,17 @@ Business software that works independently and together. Rust/Axum owns business
 
 **Local suite build:** Shared Contacts/Organizations, Tasks/Files, CRM, Forms, CMS, Projects, the knowledge base, Helpdesk, Time tracking and Scheduling have browser, API, CLI and local stdio MCP staff journeys. The build includes versioned intake, booking-owned CRM follow-up, local authentication/reminder mail, durable jobs, encrypted recovery and optional ClickHouse diagnostics. See [coverage and release boundaries](docs/implementation/coverage.md); external SMTP/public callbacks, hosted migration and public distribution still require their release checks.
 
+## Install with your agent
+
+Copy this into a terminal-capable agent:
+
+> Install and start Looski Suite for me. Follow https://raw.githubusercontent.com/looskis/looski-suite/main/INSTALL.md. Use this computer unless I specify a server. Set up missing prerequisites where possible, complete installation and verification, and return the working URL and my private owner setup link. If I provide a public hostname, configure Cloudflare using my authorized account. Ask only for missing access or decisions involving purchases or existing infrastructure.
+
+The [agent installation guide](INSTALL.md) uses the public source checkout and builds inside Docker. Local evaluation needs no domain or Cloudflare account. The installer can discover Cloudflare account/zone IDs from an authorized token when publishing a hostname.
+
 ## Start locally
+
+For agent-assisted installation, start with **[Install with your agent](INSTALL.md)**. The new `./looski-admin install` flow adds structured status and verification, an expiring browser owner setup link, and optional Cloudflare tunnel/DNS provisioning. The release workflow prepares prebuilt ARM64/AMD64 preview bundles as drafts; publication and external-provider validation remain release gates. The source-checkout commands below remain supported.
 
 Prerequisites: a macOS or Linux host, Docker with Compose v2.20+ (a running Linux engine), Python 3.9+, and enough disk space for the Rust/Node and Supabase images. The complete stack builds inside Docker; host Rust/Node are needed only for development and checks.
 
