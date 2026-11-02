@@ -324,3 +324,43 @@ test('an empty final provider turn preserves useful verified tool results', asyn
   expect(text).toContain('setup cards');
   expect(session.cards.length).toBe(1);
 });
+
+test('recommendation prose accompanying tool calls is visible to the visitor', async () => {
+  const session = { cards: [], facts: {}, messages: [], lead: null };
+  let calls = 0;
+  const text = await respond(
+    { modelUrl: 'https://example.invalid', model: 'test' },
+    session,
+    'Help me use Messages',
+    catalog,
+    async () =>
+      Response.json({
+        choices: [
+          {
+            message:
+              ++calls === 1
+                ? {
+                    role: 'assistant',
+                    content:
+                      'Blueski connects your AI assistant to Messages on your Mac.',
+                    tool_calls: [
+                      {
+                        id: 'tool1',
+                        function: {
+                          name: 'recommend_tools',
+                          arguments: JSON.stringify({ names: ['blueski'] }),
+                        },
+                      },
+                    ],
+                  }
+                : {
+                    role: 'assistant',
+                    content: 'What would you like to set up first?',
+                  },
+          },
+        ],
+      }),
+  );
+  expect(text).toContain('Blueski connects');
+  expect(text).toContain('What would you');
+});
