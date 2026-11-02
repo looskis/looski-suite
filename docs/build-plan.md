@@ -161,3 +161,7 @@ Do not start the general automation builder, custom database platform, or intern
 ### October 12 implementation increment
 
 Implemented foundation and CRM checkpoints are tracked in [build coverage](implementation/coverage.md), with per-slice verification records under `docs/implementation/`. Coverage includes current identity, scoped staff administration, Contacts/Organizations, intake, CRM configuration and records, shared Tasks, activities, coordination, durable jobs, starter definitions and combined timelines. Authentication mail, staff invitations and controlled contact deletion are part of the current uncommitted implementation; their checkpoint documents distinguish completed checks from final regression and external-provider gates. Business export and shared Files have since passed both full installation regressions; recovery, diagnostics and remaining release evidence are still outstanding. Earlier checkpoint documents describe their historical implementation boundary, not the current whole-product status.
+
+### November 2 Communications increment
+
+The shared Communications module is implemented beyond the original eight milestones: Blueski and HTTP connector adapters, inbox and replies, private/shared accounts, durable jobs and replay, contact timelines and export. [Implementation evidence and current limits](implementation/communications-slice.md) distinguish local fixture verification from real provider delivery. Native Gmail/IMAP and calling remain future integrations.

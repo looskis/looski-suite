@@ -28,6 +28,7 @@ pub struct TimelineQuery {
 #[serde(tag = "kind", content = "detail", rename_all = "snake_case")]
 pub enum EventDetail {
     Ticket(crate::helpdesk::TicketEvent),
+    Communication(crate::communications::TimelineMessage),
     Appointment(Box<crate::scheduling::AppointmentTimeline>),
     Activity(ActivityChange),
     Transition(Transition),
@@ -181,6 +182,7 @@ fn parse_cursor(
             "task_link",
             "task",
             "ticket",
+            "communication",
             "appointment",
         ]
         .contains(&parts[3])
@@ -226,6 +228,17 @@ pub async fn list(
                 .map(|(position, event)| VisibleEvent {
                     position,
                     event: EventDetail::Ticket(event),
+                })
+        } else if kind == "communication" {
+            if q.anchor_kind != AnchorKind::Contact {
+                return Err(Error::NotFound);
+            }
+            crate::communications::history(&mut tx, actor, &a.family, None, Some(id), 1)
+                .await?
+                .pop()
+                .map(|(position, event)| VisibleEvent {
+                    position,
+                    event: EventDetail::Communication(event),
                 })
         } else if kind == "appointment" {
             if q.anchor_kind != AnchorKind::Contact {
@@ -364,6 +377,25 @@ pub async fn list(
             .map(|(position, event)| VisibleEvent {
                 position,
                 event: EventDetail::Appointment(Box::new(event)),
+            }),
+        );
+        trim(&mut events, n + 1);
+    }
+    if q.anchor_kind == AnchorKind::Contact {
+        events.extend(
+            crate::communications::history(
+                &mut tx,
+                actor,
+                &a.family,
+                after.as_ref(),
+                None,
+                (n + 1) as i64,
+            )
+            .await?
+            .into_iter()
+            .map(|(position, event)| VisibleEvent {
+                position,
+                event: EventDetail::Communication(event),
             }),
         );
         trim(&mut events, n + 1);

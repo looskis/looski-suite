@@ -127,7 +127,7 @@ Templates hold reusable definitions. Applying a template creates ordinary task/c
 
 ## Omnichannel communication plan
 
-Status: deferred beyond the initial foundation/CRM build. The following is retained design context for when communication work is scheduled, not current implementation scope. Do not build mailbox connectors, inbox UI, or a speculative communications schema as prerequisites for CRM. Authentication email delivery is separate and remains in scope.
+Status: the first Rust Communications slice is now implemented with Blueski and an extensible HTTP connector, shared inbox, contact links and durable delivery. See [Communications](communications.md) for setup, scope and validation. Native Gmail/IMAP integration remains future work. The email research below remains design context; authentication email delivery is separate.
 
 When communication work resumes, start with email while retaining an omnichannel model. Gmail and generic SMTP remain candidate connection paths from the discussion. Reconfirm scope and provider requirements then. Previously proposed connector choices:
 

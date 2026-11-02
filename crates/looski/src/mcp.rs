@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 use crate::client::ApiClient;
 mod cms;
+mod communications;
 mod forms;
 mod helpdesk;
 mod knowledge;
@@ -3312,7 +3313,8 @@ impl McpServer {
                 + Self::knowledge_tools()
                 + Self::time_tools()
                 + Self::scheduling_tools()
-                + Self::helpdesk_tools(),
+                + Self::helpdesk_tools()
+                + Self::communications_tools(),
         }
     }
 

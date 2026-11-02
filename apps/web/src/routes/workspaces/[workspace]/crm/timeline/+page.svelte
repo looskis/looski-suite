@@ -38,6 +38,16 @@
             : ''} · happened {event.snapshot.occurred_at}
         </p>
         <p class="body">{event.snapshot.body}</p>
+      {:else if item.event.kind === 'communication'}
+        <p>
+          <a
+            href={`${root}/communications/${item.event.detail.conversation_id}`}
+            >{item.event.detail.subject || 'Conversation'}</a
+          >
+          · {item.event.detail.channel} · {item.event.detail.direction} · {item
+            .event.detail.state}
+        </p>
+        <p class="body">{item.event.detail.body}</p>
       {:else if item.event.kind === 'appointment'}
         <p>
           <a href={`${root}/scheduling/${item.event.detail.appointment.id}`}

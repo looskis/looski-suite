@@ -268,6 +268,17 @@ enum Command {
         #[command(subcommand)]
         action: SchedulingCommand,
     },
+    /// Communications inbox and connections. Mutations read JSON from stdin.
+    Communications {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: Option<std::path::PathBuf>,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: CommunicationsCommand,
+    },
     /// Helpdesk staff tickets and configuration. Mutations read JSON from stdin.
     Helpdesk {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
@@ -1750,6 +1761,52 @@ enum SchedulingCommand {
         limit: Option<i64>,
         #[arg(long)]
         archived: bool,
+    },
+}
+#[derive(Subcommand)]
+enum CommunicationsCommand {
+    Accounts,
+    Connect {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    UpdateAccount {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Sync {
+        id: uuid::Uuid,
+    },
+    List {
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        limit: Option<i64>,
+        #[arg(long)]
+        contact_id: Option<uuid::Uuid>,
+        #[arg(long)]
+        archived: bool,
+    },
+    Get {
+        id: uuid::Uuid,
+    },
+    Update {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Messages {
+        id: uuid::Uuid,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+        #[arg(long)]
+        limit: Option<i64>,
+    },
+    Send {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
     },
 }
 #[derive(Subcommand)]
@@ -5117,6 +5174,82 @@ async fn run() -> anyhow::Result<()> {
             };
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
+        Command::Communications {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            use looski::communications::*;
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
+            fn body<T: serde::de::DeserializeOwned>() -> anyhow::Result<T> {
+                Ok(serde_json::from_reader(std::io::stdin())?)
+            }
+            let result = match action {
+                CommunicationsCommand::Accounts => {
+                    serde_json::to_value(client.communications_accounts(workspace).await?)?
+                }
+                CommunicationsCommand::Connect { idempotency_key } => serde_json::to_value(
+                    client
+                        .communications_connect(workspace, &idempotency_key, &body()?)
+                        .await?,
+                )?,
+                CommunicationsCommand::UpdateAccount {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .communications_update_account(workspace, id, &idempotency_key, &body()?)
+                        .await?,
+                )?,
+                CommunicationsCommand::Sync { id } => {
+                    serde_json::to_value(client.communications_sync(workspace, id).await?)?
+                }
+                CommunicationsCommand::List {
+                    after,
+                    limit,
+                    contact_id,
+                    archived,
+                } => serde_json::to_value(
+                    client
+                        .communications_list(
+                            workspace,
+                            &ConversationQuery {
+                                after,
+                                limit,
+                                contact_id,
+                                archived: Some(archived),
+                            },
+                        )
+                        .await?,
+                )?,
+                CommunicationsCommand::Get { id } => {
+                    serde_json::to_value(client.communications_get(workspace, id).await?)?
+                }
+                CommunicationsCommand::Update {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .communications_update(workspace, id, &idempotency_key, &body()?)
+                        .await?,
+                )?,
+                CommunicationsCommand::Messages { id, after, limit } => serde_json::to_value(
+                    client
+                        .communications_messages(workspace, id, &MessageQuery { after, limit })
+                        .await?,
+                )?,
+                CommunicationsCommand::Send {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .communications_send(workspace, id, &idempotency_key, &body()?)
+                        .await?,
+                )?,
+            };
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
         Command::Helpdesk {
             api_url,
             token_file,
@@ -5818,8 +5951,8 @@ async fn run() -> anyhow::Result<()> {
             .fetch_one(&db)
             .await?;
             anyhow::ensure!(
-                schema == 36,
-                "Worker requires schema 36 but the database is at {schema}; apply migrations first"
+                schema == 37,
+                "Worker requires schema 37 but the database is at {schema}; apply migrations first"
             );
             let invitation_key =
                 std::fs::read_to_string(std::env::var("LOOSKI_INVITATION_KEY_FILE")?)?;
@@ -5844,9 +5977,14 @@ async fn run() -> anyhow::Result<()> {
                 read_jwt_secret()?.as_bytes(),
             )?;
             let diagnostics = looski::diagnostics::Diagnostics::from_environment();
+            let mut communications_tick = 0u32;
             loop {
                 let started = std::time::Instant::now();
                 let result = looski::jobs::run_once(&db, &mailer, &outbox).await;
+                if communications_tick.is_multiple_of(10) {
+                    let _ = looski::communications::poll_once(&db).await;
+                }
+                communications_tick = communications_tick.wrapping_add(1);
                 diagnostics.worker(
                     matches!(result, Ok(true)),
                     result.is_err(),
