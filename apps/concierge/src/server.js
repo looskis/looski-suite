@@ -386,7 +386,7 @@ export function createApp(
         JSON.stringify({
           event: 'concierge_error',
           action,
-          code: /^([a-z]+_\d+|invalid_details|booking_in_progress)$/.test(
+          code: /^([a-z]+_\d+|invalid_details|booking_in_progress|model_empty|model_tool_limit)$/.test(
             error.message,
           )
             ? error.message

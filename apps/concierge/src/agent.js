@@ -123,6 +123,35 @@ export function controlIntent(text) {
   return null;
 }
 
+// Some provider turns finish after tool execution without final prose. Keep the
+// verified result usable instead of discarding a successful tool interaction.
+export function toolSummary(session) {
+  const selections = session.cards
+    .filter((c) => c.type === 'tool')
+    .map((c) => c.tool);
+  if (selections.length) {
+    const description = selections
+      .map((t) => `${t.name}: ${t.summary}`)
+      .join('\n\n');
+    return (
+      description +
+      (session.channel && session.channel !== 'web'
+        ? '\n\nSetup: ' +
+          selections
+            .map((t) => t.install || `https://github.com/looskis/${t.name}`)
+            .join('\n')
+        : '\n\nYour setup cards are below. What would you like help setting up first?')
+    );
+  }
+  if (session.cards.some((c) => c.type === 'booking'))
+    return session.channel && session.channel !== 'web'
+      ? 'We can explore a private AI deployment in a demo. Choose a time at https://www.loo.ski/#demo.'
+      : 'We can explore a private AI deployment in a demo. Choose a time below, or tell me more about the workflow you want to improve.';
+  if (session.cards.some((c) => c.type === 'human'))
+    return 'You can request a human follow-up at https://www.loo.ski/#demo, or call +1 (646) 992-1008.';
+  return 'What is the first workflow you would like to improve? I can help you choose an open-source tool or explore a private AI deployment.';
+}
+
 export async function respond(
   config,
   session,
@@ -172,7 +201,7 @@ export async function respond(
     if (!result.tool_calls?.length) {
       const text =
         typeof result.content === 'string' ? result.content.trim() : '';
-      if (!text) throw new Error('model_empty');
+      if (!text) return toolSummary(session);
       return text;
     }
     messages.push(result);
@@ -197,5 +226,5 @@ export async function respond(
       });
     }
   }
-  throw new Error('model_tool_limit');
+  return toolSummary(session);
 }

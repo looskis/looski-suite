@@ -288,3 +288,39 @@ test('a queued STOP suppresses earlier unanswered texts before any model call', 
   expect(store.get(id).stopped).toBe(true);
   expect(store.get(id).messages[0].text).toBe('STOP');
 });
+
+test('an empty final provider turn preserves useful verified tool results', async () => {
+  const session = { cards: [], facts: {}, messages: [], lead: null };
+  let calls = 0;
+  const text = await respond(
+    { modelUrl: 'https://example.invalid', model: 'test' },
+    session,
+    'Help me use Messages',
+    catalog,
+    async () =>
+      Response.json({
+        choices: [
+          {
+            message:
+              ++calls === 1
+                ? {
+                    role: 'assistant',
+                    tool_calls: [
+                      {
+                        id: 'tool1',
+                        function: {
+                          name: 'recommend_tools',
+                          arguments: JSON.stringify({ names: ['blueski'] }),
+                        },
+                      },
+                    ],
+                  }
+                : { role: 'assistant', content: null },
+          },
+        ],
+      }),
+  );
+  expect(text).toContain('blueski');
+  expect(text).toContain('setup cards');
+  expect(session.cards.length).toBe(1);
+});
