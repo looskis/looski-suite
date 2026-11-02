@@ -166,7 +166,9 @@ export async function respond(
     session.cards = control === 'human' ? [{ type: 'human' }] : [];
     return control === 'stop'
       ? 'Understood. Automated replies are paused for this conversation.'
-      : 'Of course. Leave your details below and request a human follow-up, or call +1 (646) 992-1008.';
+      : session.channel && session.channel !== 'web'
+        ? 'Of course. Automated replies are paused. Your request is in the Looski team’s inbox for a person to review.'
+        : 'Of course. Leave your details below and request a human follow-up, or call +1 (646) 992-1008.';
   }
   const messages = [
     { role: 'system', content: instructions(catalog, session) },

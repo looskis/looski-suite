@@ -17,6 +17,9 @@ export class Store {
       CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS outbound (ref TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, response TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS tickets (id TEXT PRIMARY KEY, session TEXT NOT NULL, expires INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS mail_threads (id TEXT PRIMARY KEY, source TEXT UNIQUE NOT NULL, token TEXT UNIQUE NOT NULL, recipient TEXT NOT NULL, subject TEXT NOT NULL, last_message TEXT NOT NULL, created INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS mail_outbox (ref TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, thread TEXT NOT NULL, payload TEXT NOT NULL, state TEXT NOT NULL, provider_id TEXT, error TEXT, created INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS mail_inbound (id TEXT PRIMARY KEY, thread TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS processing (id TEXT PRIMARY KEY, state TEXT NOT NULL);
     `);
   }
@@ -47,7 +50,7 @@ export class Store {
       return true;
     })();
   }
-  event(session, body, direction = 'inbound', channel = 'web') {
+  event(session, body, direction = 'inbound', channel = 'web', extra = {}) {
     const payload = {
       version: 1,
       installation_id: 'looski-concierge-v1',
@@ -57,15 +60,33 @@ export class Store {
       channel,
       sender:
         direction === 'inbound'
-          ? session.lead?.email || 'Website visitor'
+          ? session.lead?.email || session.callerPhone || 'Website visitor'
           : 'Looski assistant',
-      destination: 'Looski',
+      destination:
+        session.channel === 'email'
+          ? 'Looski email'
+          : session.channel === 'phone'
+            ? '+16469921008'
+            : 'Looski',
+      ...(extra.sender ? { sender: extra.sender } : {}),
       body,
-      subject: session.lead?.name
-        ? `${session.lead.name} · Looski concierge`
-        : 'Website conversation',
+      subject:
+        extra.subject ||
+        (session.lead?.name
+          ? `${session.lead.name} · Looski concierge`
+          : session.channel === 'phone'
+            ? 'Looski phone conversation'
+            : 'Website conversation'),
       state: 'received',
-      metadata: { direction, assistant: direction === 'outbound' },
+      metadata: {
+        direction,
+        received_at: new Date().toISOString(),
+        ...extra,
+        assistant: direction === 'outbound',
+        ...(session.channel === 'phone'
+          ? { call_id: session.phoneCallId, transport: 'retell' }
+          : {}),
+      },
     };
     const row = this.db
       .query('INSERT INTO events(payload) VALUES(?) RETURNING id')
