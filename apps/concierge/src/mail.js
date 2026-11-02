@@ -62,9 +62,17 @@ export function mailThread(
   })();
   return store.db.query('SELECT * FROM mail_threads WHERE id=?').get(id);
 }
-export function queueMail(store, config, thread, ref, text) {
+export function queueMail(
+  store,
+  config,
+  thread,
+  ref,
+  text,
+  requestFingerprint,
+) {
   if (!config.postmarkKey) throw Error('mail_unavailable');
-  const fingerprint = hash(JSON.stringify([thread.id, text]));
+  const fingerprint =
+    requestFingerprint || hash(JSON.stringify([thread.id, text]));
   const prior = store.db
     .query('SELECT * FROM mail_outbox WHERE ref=?')
     .get(ref);

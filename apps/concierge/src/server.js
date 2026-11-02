@@ -161,7 +161,14 @@ export function createApp(
           return reply({ error: 'Invalid email thread' }, 409);
         try {
           return reply(
-            queueMail(store, config, thread, body.client_ref, body.body),
+            queueMail(
+              store,
+              config,
+              thread,
+              body.client_ref,
+              body.body,
+              fingerprint,
+            ),
           );
         } catch {
           return reply({ error: 'Email conflict or unavailable' }, 409);

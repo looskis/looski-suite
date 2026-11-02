@@ -144,3 +144,43 @@ test('booking notifications queue separately for owner and visitor once', () => 
     4,
   );
 });
+
+test('Suite email delivery refuses changed requests and unknown threads', async () => {
+  const { createApp } = await import('./server.js');
+  const { store, thread } = setup();
+  const app = createApp({ ...config, bridgeKey: 'bridge' }, store, {});
+  const ref = crypto.randomUUID();
+  const send = (body) =>
+    app.handle(
+      new Request('http://localhost/v1/messages', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer bridge',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }),
+    );
+  const body = {
+    client_ref: ref,
+    thread_id: thread.id,
+    channel: 'email',
+    body: 'A staff reply',
+    subject: 'Original',
+  };
+  expect((await send(body)).status).toBe(200);
+  expect((await send(body)).status).toBe(200);
+  expect((await send({ ...body, subject: 'Changed' })).status).toBe(409);
+  expect((await send({ ...body, thread_id: crypto.randomUUID() })).status).toBe(
+    404,
+  );
+  expect(store.db.query('SELECT count(*) AS n FROM mail_outbox').get().n).toBe(
+    1,
+  );
+  const event = store.event(store.get(thread.id), 'Hello', 'inbound', 'email', {
+    sender: 'visitor@example.com',
+    provider_message_id: 'provider-1',
+  });
+  expect(event.provider_message_id).toBeUndefined();
+  expect(event.metadata.provider_message_id).toBe('provider-1');
+});
