@@ -106,7 +106,7 @@ export function voiceHandlers(app, config) {
               type: 'session-update',
               config: {
                 instructions:
-                  instructions(config.catalog, session) +
+                  instructions(config.catalog, session, config) +
                   '\nYou are speaking by voice. Use brief natural speech. Tool cards appear in the browser. Never read code aloud. Introduce yourself as an AI assistant. Recent conversation: ' +
                   JSON.stringify(session.messages.slice(-8)),
                 outputModalities: ['audio'],
