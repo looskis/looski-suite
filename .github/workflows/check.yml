@@ -9,6 +9,7 @@ jobs:
       COMPOSE_PROJECT_NAME: looski-ci-identity-check
       LOOSKI_HTTP_PORT: "58888"
       LOOSKI_PUBLIC_URL: http://localhost:58888
+      LOOSKI_MAIL_MODE: local
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

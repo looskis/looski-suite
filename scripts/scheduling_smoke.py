@@ -136,18 +136,25 @@ try:
  # Reminder jobs survive restart; obsolete generations never send.
  compose('stop','worker');rem=make_type(reminder_minutes=60,buffer_before=0,buffer_after=0)
  obsolete,oc,_=book(rem,at('20:00'));customer(obsolete['id'],oc,'reschedule',starts_at=at('21:00'));customer(obsolete['id'],oc,'cancel')
- live,lc,_=book(rem,at('20:00'))
+ live,lc,live_input=book(rem,at('20:00'))
  sql(f"UPDATE suite.jobs SET available_at=now() WHERE id IN (SELECT job_id FROM scheduling.reminders WHERE appointment_id IN ('{obsolete['id']}','{live['id']}'))")
  sql(f"SELECT pgmq.set_vt('looski_jobs',message_id,0) FROM suite.jobs WHERE id IN (SELECT job_id FROM scheduling.reminders WHERE appointment_id IN ('{obsolete['id']}','{live['id']}'))")
  compose('start','worker')
+ delivery_enabled=f.config['LOOSKI_MAIL_MODE']!='disabled'
+ expected_counts='2|1' if delivery_enabled else '2|0'
  for _ in range(80):
   counts=sql(f"SELECT count(*) FILTER(WHERE skipped),count(*) FILTER(WHERE sent_at IS NOT NULL) FROM scheduling.reminders WHERE appointment_id IN ('{obsolete['id']}','{live['id']}')")
-  if counts=='2|1':break
+  live_job=sql(f"SELECT j.state||'|'||COALESCE(j.error_code,'') FROM suite.jobs j JOIN scheduling.reminders r ON r.job_id=j.id WHERE r.appointment_id='{live['id']}'")
+  if counts==expected_counts and (delivery_enabled or live_job=='blocked|unavailable'):break
   time.sleep(.25)
- assert counts=='2|1',counts
+ assert counts==expected_counts,(counts,live_job)
+ if not delivery_enabled:assert live_job=='blocked|unavailable',live_job
+ if f.config['LOOSKI_MAIL_MODE']=='local':
+  inbox=json.loads(subprocess.check_output(['docker','compose','exec','-T','auth','wget','-qO-','http://mailpit:8025/api/v1/messages'],cwd=ROOT,env=f.environment))
+  assert any(m['Subject']=='Appointment reminder: '+rem['settings']['name'] and any(to['Address']==live_input['attendee_email'] for to in m['To']) for m in inbox['messages']),'Reminder missing from private SMTP capture'
  assert int(sql(f"SELECT count(*) FROM scheduling.reminders WHERE appointment_id='{obsolete['id']}' AND sent_at IS NOT NULL"))==0
  module('scheduling',False);customer(live['id'],lc,expected=404);call(root+'/appointments',expected=403)
- print('PASS: durable delayed reminders, SMTP capture delivery, obsolete generation suppression, module pause',flush=True)
+ print('PASS: durable delayed reminders, '+('delivery' if delivery_enabled else 'explicit block with email disabled')+', obsolete generation suppression, module pause',flush=True)
 finally:
  compose('start','worker')
  for m,enabled in initial.items():module(m,enabled)
