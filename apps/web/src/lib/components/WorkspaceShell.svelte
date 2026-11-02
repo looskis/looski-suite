@@ -18,6 +18,7 @@
         { path: 'scheduling', label: 'Scheduling', icon: 'calendar' },
         { path: 'time', label: 'Time tracking', icon: 'clock' },
         { path: 'helpdesk', label: 'Helpdesk', icon: 'inbox' },
+        { path: 'communications', label: 'Communications', icon: 'inbox' },
         { path: 'crm', label: 'Applications', icon: 'grid' },
       ],
     },

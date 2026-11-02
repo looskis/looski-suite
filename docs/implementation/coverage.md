@@ -53,3 +53,9 @@ This is the implementation checklist for the October 12 build request. Accepted 
 ## Verification boundaries
 
 Use the approved HTTP business contract, CLI/MCP clients, browser journeys, and real PostgreSQL constraints/transactions. Tests establish observable outcomes, denial, rollback, and concurrency behavior. Do not substitute snapshots of implementation details for those guarantees. Review against baseline `8a82e86` and the accepted specs, preserving preexisting research files.
+
+## Communications — November 2, 2026
+
+- [x] Rust Communications, Blueski and HTTP v1 adapters, inbox/replies, account privacy, contact links/timeline, exports, CLI/API/MCP and local connector/browser acceptance. See [checkpoint](communications-slice.md).
+- [ ] Real Blueski/macOS endpoint delivery, native Gmail/IMAP connectors, calls and outbound attachments.
+- [ ] Full encrypted recovery rehearsal including Communications credentials and paused accounts.

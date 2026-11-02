@@ -99,6 +99,8 @@ def role_memberships(installation):
 def secrets_snapshot(installation):
     result={'core':{name:encryption.private_regular(installation.state/'secrets'/name).decode() for name in CORE_SECRETS},
             'invitation_key':encryption.private_regular(installation.state/'invitation-key').decode() if (installation.state/'invitation-key').exists() else None}
+    communications=installation.state/'communications.json'
+    if communications.exists():result['communications']=json.loads(encryption.private_regular(communications))
     smtp=installation.state/'smtp.json'
     if smtp.exists():result['smtp']=json.loads(encryption.private_regular(smtp))
     return result
@@ -158,7 +160,7 @@ def create(installation,destination,recipient):
                 maintenance=time.monotonic()
                 status['phase']='capturing';status_write(installation,status)
                 schema=int(installation.sql('SELECT version FROM suite.schema_version WHERE singleton'))
-                if schema not in (23,28,29,30,31,32,33,34,35,36):raise ValueError('This recovery runner supports schemas 23, 28, 29, 30, 31, 32, 33, 34, 35 and 36')
+                if schema not in (23,28,29,30,31,32,33,34,35,36,37):raise ValueError('This recovery runner supports schemas 23, 28, 29, 30, 31, 32, 33, 34, 35, 36 and 37')
                 postgres=installation.sql('SHOW server_version_num')
                 if not postgres.startswith('17'):raise ValueError('This recovery runner requires PostgreSQL 17')
                 if installation.sql("SELECT count(*) FROM pg_tablespace WHERE spcname NOT IN ('pg_default','pg_global')")!='0':raise ValueError('Custom tablespaces require a separate recovery procedure')

@@ -67,6 +67,8 @@ pub enum Collection {
     AppointmentEvents,
     TimeEntries,
     TimeBudgets,
+    CommunicationConversations,
+    CommunicationMessages,
     HelpdeskTickets,
     HelpdeskMessages,
     KnowledgeCollections,
@@ -148,6 +150,8 @@ impl Collection {
             Self::AppointmentTypes | Self::Appointments => (false, true, false, "scheduling.read"),
             Self::AppointmentEvents => (true, false, false, "scheduling.read"),
             Self::TimeEntries | Self::TimeBudgets => (false, true, false, "time.read"),
+            Self::CommunicationConversations => (false, true, false, "communications.read"),
+            Self::CommunicationMessages => (true, false, false, "communications.read"),
             Self::HelpdeskTickets => (false, true, false, "helpdesk.read"),
             Self::HelpdeskMessages => (true, false, false, "helpdesk.read"),
             Self::KnowledgeCollections => (false, true, false, "knowledge.read"),
@@ -223,6 +227,8 @@ impl Collection {
                 | Self::AppointmentEvents
                 | Self::TimeEntries
                 | Self::TimeBudgets
+                | Self::CommunicationConversations
+                | Self::CommunicationMessages
                 | Self::HelpdeskTickets
                 | Self::HelpdeskMessages
                 | Self::KnowledgeCollections
@@ -340,6 +346,8 @@ pub async fn catalog(
         Collection::AppointmentEvents.spec(),
         Collection::TimeEntries.spec(),
         Collection::TimeBudgets.spec(),
+        Collection::CommunicationConversations.spec(),
+        Collection::CommunicationMessages.spec(),
         Collection::HelpdeskTickets.spec(),
         Collection::HelpdeskMessages.spec(),
         Collection::KnowledgeCollections.spec(),
@@ -620,6 +628,12 @@ pub async fn page(
         }
         Collection::TimeEntries => value(crate::time::list(pool, actor, query(&input)?).await?),
         Collection::TimeBudgets => value(crate::time::budgets(pool, actor, query(&input)?).await?),
+        Collection::CommunicationConversations => {
+            value(crate::communications::list(pool, actor, query(&input)?).await?)
+        }
+        Collection::CommunicationMessages => {
+            value(crate::communications::messages(pool, actor, parent, query(&input)?).await?)
+        }
         Collection::HelpdeskTickets => value(helpdesk::list(pool, actor, query(&input)?).await?),
         Collection::HelpdeskMessages => {
             value(helpdesk::messages(pool, actor, parent, query(&input)?).await?)

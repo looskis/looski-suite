@@ -59,7 +59,17 @@ export const load: PageServerLoad = async (event) => {
     'contacts',
     event.url.searchParams.get('tag_search') ?? '',
   );
+  const conversations = await client.GET(
+    '/api/v1/workspaces/{workspace_id}/communications/conversations',
+    {
+      params: {
+        path: { workspace_id: workspace.id },
+        query: { contact_id: result.data.id, limit: 10 },
+      },
+    },
+  );
   return {
+    conversations: conversations.data ?? null,
     tags,
     workspace,
     contact: result.data,

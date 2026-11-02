@@ -28,5 +28,6 @@ jobs:
       - run: cargo build --locked
       - run: make up
       - run: make acceptance
+      - run: COMMUNICATIONS_BROWSER=1 python3 scripts/communications_smoke.py
       - if: always()
         run: python3 scripts/dev.py stop

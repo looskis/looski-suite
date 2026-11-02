@@ -194,3 +194,17 @@
       >Review permanent deletion</a
     >
   </p>{/if}
+
+{#if data.conversations}<section>
+    <h2>Conversations</h2>
+    {#each data.conversations.items as c}<p>
+        <a href={`/workspaces/${data.workspace.id}/communications/${c.id}`}
+          >{c.subject || c.provider_thread_id}</a
+        >
+        · {c.channel} · {c.updated_at}
+      </p>{:else}<p>No linked conversations yet.</p>{/each}
+    <a
+      href={`/workspaces/${data.workspace.id}/communications?contact_id=${data.contact.id}`}
+      >All conversations →</a
+    >
+  </section>{/if}

@@ -130,6 +130,10 @@ Postgres bootstrap creates a non-administrative `looski_runtime` login. Migratio
 
 `LOOSKI_TUNNEL_MODE=cloudflare` adds a Cloudflare Tunnel connector that serves `LOOSKI_PUBLIC_URL` over HTTPS without publishing another host port. Provision the tunnel and DNS route once, then keep its credential with the installation; see [Cloudflare Tunnel routing](docs/setup-contract.md#cloudflare-tunnel-routing). Public HTTPS routing and secure cookies have been validated; public-domain email callbacks still need an SMTP validation pass. `make smtp` records SMTP credentials privately. Hosted Supabase transfer and release/source-distribution packaging remain unverified. Worker retries and fencing, migration checksum drift enforcement, encrypted backup, isolated restore and failed-update recovery have local behavioral tests; see [recovery](docs/recovery.md).
 
+## Communications
+
+The Rust Communications module adds a shared inbox, private/shared connected accounts, Blueski receive/reply and receipts, contact links/timelines, and a versioned HTTP connector for other providers. It is available through web, API, CLI and MCP. See [setup, connector contract and current limits](docs/communications.md). Gmail/IMAP connectors, calls and outbound attachments are not included. Real provider delivery requires configuring a connector.
+
 ## Canonical plans and license
 
 Start with the [build plan](docs/build-plan.md), [architecture](docs/architecture.md), [decisions](docs/decisions.md), and [scaffold evidence](docs/scaffold-status.md), and [identity slice](docs/identity-slice.md). Original software is licensed under [AGPL-3.0-only](LICENSE); upstream components retain their own licenses. See [NOTICE](NOTICE). The [trademark policy](TRADEMARKS.md) is separate from AGPL permissions. [Dependency and distribution checks](docs/implementation/dependency-review.md) record the remaining public-release gates.

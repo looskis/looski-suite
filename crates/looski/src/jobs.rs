@@ -117,6 +117,9 @@ pub async fn get(pool: &PgPool, actor: &ActorContext<'_>, id: Uuid) -> Result<Jo
     require(&mut tx, actor, "workspace.jobs.read").await?;
     let mut job = dao::get(&mut tx, actor.workspace, id).await?;
     match job.kind.as_str() {
+        "communications.send" => {
+            crate::communications::get_job_authority(&mut tx, actor, id).await?;
+        }
         "crm.coordination" => {
             job.context = crate::crm::status_jobs::context(&mut tx, actor, id).await?
         }
@@ -246,6 +249,7 @@ pub(crate) async fn block_module(
             "projects.deal_conversion",
         ],
         "forms" => &["forms.crm_inquiry"],
+        "communications" => &["communications.send"],
         "scheduling" => &["scheduling.crm_inquiry", "scheduling.reminder"],
         "projects" => &["projects.deal_conversion"],
         _ => &[],
@@ -261,6 +265,7 @@ async fn modules_ready(
 ) -> Result<bool, Error> {
     let purpose;
     let required: Vec<&str> = match kind {
+        "communications.send" => vec!["communications"],
         "crm.coordination" => vec!["crm"],
         "forms.crm_inquiry" => vec!["forms", "crm"],
         "scheduling.crm_inquiry" => {
@@ -361,6 +366,7 @@ async fn execute(
         source_interface: "worker",
     };
     let permission = match claim.kind.as_str() {
+        "communications.send" => "communications.send",
         "crm.coordination" => "crm.deals.coordination.apply",
         "workspace.invitation_email" => "workspace.access.admin",
         "forms.crm_inquiry" => "forms.recipes.manage",
@@ -377,6 +383,7 @@ async fn execute(
         return Err(Error::Forbidden.into());
     }
     match claim.kind.as_str() {
+        "communications.send" => crate::communications::execute(&mut tx, &actor, claim.id).await?,
         "crm.coordination" => crate::crm::status_jobs::execute(&mut tx, &actor, claim.id).await?,
         "workspace.invitation_email" => {
             crate::workspace_access::invitations::delivery::execute(

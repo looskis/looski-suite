@@ -45,3 +45,5 @@ pub mod rich_text;
 pub mod time;
 
 pub mod scheduling;
+
+pub mod communications;

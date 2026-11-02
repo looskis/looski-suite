@@ -145,6 +145,7 @@ services:
       LOOSKI_DATABASE_URL_FILE: /run/secrets/database_url
       LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
       LOOSKI_AUTH_MAIL_ENABLED: ${LOOSKI_AUTH_MAIL_ENABLED:-false}
+      LOOSKI_COMMUNICATIONS_CONFIG_FILE: /run/secrets/communications
       LOOSKI_INVITATION_KEY_FILE: /run/secrets/invitation_key
       LOOSKI_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
       LOOSKI_AUTH_ISSUER: ${LOOSKI_AUTH_ISSUER:-${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1}
@@ -152,7 +153,7 @@ services:
       LOOSKI_DIAGNOSTICS_MODE: ${LOOSKI_DIAGNOSTICS_MODE:-local}
       LOOSKI_DIAGNOSTICS_KEY_FILE: /run/secrets/diagnostics_key
       RUST_LOG: info
-    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key]
+    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key, communications]
     tmpfs:
       - /run/looski:size=64k,mode=0755
     depends_on:
@@ -174,6 +175,7 @@ services:
     environment:
       LOOSKI_DATABASE_URL_FILE: /run/secrets/database_url
       LOOSKI_AUTH_MAIL_ENABLED: ${LOOSKI_AUTH_MAIL_ENABLED:-false}
+      LOOSKI_COMMUNICATIONS_CONFIG_FILE: /run/secrets/communications
       LOOSKI_INVITATION_KEY_FILE: /run/secrets/invitation_key
       LOOSKI_JWT_SECRET_FILE: /run/secrets/jwt_secret
       LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
@@ -183,7 +185,7 @@ services:
       LOOSKI_DIAGNOSTICS_KEY_FILE: /run/secrets/diagnostics_key
       LOOSKI_SMTP_CONFIG_FILE: /run/secrets/auth_mail
       RUST_LOG: info
-    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key, auth_mail]
+    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key, auth_mail, communications]
     tmpfs:
       - /run/looski:size=64k,mode=0755
     depends_on:
@@ -300,6 +302,8 @@ services:
       retries: 10
 
 secrets:
+  communications:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/communications.json
   owner_claim:
     file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/owner-claim.json
   cloudflare_token:
