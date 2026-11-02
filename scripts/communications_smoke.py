@@ -110,7 +110,8 @@ try:
         def module(enabled):
             m=next(m for m in f.call(root+'/modules') if m['key']=='communications')
             f.call(root+'/modules/communications','PATCH',{'enabled':enabled,'expected_version':m['version']},key=key())
-        call('/accounts',expected=403);module(True)
+        # Normalize the cloned module state: earlier acceptance suites may enable it.
+        module(False);call('/accounts',expected=403);module(True)
         ac=call('/accounts','POST',{'name':'Blueski fixture','connector_key':'fixture-blueski'})
         assert not ac['shared'] and ac['capabilities']['send_text'] and not ac['capabilities']['attachments']
         assert secret not in json.dumps(ac) and endpoint not in json.dumps(ac)
