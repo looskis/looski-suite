@@ -1,0 +1,87 @@
+name: Prepare distribution preview
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Preview version, for example v0.1.0-preview.1'
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate version and installer guards
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          python3 -c 'import os,re; assert re.fullmatch(r"v\d+\.\d+\.\d+-preview\.\d+",os.environ["RELEASE_VERSION"])'
+          python3 -m unittest discover -s scripts -p 'test_*.py'
+  images:
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - name: api
+            dockerfile: infra/Dockerfile.api
+          - name: web
+            dockerfile: infra/Dockerfile.web
+          - name: auth
+            dockerfile: infra/auth/Dockerfile
+          - name: migrate
+            dockerfile: infra/migrator/Dockerfile
+          - name: recovery
+            dockerfile: infra/recovery/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ghcr.io/looskis/looski-suite-${{ matrix.name }}:${{ github.sha }}
+  bundle:
+    needs: images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Package runtime and corresponding source
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: python3 scripts/package_release.py --version "$RELEASE_VERSION"
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*.tar.gz
+      - name: Create draft for release validation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          gh release create "$RELEASE_VERSION" dist/* --draft --prerelease --target "$GITHUB_SHA" --title "Looski Suite $RELEASE_VERSION" --notes-file docs/distribution-release-notes.md

@@ -95,7 +95,7 @@ See [Compose dependency readiness](https://docs.docker.com/compose/how-tos/start
 
 `LOOSKI_TUNNEL_MODE=cloudflare` runs a pinned cloudflared connector (`tunnel` service, `public-tunnel` profile) on the suite network. It dials out to Cloudflare and routes the `LOOSKI_PUBLIC_URL` hostname to `http://gateway:8080`; no additional host port is published. The tunnel is locally managed: setup renders `.local/<installation>/cloudflared.yml` from the public origin, so the hostname has one source. The default is `disabled`. A host-run connector may instead target `http://127.0.0.1:58888` (or the configured override); never use `localhost` inside a connector container to refer to another container or the host.
 
-Provision the tunnel identity and DNS route once with the Cloudflare account that owns the zone. Setup never creates, rotates or deletes them:
+Provision the tunnel identity and DNS route once with the Cloudflare account that owns the zone. The `make up` wrapper never creates, rotates or deletes them. The agent installer separately supports API provisioning of remotely managed tunnels (see [INSTALL.md](../INSTALL.md)):
 
 ```sh
 cloudflared tunnel login                     # authorize the zone; writes ~/.cloudflared/cert.pem
@@ -104,7 +104,7 @@ cloudflared tunnel route dns looski-suite suite.example.com
 install -m 600 ~/.cloudflared/<tunnel-id>.json .local/<installation>/cloudflare-tunnel.json
 ```
 
-Then set `LOOSKI_PUBLIC_URL=https://suite.example.com` and `LOOSKI_TUNNEL_MODE=cloudflare` in `.env` and run `make up`. Setup requires an HTTPS origin on the default port and a private (`0600`) credential file containing the tunnel ID and secret; it never logs the secret. Changing the public origin changes the Auth issuer, so existing sessions end and everyone signs in again. Browser form posts are only accepted from the configured origin, so use the public hostname rather than the loopback port once it is set.
+Then set `LOOSKI_PUBLIC_URL=https://suite.example.com` and `LOOSKI_TUNNEL_MODE=cloudflare` in `.env` and run `make up`. Setup requires an HTTPS origin on the default port and a private (`0600`) credential file containing the tunnel ID and secret; it never logs the secret. Persist `LOOSKI_AUTH_ISSUER` before changing an existing installation’s public origin. The agent installer does this automatically: authentication identity remains stable while browser callbacks and cookie origin move to the public hostname. Without an explicit issuer, the legacy default still derives it from the public origin. Browser form posts are only accepted from the configured origin, so use the public hostname rather than the loopback port once it is set.
 
 The hot-reloading development stack (`make dev`) is a separate installation with its own `.env.dev`, tunnel and hostname; it renders its connector configuration the same way.
 
@@ -127,3 +127,11 @@ Phase 0 evidence: two installations coexist with distinct names/ports/volumes; m
 ## Implemented operational settings
 
 `LOOSKI_MAIL_MODE` selects disabled, local capture, or configured SMTP. `LOOSKI_DIAGNOSTICS_MODE` selects local ClickHouse (default) or disabled. Setup derives the associated profiles and private credentials; diagnostic startup failure does not block business services. The first diagnostic pipeline is a bounded in-process exporter, so no OpenTelemetry collector service is required.
+
+## Agent distribution preview
+
+[INSTALL.md](../INSTALL.md) owns the agent workflow. `looski-admin` provides prerequisite checks, persisted installation configuration, JSON status/verification, Cloudflare API provisioning, SMTP configuration and encrypted snapshot creation. `cloudflare-managed` uses an installation-owned remote tunnel and private token file; `cloudflare` retains the locally managed JSON credential flow. Management API credentials are read from a private external file and are never stored with the installation. The provider journal records intent before creation and refuses conflicting DNS or externally modified ingress.
+
+The separate `owner-setup` service receives an expiring token hash and the existing bootstrap credentials. It exposes only the claim page, static assets and same-origin authenticated claim submission through the gateway. A 256-bit token is delivered in the URL fragment, cleared from browser history on load, and submitted only as a bearer header. Claims expire after one hour; the permanent database bootstrap latch is authoritative across restarts and concurrent requests. Ordinary `make up` creates an empty claim file, leaving setup closed until an operator invokes `looski-admin claim`. Recovery does not preserve claim credentials.
+
+The release packaging job uses Python 3.12+ (runtime installation still supports Python 3.9+). The release workflow builds ARM64/AMD64 containers, resolves service images to digests, creates source-inclusive archives with checksums and provenance attestations, and prepares a draft preview. It does not publish a stable release. See [release validation](distribution-release-notes.md) for external-provider, architecture and distribution checks still required.

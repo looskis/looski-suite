@@ -108,11 +108,14 @@ def restore(archive,identity,project,port):
     # Public callbacks use the rehearsal origin; identity records retain their
     # original issuer. Rotating the signing key prevents snapshot-era sessions
     # from authenticating, without rewriting stable identity links by email.
-    issuer=metadata['configuration']['LOOSKI_PUBLIC_URL']+'/auth/v1'
+    issuer=metadata['configuration'].get('LOOSKI_AUTH_ISSUER',metadata['configuration']['LOOSKI_PUBLIC_URL']+'/auth/v1')
+    installation.values['LOOSKI_AUTH_ISSUER']=issuer
+    installation.environment['LOOSKI_AUTH_ISSUER']=issuer
     override={'networks':{'default':{'internal':True}},'services':{service:{'image':image,'pull_policy':'never'} for service,image in images.items()}}
     override['services'].setdefault('auth',{}).setdefault('environment',{})['GOTRUE_JWT_ISSUER']=issuer
     override['services'].setdefault('api',{}).setdefault('environment',{})['LOOSKI_AUTH_ISSUER']=issuer
     override['services'].setdefault('worker',{})['profiles']=['recovery-manual-worker']
+    override['services']['worker'].setdefault('environment',{})['LOOSKI_AUTH_ISSUER']=issuer
     override_path=target/'compose.recovery.json';write_private(override_path,json.dumps(override))
     installation.compose+=['-f',str(override_path)]
     configured=subprocess.run(['python3',str(recipe/'scripts/dev.py'),'configure'],cwd=recipe,env=installation.environment,stdout=subprocess.PIPE,stderr=subprocess.PIPE)

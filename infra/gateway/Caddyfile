@@ -14,6 +14,9 @@ import /etc/caddy/web.caddy
 
 :8080 {
   header Cache-Control "no-store"
+  handle /setup* {
+    reverse_proxy owner-setup:8080
+  }
   handle /health/* {
     reverse_proxy api:8080
   }

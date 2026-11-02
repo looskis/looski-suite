@@ -26,6 +26,7 @@ impl Mailer {
         enabled: bool,
         auth_url: String,
         public_url: String,
+        issuer: String,
         secret: &[u8],
         invitation_key: &[u8],
     ) -> Result<Self, reqwest::Error> {
@@ -36,7 +37,7 @@ impl Mailer {
                 .redirect(reqwest::redirect::Policy::none())
                 .build()?,
             auth_url,
-            issuer: format!("{public_url}/auth/v1"),
+            issuer,
             public_url,
             admin_key: EncodingKey::from_secret(secret),
             invitations: TokenIssuer::new(invitation_key),

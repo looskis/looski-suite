@@ -1,0 +1,13 @@
+# The installer provisions this remote-managed tunnel through Cloudflare's API.
+services:
+  tunnel:
+    # Compose file secrets retain host ownership on Linux. The upstream image
+    # runs as 65532 and cannot read a host-owned 0600 token. Grant only the file
+    # access capability, with an immutable filesystem and no privilege escalation.
+    user: "0:0"
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [DAC_OVERRIDE]
+    security_opt: [no-new-privileges:true]
+    command: ["tunnel", "--no-autoupdate", "--metrics", "127.0.0.1:2000", "run", "--token-file", "/run/secrets/cloudflare_token"]
+    secrets: [cloudflare_token]

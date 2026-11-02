@@ -12,11 +12,12 @@ import re
 import secrets
 import socket
 import subprocess
+import tempfile
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 KEYS = ('COMPOSE_PROJECT_NAME', 'LOOSKI_HTTP_PORT', 'LOOSKI_PUBLIC_URL', 'LOOSKI_MAIL_MODE', 'LOOSKI_DIAGNOSTICS_MODE',
-        'LOOSKI_TUNNEL_MODE')
+        'LOOSKI_TUNNEL_MODE', 'LOOSKI_AUTH_ISSUER')
 TUNNEL_CREDENTIAL_KEYS = {'AccountTag', 'TunnelSecret', 'TunnelID'}
 
 
@@ -51,11 +52,19 @@ def configuration(dev=False):
     if not values['LOOSKI_HTTP_PORT'].isdigit() or not 1024 <= int(values['LOOSKI_HTTP_PORT']) <= 65535:
         raise SystemExit('LOOSKI_HTTP_PORT must be between 1024 and 65535')
     values.setdefault('LOOSKI_MAIL_MODE', 'disabled')
+    # Authentication identity stays stable when a local installation gets a public URL.
+    values.setdefault('LOOSKI_AUTH_ISSUER', values['LOOSKI_PUBLIC_URL'] + '/auth/v1')
+    issuer = urlsplit(values['LOOSKI_AUTH_ISSUER'])
+    if (issuer.scheme not in ('http', 'https') or not issuer.hostname or issuer.username is not None or issuer.password is not None
+            or issuer.query or issuer.fragment or issuer.path != '/auth/v1'
+            or (issuer.scheme == 'http' and issuer.hostname not in ('localhost', '127.0.0.1'))
+            or re.search(r'[\s$#"\'\\]', values['LOOSKI_AUTH_ISSUER'])):
+        raise SystemExit('LOOSKI_AUTH_ISSUER must be a stable HTTPS (or loopback HTTP) origin plus /auth/v1')
     if values['LOOSKI_MAIL_MODE'] not in ('disabled', 'local', 'smtp'):
         raise SystemExit('LOOSKI_MAIL_MODE must be disabled, local or smtp')
     origin = urlsplit(values['LOOSKI_PUBLIC_URL'])
     if (origin.scheme not in ('http', 'https') or not origin.hostname or origin.path
-            or origin.query or origin.fragment or origin.username or origin.password
+            or origin.query or origin.fragment or origin.username is not None or origin.password is not None
             or re.search(r'[\s$#"\'\\]', values['LOOSKI_PUBLIC_URL'])):
         raise SystemExit('LOOSKI_PUBLIC_URL must be an HTTP(S) origin without credentials, path, or trailing slash')
     if origin.scheme == 'http' and origin.hostname not in ('localhost', '127.0.0.1'):
@@ -68,9 +77,9 @@ def configuration(dev=False):
     if values['LOOSKI_DIAGNOSTICS_MODE'] not in ('disabled','local'):
         raise SystemExit('LOOSKI_DIAGNOSTICS_MODE must be disabled or local')
     values.setdefault('LOOSKI_TUNNEL_MODE', 'disabled')
-    if values['LOOSKI_TUNNEL_MODE'] not in ('disabled', 'cloudflare'):
-        raise SystemExit('LOOSKI_TUNNEL_MODE must be disabled or cloudflare')
-    if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare' and (origin.scheme != 'https' or origin.port):
+    if values['LOOSKI_TUNNEL_MODE'] not in ('disabled', 'cloudflare', 'cloudflare-managed'):
+        raise SystemExit('LOOSKI_TUNNEL_MODE must be disabled, cloudflare or cloudflare-managed')
+    if values['LOOSKI_TUNNEL_MODE'] != 'disabled' and (origin.scheme != 'https' or origin.port):
         raise SystemExit('A Cloudflare tunnel requires an HTTPS LOOSKI_PUBLIC_URL on the default port')
     values['LOOSKI_AUTH_MAIL_ENABLED'] = str(values['LOOSKI_MAIL_MODE'] != 'disabled').lower()
     return values
@@ -88,7 +97,7 @@ def configure(values, config):
             f"label=com.docker.compose.project={values['COMPOSE_PROJECT_NAME']}"], text=True)
         if volumes.strip():
             raise SystemExit('Existing installation volumes found without secrets. Restore secrets before continuing.')
-        directory.mkdir(parents=True, mode=0o700)
+        directory.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         db_password, runtime_password = secrets.token_hex(32), secrets.token_hex(32)
         files = {
             'db_password': db_password,
@@ -97,10 +106,16 @@ def configure(values, config):
             'database_url': f'postgres://looski_runtime:{runtime_password}@db:5432/postgres',
             'migration_url': f'postgres://postgres:{db_password}@db:5432/postgres?sslmode=disable',
         }
-        for name, value in files.items():
-            with (directory / name).open('x') as stream:
-                os.chmod(stream.name, 0o600)
-                stream.write(value + '\n')
+        # Publish a complete new secret set at once. Interrupted first installs
+        # can retry; an existing partial/live secret set is still never rotated.
+        with tempfile.TemporaryDirectory(prefix='.new-secrets-', dir=directory.parent) as temporary:
+            for name, value in files.items():
+                with (Path(temporary) / name).open('x') as stream:
+                    os.chmod(stream.name, 0o600)
+                    stream.write(value + '\n')
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            os.rename(temporary, directory)
     # Domain-separated invitation signing material is reproducible from the
     # backed-up installation secret; it is never the Supabase JWT signing key.
     invitation_key = hmac.new((directory / 'jwt_secret').read_bytes().strip(), b'looski-suite:staff-invitation:v1', hashlib.sha256).hexdigest()
@@ -109,22 +124,20 @@ def configure(values, config):
         if invitation_file.read_text().strip() != invitation_key:
             raise SystemExit('Invitation key does not match this installation; restore consistent secrets.')
     else:
-        with invitation_file.open('x') as stream:
-            os.chmod(stream.name, 0o600)
-            stream.write(invitation_key + '\n')
+        write_private(invitation_file, invitation_key + '\n')
     diagnostics_file=directory.parent/'diagnostics-key'
     diagnostics_key=hmac.new((directory/'jwt_secret').read_bytes().strip(),b'looski-suite:diagnostics:v1',hashlib.sha256).hexdigest()
     if diagnostics_file.exists():
         if diagnostics_file.read_text().strip()!=diagnostics_key:raise SystemExit('Diagnostics key does not match this installation')
     else:
-        descriptor=os.open(diagnostics_file,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
-        with os.fdopen(descriptor,'w') as stream:stream.write(diagnostics_key+'\n')
+        write_private(diagnostics_file, diagnostics_key+'\n')
     configure_mail(values)
     configure_tunnel(values)
+    claim = directory.parent / 'owner-claim.json'
+    if not claim.exists():
+        write_private(claim, '{}')
     if not config.exists():
-        with config.open('x') as stream:
-            os.chmod(stream.name, 0o600)
-            stream.write(''.join(f'{key}={values[key]}\n' for key in KEYS))
+        write_private(config, ''.join(f'{key}={values[key]}\n' for key in KEYS))
     print(f"Installation: {values['COMPOSE_PROJECT_NAME']} | {values['LOOSKI_PUBLIC_URL']}", flush=True)
 
 
@@ -207,6 +220,12 @@ def configure_tunnel(values):
         '    service: http://gateway:8080\n',
         '  - service: http_status:404\n',
     ]))
+    token = state / 'cloudflare-token'
+    if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare-managed':
+        if not token.is_file() or token.is_symlink() or stat.S_IMODE(token.stat().st_mode) != 0o600 or not token.read_text().strip():
+            raise SystemExit('Managed tunnel requires a private cloudflare-token; run the installer publish command')
+    elif not token.exists():
+        write_private(token, '')
 
 
 def main():
@@ -228,10 +247,11 @@ def main():
     else: profiles.discard('local-mail')
     if values['LOOSKI_DIAGNOSTICS_MODE']=='local':profiles.add('observability')
     else:profiles.discard('observability')
-    if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare': profiles.add('public-tunnel')
+    if values['LOOSKI_TUNNEL_MODE'] != 'disabled': profiles.add('public-tunnel')
     else: profiles.discard('public-tunnel')
     environment['COMPOSE_PROFILES'] = ','.join(sorted(profiles))
     compose = ['docker', 'compose', '--project-directory', str(ROOT), '-f', str(ROOT / 'compose.yaml'),
+               *(['-f', str(ROOT / 'compose.managed.yaml')] if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare-managed' else []),
                *(['-f', str(ROOT / 'compose.dev.yaml')] if args.dev else [])]
 
     def run(*arguments, capture=False):
@@ -256,9 +276,14 @@ def main():
                             sock.bind((address, int(values['LOOSKI_HTTP_PORT'])))
                         except OSError:
                             raise SystemExit(f'Cannot bind {address}:LOOSKI_HTTP_PORT. Both loopback families must be available; choose a free port and matching LOOSKI_PUBLIC_URL in .env.')
-            run('build')
+            if (ROOT / 'release.json').exists():
+                if args.dev:
+                    raise SystemExit('Hot reload requires a source checkout')
+                run('pull')
+            else:
+                run('build')
             # Quiesce callers before applying schema changes. Failure leaves them stopped.
-            run('stop', 'gateway', 'web', 'api', 'worker')
+            run('stop', 'gateway', 'web', 'api', 'worker', 'owner-setup')
             if values['LOOSKI_MAIL_MODE'] == 'local':
                 run('up', '-d', '--wait', 'mailpit')
             else:
@@ -277,17 +302,17 @@ def main():
             else:run('stop','clickhouse')
             if args.dev:
                 print('Waiting for the API, worker and web to build; the first Rust build takes several minutes (make dev-logs)', flush=True)
-            run('up', '-d', '--no-deps', '--wait', 'api', 'web', 'gateway', 'worker')
-            if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare':
+            run('up', '-d', '--no-deps', '--wait', 'api', 'web', 'gateway', 'worker', 'owner-setup')
+            if values['LOOSKI_TUNNEL_MODE'] != 'disabled':
                 # Recreate so a changed hostname or credential takes effect.
                 run('up', '-d', '--no-deps', '--force-recreate', '--wait', 'tunnel')
                 print(f"Ready: {values['LOOSKI_PUBLIC_URL']} (local gateway http://localhost:{values['LOOSKI_HTTP_PORT']})")
             else:
                 run('stop', 'tunnel')
-                print(f"Ready: http://localhost:{values['LOOSKI_HTTP_PORT']}")
+                print(f"Ready: {values['LOOSKI_PUBLIC_URL']}")
         elif args.command == 'migrate':
             # Applies new migration files without a full restart. The API and worker recover on their own.
-            run('build', 'migrate')
+            run('pull' if (ROOT / 'release.json').exists() else 'build', 'migrate')
             run('up', '--no-deps', '--force-recreate', '--exit-code-from', 'migrate', 'migrate')
         elif args.command == 'stop':
             run('stop')
@@ -297,7 +322,7 @@ def main():
             # Follow build errors and reloads as they happen.
             run('logs', '--follow', '--tail', '80', 'api', 'worker', 'web')
         elif args.command == 'logs':
-            run('logs', '--tail', '80', 'api', 'web', 'gateway', *(['tunnel'] if values['LOOSKI_TUNNEL_MODE'] == 'cloudflare' else []))
+            run('logs', '--tail', '80', 'api', 'web', 'gateway', *(['tunnel'] if values['LOOSKI_TUNNEL_MODE'] != 'disabled' else []))
 
 
 if __name__ == '__main__':

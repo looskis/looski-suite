@@ -7,6 +7,7 @@ pub mod client;
 pub mod credentials;
 pub mod identity;
 pub mod mcp;
+pub mod setup;
 pub mod workspaces;
 
 pub mod access;

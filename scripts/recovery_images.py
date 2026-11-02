@@ -7,7 +7,7 @@ import secrets
 import subprocess
 import tarfile
 
-OPTIONAL_SERVICES=('clickhouse',)
+OPTIONAL_SERVICES=('clickhouse','owner-setup')
 SERVICES=('db','auth','api','web','gateway','auth-templates','supabase-gateway','worker','migrate')
 DIGEST=r'sha256:[0-9a-f]{64}'
 REFERENCE=r'looski-recovery-bundle/[0-9a-f]{32}-[0-9a-f]{64}:snapshot'

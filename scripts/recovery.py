@@ -14,7 +14,7 @@ import recovery_archive as encryption
 import recovery_bundle as bundle
 import recovery_images as image_bundle
 
-WRITERS=('gateway','web','api','worker','auth')
+WRITERS=('gateway','web','api','worker','auth','owner-setup')
 PGMQ_TABLES={'pgmq-meta.bin':'pgmq.meta','pgmq-queue.bin':'pgmq.q_looski_jobs','pgmq-archive.bin':'pgmq.a_looski_jobs'}
 CORE_SECRETS=('db_password','runtime_password','jwt_secret','database_url','migration_url')
 

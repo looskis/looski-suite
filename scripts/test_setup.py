@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+import contextlib
+import io
 from unittest.mock import patch
 
 import dev
@@ -26,6 +28,17 @@ class SetupConfigurationTests(unittest.TestCase):
         with patch.dict(os.environ, {'LOOSKI_HTTP_PORT': '58889', 'COMPOSE_PROJECT_NAME': 'looski-suite-demo'}):
             config = dev.configuration()
         self.assertEqual(config['LOOSKI_PUBLIC_URL'], 'http://localhost:58889')
+
+    def test_interrupted_first_secret_publication_can_retry(self):
+        with patch('dev.subprocess.check_output', return_value=''), patch('dev.os.rename', side_effect=OSError('interrupted')):
+            with self.assertRaises(OSError):
+                dev.configure(dev.configuration(), dev.config_file())
+        directory = self.root / '.local/looski-suite/secrets'
+        self.assertFalse(directory.exists())
+        with patch('dev.subprocess.check_output', return_value=''), contextlib.redirect_stdout(io.StringIO()):
+            dev.configure(dev.configuration(), dev.config_file())
+        self.assertEqual(len(list(directory.iterdir())), 5)
+        self.assertTrue(all(path.stat().st_mode & 0o777 == 0o600 for path in directory.iterdir()))
 
     def test_rejects_mismatched_callback_port(self):
         (self.root / '.env').write_text('LOOSKI_HTTP_PORT=58889\nLOOSKI_PUBLIC_URL=http://localhost:58888\n')

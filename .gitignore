@@ -10,3 +10,5 @@ supabase/.temp/
 supabase/.branches/
 .DS_Store
 __pycache__/
+dist/
+.installer.lock
