@@ -1,6 +1,7 @@
 import { error, fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 import { readValues } from '$lib/server/cms-form';
+import { formChoices } from '$lib/server/form-choices';
 import { workspaceClient, requireSameOrigin } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 type EntryEvent = RequestEvent<{ workspace: string; entry: string }>;
@@ -23,10 +24,7 @@ export const load: PageServerLoad = async (event) => {
     client.GET('/api/v1/workspaces/{workspace_id}/cms/media', {
       params: { path, query: { limit: 100 } },
     }),
-    // Forms may be disabled or unreadable; existing choices are simply kept.
-    client.GET('/api/v1/workspaces/{workspace_id}/forms', {
-      params: { path, query: { limit: 100 } },
-    }),
+    formChoices(client, workspace.id),
   ]);
   if (!type.data)
     error(type.response.status, type.error?.message ?? 'Entry unavailable');
@@ -35,7 +33,7 @@ export const load: PageServerLoad = async (event) => {
     entry: entry.data,
     type: type.data,
     media: media.data?.items ?? [],
-    forms: forms.data?.items ?? null,
+    forms,
     key: randomUUID(),
   };
 };

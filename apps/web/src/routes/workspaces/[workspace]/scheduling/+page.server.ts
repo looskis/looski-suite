@@ -2,6 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 import { workspaceClient, requireSameOrigin } from '$lib/server/session';
 import { retryKey } from '$lib/server/project-form';
+import { formChoices } from '$lib/server/form-choices';
 import type { Actions, PageServerLoad } from './$types';
 import type { components } from '$lib/api/schema';
 export const load: PageServerLoad = async (event) => {
@@ -46,9 +47,7 @@ export const load: PageServerLoad = async (event) => {
         },
       },
     }),
-    client.GET('/api/v1/workspaces/{workspace_id}/forms', {
-      params: { path, query: { limit: 100 } },
-    }),
+    formChoices(client, workspace.id),
     client.GET('/api/v1/workspaces/{workspace_id}/crm/pipelines', {
       params: { path, query: { limit: 100 } },
     }),
@@ -104,7 +103,7 @@ export const load: PageServerLoad = async (event) => {
     types: types.data,
     appointments: appointments.data,
     editing: editing?.data ?? null,
-    forms: forms.data?.items ?? [],
+    forms: forms ?? [],
     fields,
     stages,
   };

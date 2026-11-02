@@ -29,7 +29,8 @@ try:
  module('scheduling',True);module('forms',True)
  custom=f.call(api+'/forms','POST',{'name':'Browser custom intake','draft':{'fields':[{'key':'detail','label':'What should we prepare?','kind':'long_text','required':True}]}},key=key(),expected=201)
  custom=f.call(api+'/forms/'+custom['id']+'/publish','POST',{'expected_version':custom['version']},key=key())
- html,_=fetch(f.browser,staff+'/scheduling');payload=replace(form(html,'?/save'),name='Browser appointment '+key(),timezone='UTC',form_id=custom['id'],accepting='on',weekly_count='1',day_0='1',start_0='00:00',end_0='23:59')
+ html,_=fetch(f.browser,staff+'/scheduling');assert f'value="{custom["id"]}"' in html,'New intake form must be selectable, including beyond the first API page'
+ payload=replace(form(html,'?/save'),name='Browser appointment '+key(),timezone='UTC',form_id=custom['id'],accepting='on',weekly_count='1',day_0='1',start_0='00:00',end_0='23:59')
  # A full-day Monday window allows an anonymous no-JavaScript form journey.
  html,url=fetch(f.browser,staff+'/scheduling?/save',payload);typeid=url.split('type=')[1];t=f.call(api+'/scheduling/types/'+typeid)
  date=datetime.datetime.now(datetime.timezone.utc).date()+datetime.timedelta(days=1)

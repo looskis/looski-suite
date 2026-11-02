@@ -144,8 +144,13 @@ print('PASS: unpublished edits stay private and a revision restores through the 
 
 # The embedded form: unavailable while Forms is off, then submitted inside its frame.
 module('forms',True)
+# Exercise the picker beyond the API's first page, including on a fresh fixture.
+existing=f.call(base+'/forms?limit=100')['items']
+for index in range(100-len(existing)):
+ f.call(base+'/forms','POST',{'name':'Picker boundary '+key(),'draft':{'fields':[{'key':'name','label':'Name','kind':'short_text'}]}},expected=201,key=key())
 form=f.call(base+'/forms','POST',{'name':'Embedded '+key(),'confirmation_message':'Thanks from the frame.','draft':{'fields':[{'key':'name','label':'Your name','kind':'short_text','required':True},{'key':'email','label':'Email','kind':'email'}]}},expected=201,key=key())
 form=f.call(base+'/forms/'+form['id']+'/publish','POST',{'expected_version':form['version']},key=key())
+assert form['id'] not in [item['id'] for item in f.call(base+'/forms?limit=100')['items']]
 page,_=staff(entry_url);assert form['name'] in page
 page,_=staff(entry_url+'?/saveAndPublish',edit(page,value__sign_up=form['id']))
 status,rendered,_,_=public(f'{f.base}/c/{public_key}/{slug}')
@@ -162,7 +167,7 @@ assert status==200 and 'This form is not currently available.' in rendered and f
 page,_=staff(entry_url);assert 'current choice is kept' in page
 page,_=staff(entry_url+'?/save',edit(page,value__intro='Edited with Forms off'))
 assert f.call(epath)['draft']['values']['sign_up']==form['id'],'An existing form choice survives editing while Forms is off'
-print('PASS: published form embedded in the page, submitted inside its frame, and degrading to a message with Forms off')
+print('PASS: form beyond the first picker page embeds, accepts answers inside its frame, and degrades with Forms off')
 
 # Session gates and application disablement on the web surface.
 status,_,headers,_=public(entry_url);assert status==303 and '/login' in headers['Location']
