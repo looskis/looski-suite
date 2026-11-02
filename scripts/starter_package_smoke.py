@@ -63,7 +63,13 @@ try:
  assert call(base+'/crm/deals/'+deal['id']+'/coordination/'+instance['id'])==instance
  for attempt in range(50):
   if call(base+'/jobs/'+job)['state']=='blocked':break
-  subprocess.run(['docker','compose','exec','-T','--user','10001','-e','LOOSKI_DATABASE_URL_FILE=/run/looski/database_url','api','looski','worker','--once'],cwd=ROOT,env=f.environment,check=True,capture_output=True)
+  # Compose exec bypasses the entrypoint's secret-path exports. Linux bind
+  # mounts retain the host UID, so every required key must use its runtime copy.
+  subprocess.run(['docker','compose','exec','-T','--user','10001',
+                  '-e','LOOSKI_DATABASE_URL_FILE=/run/looski/database_url',
+                  '-e','LOOSKI_JWT_SECRET_FILE=/run/looski/jwt_secret',
+                  '-e','LOOSKI_INVITATION_KEY_FILE=/run/looski/invitation_key',
+                  'api','looski','worker','--once'],cwd=ROOT,env=f.environment,check=True,stdout=subprocess.DEVNULL)
  assert call(base+'/jobs/'+job)['state']=='blocked'
 finally:subprocess.run(['docker','compose','start','worker'],cwd=ROOT,env=f.environment,check=True,capture_output=True)
 print('PASS: removal rollback, archive-only retention of opportunities/deals/activities/tasks/checklists and blocked pending work')
