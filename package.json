@@ -10,10 +10,11 @@
     "dev": "pnpm --filter @looski/web dev",
     "build": "pnpm --filter @looski/web build",
     "check": "pnpm --filter @looski/web check",
-    "format": "prettier --write apps/web package.json pnpm-workspace.yaml .prettierrc.json",
-    "format:check": "prettier --check apps/web package.json pnpm-workspace.yaml .prettierrc.json",
+    "format": "prettier --write apps/web apps/concierge package.json pnpm-workspace.yaml .prettierrc.json",
+    "format:check": "prettier --check apps/web apps/concierge package.json pnpm-workspace.yaml .prettierrc.json",
     "api:generate": "python3 scripts/contracts.py",
-    "api:check": "python3 scripts/contracts.py --check"
+    "api:check": "python3 scripts/contracts.py --check",
+    "test:concierge": "bun test apps/concierge/src"
   },
   "devDependencies": {
     "openapi-typescript": "7.13.0",

@@ -1,0 +1,14 @@
+{
+  "name": "@looski/concierge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "scripts": {
+    "start": "bun src/server.js",
+    "test": "bun test src"
+  },
+  "dependencies": {
+    "@ai-sdk/gateway": "^4.0.132"
+  }
+}

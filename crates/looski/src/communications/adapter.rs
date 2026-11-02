@@ -183,6 +183,18 @@ impl ChannelAdapter for HttpAdapter {
         {
             return Err(Error::Invalid("Unsupported message state"));
         }
+        // Excluded destinations must still advance the replay cursor. Legacy
+        // journal entries may predate thread classification; validate payloads
+        // only after this operator-defined boundary, as ingestion also does.
+        if event.kind == "message.received"
+            && !self.config.destinations.is_empty()
+            && !event
+                .destination
+                .as_ref()
+                .is_some_and(|d| self.config.destinations.contains(d))
+        {
+            return Ok(event);
+        }
         if event.kind == "message.received" {
             let thread = event.thread_id.as_deref().unwrap_or_default();
             let channel = event.channel.as_deref().unwrap_or_default();
@@ -329,6 +341,31 @@ mod tests {
         );
         assert!(!adapter.capabilities().attachments);
         let wrong = json!({"installation_id":"other-node","id":1,"event":"message.sent","message_id":"dispatch-1"});
+        assert!(
+            adapter
+                .decode(&serde_json::to_vec(&wrong).unwrap())
+                .is_err()
+        );
+    }
+    #[test]
+    fn excluded_legacy_events_advance_without_ingesting_invalid_threads() {
+        let mut adapter = connector("blueski");
+        adapter.config.destinations = vec!["+16469921008".into()];
+        let legacy = json!({"installation_id":"fixture-node","id":2,"event":"message.received","message_id":"old-message","protocol":"imessage","text":"Legacy"});
+        assert!(
+            adapter
+                .decode(&serde_json::to_vec(&legacy).unwrap())
+                .is_ok()
+        );
+        let mut eligible = legacy.clone();
+        eligible["destination_caller_id"] = json!("+16469921008");
+        assert!(
+            adapter
+                .decode(&serde_json::to_vec(&eligible).unwrap())
+                .is_err()
+        );
+        let mut wrong = legacy;
+        wrong["installation_id"] = json!("other-node");
         assert!(
             adapter
                 .decode(&serde_json::to_vec(&wrong).unwrap())
