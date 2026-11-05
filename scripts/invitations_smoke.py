@@ -142,7 +142,7 @@ _,headers=web(path,303)
 assert headers['Location']=='/invitations/accept' and headers['Referrer-Policy']=='no-referrer'
 content,_=web('/invitations/accept');assert 'Sign in with the email address' in content and atomic['token'] not in content
 web('/login',303,{'email':email2,'password':password2})
-assert 'Review your pending workspace invitation' in web('/workspaces')[0]
+assert 'Review invitation' in web('/workspaces')[0]
 content,_=web('/invitations/accept')
 assert 'Join Integration workspace' in content and atomic['token'] not in content
 from browser_forms import Forms

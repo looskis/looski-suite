@@ -81,7 +81,7 @@ assert not any(c.name=='looski_access' for c in jar)
 web('/auth/confirm');web('/auth/confirm',{},303)
 password=secrets.token_urlsafe(24)
 web('/auth/password',{'password':password,'confirm':password},303)
-assert 'Review your pending workspace invitation' in web('/workspaces')[0]
+assert 'Review invitation' in web('/workspaces')[0]
 assert f.sql("SELECT count(*) FROM suite.auth_identities i JOIN auth.users u ON i.subject=u.id::text WHERE u.email='"+email+"'")=='0'
 content,_=web('/invitations/accept');assert 'Join Integration workspace' in content
 fields=Forms(content).form('display_name');web('/invitations/accept',{**fields,'display_name':'New staff'},303)
