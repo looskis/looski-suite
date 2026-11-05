@@ -98,7 +98,7 @@ assert call(epath+'/publish','POST',{'expected_version':entry['version']},key=re
 call(epath+'/publish','POST',{'expected_version':published['version']},expected=409,key=key())
 entry=published
 live=public(public_page)
-assert set(live)=={'title','slug','published_at','fields'}
+assert set(live)=={'headless','title','slug','published_at','fields'} and live['headless'] is False
 by={x['key']:x['value'] for x in live['fields']}
 assert live['title']=='Stale' and by['summary']=={'kind':'text','text':xss} and by['rating']=={'kind':'number','number':4.5} and by['featured']=={'kind':'boolean','checked':True}
 assert by['event_on']=={'kind':'date','date':'2026-02-28'} and by['more']=={'kind':'url','href':'https://example.com/more'}
