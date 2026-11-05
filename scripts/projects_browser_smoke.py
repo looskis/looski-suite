@@ -47,7 +47,7 @@ def wait_for(predicate,what,seconds=30):
 module('crm',False);module('projects',False)
 html,_=staff(web);assert 'Projects is turned off' in html and 'Turn on Projects' in html
 html,_=staff(web+'?/module',form_on(html,'?/module'))
-assert 'Turn off Projects' in html and 'Create a project' in html
+assert 'Turn off Projects' in html and 'New project' in html
 # A rejected creation keeps what was typed and its retry key.
 html,_=staff(web)
 attempt=replace(form_on(html,'?/create'),name=name,description='Keep this draft',due_on='2031-02-30')
