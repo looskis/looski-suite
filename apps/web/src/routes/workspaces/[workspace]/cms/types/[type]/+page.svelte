@@ -12,6 +12,9 @@
 {#if data.item.archived}<p>
     This type is archived: its public pages are offline and it cannot be edited
     until restored.
+  </p>{:else if data.item.headless}<p>
+    Published content is delivered to your website through the API. Built-in
+    public pages are disabled.
   </p>{:else}<p>
     Public pages: <a href={`/c/${data.item.public_key}`}
       >/c/{data.item.public_key}</a
@@ -43,6 +46,13 @@
         rows="2"
         value={data.item.description}></textarea></label
     >
+    <label
+      ><input type="checkbox" name="headless" checked={data.item.headless} /> Deliver
+      content to another website only</label
+    >
+    <p>
+      Disables Suite's public HTML pages while keeping published JSON available.
+    </p>
     {#each data.item.fields as field, i (field.key)}
       <fieldset>
         <legend>{kindLabel(field.kind)}: {field.label}</legend>

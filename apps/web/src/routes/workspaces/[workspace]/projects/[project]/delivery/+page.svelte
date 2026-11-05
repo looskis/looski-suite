@@ -131,22 +131,22 @@
   .stats {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-    margin: 16px 0 24px;
+    gap: var(--space-2-5);
+    margin: var(--space-4) 0 var(--space-6);
   }
   .stats div {
-    border: 1px solid var(--line, #ddd);
+    border: 1px solid var(--border-default);
     border-radius: 6px;
-    padding: 8px 14px;
+    padding: var(--space-2) var(--space-3-5);
     min-width: 110px;
   }
   dt {
-    font-size: 12px;
-    color: var(--muted);
+    font-size: var(--font-size-12);
+    color: var(--text-secondary);
   }
   dd {
     margin: 0;
-    font-size: 20px;
-    font-weight: 650;
+    font-size: var(--font-size-20);
+    font-weight: var(--font-weight-heading);
   }
 </style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RecordProperties from '$lib/components/RecordProperties.svelte';
   import ContactFields from '$lib/components/ContactFields.svelte';
   import type { PageData, ActionData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -8,7 +9,7 @@
 <a href={`/workspaces/${data.workspace.id}/contacts/${data.survivor.id}`}
   >← {data.survivor.display_name}</a
 >
-<h1>Review a duplicate.</h1>
+<h1>Merge contacts</h1>
 <p>
   This contact will survive: <strong>{data.survivor.display_name}</strong>. A
   shared email or phone alone does not mean two records represent the same
@@ -40,6 +41,10 @@
                 {identifier.kind}: {identifier.value}
               </li>{/each}
           </ul>
+          <RecordProperties
+            fields={data.fields}
+            properties={contact.properties}
+          />
           <h4>Tags</h4>
           {#if tags}<ul>
               {#each tags as tag}<li>
@@ -88,7 +93,7 @@
         name="survivor_version"
         value={data.survivor.version}
       />
-      <ContactFields contact={data.survivor} />
+      <ContactFields contact={data.survivor} fields={data.fields} />
       <label class="check"
         ><input type="checkbox" name="confirmed" required /> I verified that these
         records represent the same person and reviewed the surviving fields.</label

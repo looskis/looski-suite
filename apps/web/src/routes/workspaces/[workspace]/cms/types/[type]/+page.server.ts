@@ -53,6 +53,7 @@ export const actions: Actions = {
         body: {
           name,
           description,
+          headless: form.get('headless') === 'on',
           fields: applyOperation(readFields(form), form),
           expected_version: Number(form.get('expected_version')),
         },

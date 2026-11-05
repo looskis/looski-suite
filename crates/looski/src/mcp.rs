@@ -8,6 +8,7 @@ mod knowledge;
 mod projects;
 mod scheduling;
 mod time;
+mod visitors;
 use rmcp::{
     ErrorData, ServerHandler,
     handler::server::router::tool::ToolRouter,
@@ -3313,6 +3314,7 @@ impl McpServer {
                 + Self::knowledge_tools()
                 + Self::time_tools()
                 + Self::scheduling_tools()
+                + Self::visitors_tools()
                 + Self::helpdesk_tools()
                 + Self::communications_tools(),
         }

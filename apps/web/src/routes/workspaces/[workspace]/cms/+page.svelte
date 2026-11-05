@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RecordDrawer from '$lib/components/ui/RecordDrawer.svelte';
   import type { ActionData, PageData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
   const root = $derived(`/workspaces/${data.workspace.id}/cms`);
@@ -10,20 +11,66 @@
 </script>
 
 <svelte:head><title>Content · Looski</title></svelte:head>
-<header><span>{data.workspace.name}</span></header>
-<h1>Content</h1>
-<p>
-  Write drafts, publish them to a public address and restore any earlier
-  revision. Readers see only what is published.
-</p>
+
+<div class="page-heading">
+  <h1>Content</h1>
+  <div class="page-actions">
+    {#if data.page}<RecordDrawer title="New entry" error={Boolean(form?.input)}>
+        {#if form?.message && form?.input}<p role="alert">
+            {form.message}
+          </p>{/if}
+        {#if data.types.length}
+          <form method="POST" action="?/create">
+            <input
+              type="hidden"
+              name="idempotency_key"
+              value={form?.key ?? data.key}
+            />
+            <label
+              >Content type<select name="type_id" required>
+                {#each data.types as type}
+                  <option value={type.id}>{type.name}</option>
+                {/each}
+              </select></label
+            >
+            <label
+              >Title<input
+                name="title"
+                required
+                maxlength="200"
+                value={form?.input?.title ?? ''}
+              /></label
+            >
+            <label
+              >Address (made from the title if left empty)<input
+                name="slug"
+                maxlength="120"
+                value={form?.input?.slug ?? ''}
+              /></label
+            >
+            <button>Create entry</button>
+          </form>
+        {:else}
+          <p>
+            <a href={`${root}/types`}>Create a content type</a> first; it sets which
+            fields an entry has.
+          </p>
+        {/if}
+      </RecordDrawer>{/if}
+  </div>
+</div>
 {#if form?.message && !form?.input}<p role="alert">{form.message}</p>{/if}
 {#if data.page}
-  <section>
+  <section class="index-list">
     <div class="toolbar">
-      <h2>{data.archived ? 'Archived entries' : 'Entries'}</h2>
-      <a href={data.archived ? '?' : '?archived=true'}
-        >{data.archived ? 'Show active' : 'Show archived'}</a
-      >
+      <nav class="view-tabs" aria-label="Entries views">
+        <a href="?" aria-current={!data.archived ? 'page' : undefined}
+          >All entries</a
+        ><a
+          href="?archived=true"
+          aria-current={data.archived ? 'page' : undefined}>Archived</a
+        >
+      </nav>
     </div>
     <form method="GET" class="inline">
       <label>Find by title<input name="search" value={data.search} /></label>
@@ -40,7 +87,7 @@
       <input type="hidden" name="archived" value={String(data.archived)} />
       <button class="secondary">Search</button>
     </form>
-    <div class="table-wrap">
+    <div class="record-table">
       <table>
         <thead
           ><tr
@@ -71,47 +118,6 @@
       </table>
     </div>
     {#if nextQuery}<a href={nextQuery}>Next page →</a>{/if}
-  </section>
-  <section>
-    <h2>Create an entry</h2>
-    {#if form?.message && form?.input}<p role="alert">{form.message}</p>{/if}
-    {#if data.types.length}
-      <form method="POST" action="?/create">
-        <input
-          type="hidden"
-          name="idempotency_key"
-          value={form?.key ?? data.key}
-        />
-        <label
-          >Content type<select name="type_id" required>
-            {#each data.types as type}
-              <option value={type.id}>{type.name}</option>
-            {/each}
-          </select></label
-        >
-        <label
-          >Title<input
-            name="title"
-            required
-            maxlength="200"
-            value={form?.input?.title ?? ''}
-          /></label
-        >
-        <label
-          >Address (made from the title if left empty)<input
-            name="slug"
-            maxlength="120"
-            value={form?.input?.slug ?? ''}
-          /></label
-        >
-        <button>Create entry</button>
-      </form>
-    {:else}
-      <p>
-        <a href={`${root}/types`}>Create a content type</a> first; it sets which fields
-        an entry has.
-      </p>
-    {/if}
   </section>
 {:else}
   <section>

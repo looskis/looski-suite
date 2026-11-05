@@ -26,6 +26,7 @@ export const load: PageServerLoad = async (event) => {
         query: {
           after: event.url.searchParams.get('after') || undefined,
           limit: 50,
+          newest_first: true,
         },
       },
     },
@@ -59,8 +60,9 @@ export const load: PageServerLoad = async (event) => {
     : null;
   return {
     workspace,
+    olderPage: event.url.searchParams.has('after'),
     conversation: conversation.data,
-    messages: messages.data,
+    messages: { ...messages.data, items: [...messages.data.items].reverse() },
     account:
       accounts.data?.find((a) => a.id === conversation.data.account_id) ?? null,
     contacts: contacts.data?.items ?? [],

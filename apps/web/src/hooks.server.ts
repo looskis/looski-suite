@@ -1,5 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 
+const publicBookingEmbed =
+  /^\/book\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\/embed$/i;
 const publicFormEmbed = /^\/f\/[A-Za-z0-9_-]{22}\/embed$/;
 // Published pages ship no scripts, so a policy can forbid them outright: a second
 // wall behind typed rendering. Their only frame is a same-origin form embed.
@@ -26,7 +28,11 @@ export const handle: Handle = async ({ event, resolve }) => {
   const policy = event.url.pathname.startsWith('/c/')
     ? publicContent
     : response.headers.get('Content-Security-Policy');
-  if (publicFormEmbed.test(event.url.pathname)) {
+  if (
+    publicFormEmbed.test(event.url.pathname) ||
+    publicBookingEmbed.test(event.url.pathname)
+  ) {
+    response.headers.delete('X-Frame-Options');
     response.headers.set('Content-Security-Policy', 'frame-ancestors *');
   } else {
     response.headers.set(

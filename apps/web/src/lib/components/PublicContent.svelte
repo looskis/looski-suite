@@ -64,7 +64,7 @@
     overflow-wrap: anywhere;
   }
   .muted {
-    color: var(--muted);
+    color: var(--text-secondary);
   }
   .text {
     white-space: pre-wrap;
@@ -76,7 +76,7 @@
   iframe {
     width: 100%;
     min-height: 34rem;
-    border: 1px solid var(--line, #ddd);
-    border-radius: 8px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
   }
 </style>

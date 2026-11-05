@@ -1,0 +1,67 @@
+:root {
+  font-family: var(--font-family-sans);
+  color: var(--text-primary);
+  background: var(--surface-canvas);
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+a {
+  color: var(--accent);
+  text-underline-offset: 4px;
+}
+a:hover {
+  color: var(--accent-hover);
+}
+h1,
+h2,
+h3 {
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+h1 {
+  font-size: var(--font-size-heading);
+  letter-spacing: -0.035em;
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-heading);
+}
+h2 {
+  font-size: var(--font-size-18);
+  font-weight: var(--font-weight-heading);
+  letter-spacing: -0.02em;
+}
+h3 {
+  font-size: var(--font-size-15);
+  font-weight: var(--font-weight-heading);
+}
+p {
+  line-height: var(--line-height-prose);
+}
+small,
+.muted {
+  color: var(--text-secondary);
+}
+::selection {
+  background: var(--selection-background);
+  color: var(--selection-text);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

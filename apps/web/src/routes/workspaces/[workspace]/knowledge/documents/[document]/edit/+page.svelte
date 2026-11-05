@@ -15,12 +15,15 @@
 <svelte:head><title>Edit {data.document.title} · Looski</title></svelte:head>
 <header><a href={root}>← Back to document</a></header>
 <h1>Edit document</h1>
-<p>
-  Plain text with <code># headings</code>, <code>**bold**</code>,
-  <code>*italic*</code>, <code>- lists</code> and
-  <code>[links](https://example.com)</code>. Any HTML stays as literal text. To
-  link another document, use the link shown on its page.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Plain text with <code># headings</code>, <code>**bold**</code>,
+    <code>*italic*</code>, <code>- lists</code> and
+    <code>[links](https://example.com)</code>. Any HTML stays as literal text.
+    To link another document, use the link shown on its page.
+  </p>
+</details>
 {#if form?.message}<p role="alert">{form.message}</p>{/if}
 {#if form?.message && expected !== data.document.version}
   <section>

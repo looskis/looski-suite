@@ -12,10 +12,6 @@
   >
 </header>
 <h1>Coordination templates</h1>
-<p>
-  Pinned task checklists. Applying a revision creates ordinary tasks; later
-  edits preserve existing work.
-</p>
 {#if form?.message}<p role="alert" class="error">{form.message}</p>{/if}
 <a href={`?archived=${!data.archived}`}
   >{data.archived ? 'Show active' : 'Show archived'}</a
@@ -33,15 +29,17 @@
       >More templates →</a
     >{/if}
 </section>
-<section>
-  <h2>Create a template</h2>
-  <form method="POST">
-    <input
-      type="hidden"
-      name="idempotency_key"
-      value={form?.draft?.key ?? data.key}
-    /><CoordinationFields fields={form?.draft ?? data.fields} /><button
-      >Create template</button
-    >
-  </form>
-</section>
+<details class="creation-panel" open={Boolean(form?.message)}>
+  <summary>Create a template</summary>
+  <div class="creation-content">
+    <form method="POST">
+      <input
+        type="hidden"
+        name="idempotency_key"
+        value={form?.draft?.key ?? data.key}
+      /><CoordinationFields fields={form?.draft ?? data.fields} /><button
+        >Create template</button
+      >
+    </form>
+  </div>
+</details>

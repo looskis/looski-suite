@@ -29,6 +29,7 @@ jobs:
       - run: bun run test:concierge
       - run: make check test
       - run: pnpm build
+      - run: python3 scripts/google_oauth_smoke.py
       - run: cargo build --locked
       - run: make up
       - run: make acceptance

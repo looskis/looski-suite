@@ -6,10 +6,6 @@
 
 <svelte:head><title>Versions · Forms · Looski</title></svelte:head>
 <h1>Version history</h1>
-<p>
-  Each publish freezes a version. Later edits never change what earlier
-  respondents answered.
-</p>
 <section>
   {#each data.versions as version, i}
     <details open={i === 0}>

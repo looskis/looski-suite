@@ -33,20 +33,23 @@
       >
     </p>{/if}
 </section>
-<section>
-  <h2>Create definition</h2>
-  <form method="POST">
-    <input
-      type="hidden"
-      name="idempotency_key"
-      value={form?.key ?? data.key}
-    /><CrmDefinitionFields
-      kind={data.kind}
-      draft={form?.draft}
-      parents={data.parents}
-    /><button>Create</button>
-  </form>
-  {#if data.parents_next}<p>
-      <a href={`?parents_after=${data.parents_next}`}>More parent choices →</a>
-    </p>{/if}
-</section>
+<details class="creation-panel" open={Boolean(form?.message)}>
+  <summary>Create definition</summary>
+  <div class="creation-content">
+    <form method="POST">
+      <input
+        type="hidden"
+        name="idempotency_key"
+        value={form?.key ?? data.key}
+      /><CrmDefinitionFields
+        kind={data.kind}
+        draft={form?.draft}
+        parents={data.parents}
+      /><button>Create</button>
+    </form>
+    {#if data.parents_next}<p>
+        <a href={`?parents_after=${data.parents_next}`}>More parent choices →</a
+        >
+      </p>{/if}
+  </div>
+</details>

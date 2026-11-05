@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 KEYS = ('COMPOSE_PROJECT_NAME', 'LOOSKI_HTTP_PORT', 'LOOSKI_PUBLIC_URL', 'LOOSKI_MAIL_MODE', 'LOOSKI_DIAGNOSTICS_MODE',
-        'LOOSKI_TUNNEL_MODE', 'LOOSKI_AUTH_ISSUER')
+        'LOOSKI_TUNNEL_MODE', 'LOOSKI_AUTH_ISSUER', 'LOOSKI_GOOGLE_AUTH_ENABLED')
 TUNNEL_CREDENTIAL_KEYS = {'AccountTag', 'TunnelSecret', 'TunnelID'}
 
 
@@ -52,6 +52,9 @@ def configuration(dev=False):
     if not values['LOOSKI_HTTP_PORT'].isdigit() or not 1024 <= int(values['LOOSKI_HTTP_PORT']) <= 65535:
         raise SystemExit('LOOSKI_HTTP_PORT must be between 1024 and 65535')
     values.setdefault('LOOSKI_MAIL_MODE', 'disabled')
+    values.setdefault('LOOSKI_GOOGLE_AUTH_ENABLED', 'false')
+    if values['LOOSKI_GOOGLE_AUTH_ENABLED'] not in ('true', 'false'):
+        raise SystemExit('LOOSKI_GOOGLE_AUTH_ENABLED must be true or false')
     # Authentication identity stays stable when a local installation gets a public URL.
     values.setdefault('LOOSKI_AUTH_ISSUER', values['LOOSKI_PUBLIC_URL'] + '/auth/v1')
     issuer = urlsplit(values['LOOSKI_AUTH_ISSUER'])
@@ -134,7 +137,11 @@ def configure(values, config):
     communications = directory.parent / "communications.json"
     if not communications.exists():
         write_private(communications, "[]\n")
+    calendars = directory.parent / "calendars.json"
+    if not calendars.exists():
+        write_private(calendars, "[]\n")
     configure_mail(values)
+    configure_google(values)
     configure_tunnel(values)
     claim = directory.parent / 'owner-claim.json'
     if not claim.exists():
@@ -142,6 +149,31 @@ def configure(values, config):
     if not config.exists():
         write_private(config, ''.join(f'{key}={values[key]}\n' for key in KEYS))
     print(f"Installation: {values['COMPOSE_PROJECT_NAME']} | {values['LOOSKI_PUBLIC_URL']}", flush=True)
+
+
+def google_credentials(path):
+    if not path.is_file() or path.is_symlink() or stat.S_IMODE(path.stat().st_mode) != 0o600:
+        raise SystemExit('Google sign-in requires a regular private google-oauth.json file with mode 0600; see docs/auth-google.md')
+    try:
+        credentials = json.loads(path.read_text())
+        if set(credentials) != {'client_id', 'client_secret'}:
+            raise ValueError()
+        if not isinstance(credentials['client_id'], str) or not re.fullmatch(r'[A-Za-z0-9_-]+\.apps\.googleusercontent\.com', credentials['client_id']):
+            raise ValueError()
+        secret = credentials['client_secret']
+        if not isinstance(secret, str) or not 10 <= len(secret) <= 1024 or re.search(r'\s|\x00', secret):
+            raise ValueError()
+        return credentials
+    except (ValueError, TypeError, OSError):
+        raise SystemExit('Invalid Google OAuth credentials; expected client_id and client_secret. Values are not logged.')
+
+
+def configure_google(values):
+    state = ROOT / '.local' / values['COMPOSE_PROJECT_NAME']
+    credentials = google_credentials(state / 'google-oauth.json') if values.get('LOOSKI_GOOGLE_AUTH_ENABLED') == 'true' else {}
+    # Keep the operator's credential when disabling the provider; Auth receives
+    # an empty derived secret until explicitly re-enabled.
+    write_private(state / 'auth-google.json', json.dumps(credentials))
 
 
 def configure_mail(values):

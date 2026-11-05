@@ -5,12 +5,17 @@ use sqlx::{PgConnection, Row, postgres::PgRow, types::Json};
 use uuid::Uuid;
 
 // SQL fragments below are constants; all caller values use bind parameters.
-const COLUMNS: &str = "c.id,c.display_name,c.notes,c.owner_membership_id,c.archived_at IS NOT NULL AS archived,c.merged_into_id,c.version,c.created_at::text,c.updated_at::text,
- COALESCE((SELECT jsonb_agg(jsonb_build_object('kind',i.kind,'normalized_value',i.normalized_value,'value',ci.original_value,'country',ci.country,'extension',ci.extension) ORDER BY i.kind,i.normalized_value)
+const COLUMNS: &str = "c.properties,c.id,c.display_name,c.notes,c.owner_membership_id,c.archived_at IS NOT NULL AS archived,c.merged_into_id,c.version,c.created_at::text,c.updated_at::text,
+ COALESCE((SELECT jsonb_agg(jsonb_build_object('kind',i.kind,'normalized_value',i.normalized_value,'value',ci.original_value,'country',ci.country,'extension',ci.extension) ORDER BY i.kind,ci.position,i.normalized_value)
  FROM contacts.contact_identifiers ci JOIN contacts.identifiers i ON (i.workspace_id,i.id)=(ci.workspace_id,ci.identifier_id)
  WHERE ci.workspace_id=c.workspace_id AND ci.contact_id=c.id AND ci.ended_at IS NULL),'[]'::jsonb) AS identifiers";
 fn decode(row: PgRow) -> Result<Contact, Error> {
     Ok(Contact {
+        properties: row
+            .try_get::<sqlx::types::Json<serde_json::Map<String, serde_json::Value>>, _>(
+                "properties",
+            )?
+            .0,
         id: row.try_get("id")?,
         display_name: row.try_get("display_name")?,
         notes: row.try_get("notes")?,
@@ -57,25 +62,55 @@ pub(super) async fn list(
     if let Some(cursor) = query.after {
         get(db, workspace, cursor, access, false).await?;
     }
-    let sql=format!("SELECT {COLUMNS} FROM contacts.contacts c WHERE c.workspace_id=$1 AND ($2 OR c.owner_membership_id=$3) AND (c.archived_at IS NOT NULL)=$4 AND c.merged_into_id IS NULL
-     AND ($5::uuid IS NULL OR (c.created_at,c.id)>(SELECT created_at,id FROM contacts.contacts WHERE workspace_id=$1 AND id=$5))
-     AND ($6::text IS NULL OR strpos(lower(c.display_name),lower($6))>0)
-     AND ($8::uuid IS NULL OR EXISTS(SELECT 1 FROM contacts.contact_tags t WHERE t.workspace_id=c.workspace_id AND t.contact_id=c.id AND t.tag_id=$8)) ORDER BY c.created_at,c.id LIMIT $7");
-    sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
-        .bind(workspace)
-        .bind(access.workspace_wide)
-        .bind(access.membership_id)
-        .bind(query.archived.unwrap_or(false))
-        .bind(query.after)
-        .bind(&query.search)
-        .bind(limit)
-        .bind(query.tag_id)
+    let fields = crate::records::definitions(db, workspace, "contacts").await?;
+    let filter = query
+        .filter
+        .as_ref()
+        .map(|s| {
+            if s.len() > 16384 {
+                return Err(Error::Invalid("Filter is too large"));
+            }
+            serde_json::from_str::<crate::records::Filter>(s)
+                .map_err(|_| Error::Invalid("Invalid filter expression"))
+        })
+        .transpose()?;
+    if let Some(f) = &filter {
+        crate::records::validate_filter(f, &fields)?;
+    }
+    let columns = COLUMNS.replace("c.", "r.");
+    let mut sql = sqlx::QueryBuilder::<sqlx::Postgres>::new(format!(
+        "SELECT {columns} FROM contacts.contacts r WHERE r.workspace_id="
+    ));
+    sql.push_bind(workspace)
+        .push(" AND (")
+        .push_bind(access.workspace_wide)
+        .push(" OR r.owner_membership_id=")
+        .push_bind(access.membership_id)
+        .push(") AND (r.archived_at IS NOT NULL)=")
+        .push_bind(query.archived.unwrap_or(false));
+    sql.push(" AND r.merged_into_id IS NULL");
+    if let Some(search) = &query.search {
+        sql.push(" AND strpos(lower(r.display_name),lower(")
+            .push_bind(search.clone())
+            .push("))>0");
+    }
+    if let Some(tag) = query.tag_id {
+        sql.push(" AND EXISTS(SELECT 1 FROM contacts.contact_tags t WHERE t.workspace_id=r.workspace_id AND t.contact_id=r.id AND t.tag_id=").push_bind(tag).push(")");
+    }
+    if let Some(f) = &filter {
+        sql.push(" AND ");
+        crate::records::append_filter(&mut sql, "contacts", &fields, f);
+    }
+    crate::records::append_sort(&mut sql, "contacts", &fields, query, workspace)?;
+    sql.push(" LIMIT ").push_bind(limit);
+    sql.build()
         .fetch_all(db)
         .await?
         .into_iter()
         .map(decode)
         .collect()
 }
+
 pub(super) async fn lock_identifiers(
     db: &mut PgConnection,
     workspace: Uuid,
@@ -101,7 +136,9 @@ pub(super) async fn lock_identifiers(
             .await?;
     }
     // Shared namespace and sorted keys serialize even identifiers not inserted yet.
-    for item in ids {
+    let mut ordered: Vec<_> = ids.iter().collect();
+    ordered.sort_by_key(|i| (&i.kind, &i.normalized));
+    for item in ordered {
         sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))")
             .bind(format!(
                 "identifier:{workspace}:{}:{}",
@@ -133,8 +170,8 @@ pub(super) async fn insert(
     owner: Uuid,
     input: &ContactInput,
 ) -> Result<Uuid, Error> {
-    Ok(sqlx::query_scalar("INSERT INTO contacts.contacts(workspace_id,display_name,notes,owner_membership_id) VALUES($1,$2,$3,$4) RETURNING id")
-    .bind(workspace).bind(input.display_name.trim()).bind(&input.notes).bind(owner).fetch_one(db).await?)
+    Ok(sqlx::query_scalar("INSERT INTO contacts.contacts(workspace_id,display_name,notes,owner_membership_id,properties) VALUES($1,$2,$3,$4,$5) RETURNING id")
+    .bind(workspace).bind(input.display_name.trim()).bind(&input.notes).bind(owner).bind(sqlx::types::Json(input.properties.clone().unwrap_or_default())).fetch_one(db).await?)
 }
 pub(super) async fn update(
     db: &mut PgConnection,
@@ -143,8 +180,8 @@ pub(super) async fn update(
     owner: Uuid,
     input: &ContactInput,
 ) -> Result<(), Error> {
-    sqlx::query("UPDATE contacts.contacts SET display_name=$3,notes=$4,owner_membership_id=$5,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2")
-    .bind(workspace).bind(id).bind(input.display_name.trim()).bind(&input.notes).bind(owner).execute(db).await?;
+    sqlx::query("UPDATE contacts.contacts SET display_name=$3,notes=$4,owner_membership_id=$5,properties=COALESCE($6,properties),version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2")
+    .bind(workspace).bind(id).bind(input.display_name.trim()).bind(&input.notes).bind(owner).bind(input.properties.as_ref().map(sqlx::types::Json)).execute(db).await?;
     Ok(())
 }
 pub(super) async fn archive(
@@ -165,11 +202,11 @@ pub(super) async fn set_identifiers(
 ) -> Result<(), Error> {
     // History is retained when an association ends, including contact edits.
     sqlx::query("UPDATE contacts.contact_identifiers SET ended_at=now() WHERE workspace_id=$1 AND contact_id=$2 AND ended_at IS NULL").bind(workspace).bind(id).execute(&mut *db).await?;
-    for item in ids {
+    for (position, item) in ids.iter().enumerate() {
         sqlx::query("INSERT INTO contacts.identifiers(workspace_id,kind,normalized_value) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
         .bind(workspace).bind(&item.kind).bind(&item.normalized).execute(&mut *db).await?;
-        sqlx::query("INSERT INTO contacts.contact_identifiers(workspace_id,contact_id,identifier_id,original_value,country,extension) SELECT $1,$2,id,$5,$6,$7 FROM contacts.identifiers WHERE workspace_id=$1 AND kind=$3 AND normalized_value=$4")
-        .bind(workspace).bind(id).bind(&item.kind).bind(&item.normalized).bind(&item.original).bind(&item.country).bind(&item.extension).execute(&mut *db).await?;
+        sqlx::query("INSERT INTO contacts.contact_identifiers(workspace_id,contact_id,identifier_id,original_value,country,extension,position) SELECT $1,$2,id,$5,$6,$7,$8 FROM contacts.identifiers WHERE workspace_id=$1 AND kind=$3 AND normalized_value=$4")
+        .bind(workspace).bind(id).bind(&item.kind).bind(&item.normalized).bind(&item.original).bind(&item.country).bind(&item.extension).bind(position as i32).execute(&mut *db).await?;
     }
     Ok(())
 }

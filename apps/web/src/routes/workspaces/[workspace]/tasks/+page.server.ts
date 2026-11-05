@@ -38,7 +38,13 @@ export const load: PageServerLoad = async (event) => {
   });
   if (!result.data)
     error(result.response.status, result.error?.message ?? 'Tasks unavailable');
+  const members = await client.GET(
+    '/api/v1/workspaces/{workspace_id}/access/members',
+    { params: { path: { workspace_id: workspace.id }, query: { limit: 100 } } },
+  );
   return {
+    members: members.data?.items.filter((m) => m.state === 'active') ?? [],
+    today: new Date().toISOString().slice(0, 10),
     workspace,
     page: result.data,
     search,

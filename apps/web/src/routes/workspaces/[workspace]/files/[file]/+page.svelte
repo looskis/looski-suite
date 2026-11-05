@@ -26,9 +26,7 @@
 
 <svelte:head><title>{data.file.filename} · Files</title></svelte:head>
 <header>
-  <a href={'/workspaces/' + data.workspace.id + '/files'}>← Files</a><span
-    >{data.workspace.name}</span
-  >
+  <a href={'/workspaces/' + data.workspace.id + '/files'}>← Files</a>
 </header>
 <h1>{data.file.filename}</h1>
 <p>
@@ -115,6 +113,6 @@
   }
   .button {
     display: inline-block;
-    margin: 12px 0;
+    margin: var(--space-3) 0;
   }
 </style>

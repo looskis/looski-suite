@@ -42,6 +42,6 @@
   blockquote {
     margin-left: 0;
     padding-left: 1em;
-    border-left: 3px solid var(--line, #ddd);
+    border-left: 3px solid var(--border-default);
   }
 </style>

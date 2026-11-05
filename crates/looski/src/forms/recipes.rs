@@ -593,6 +593,7 @@ pub(crate) async fn execute(
                 contacts::intake::SubmitIntake {
                     source_ref: format!("forms:submission:{}", submission.id),
                     proposed: ContactInput {
+                        properties: None,
                         display_name: display_name.clone(),
                         notes: String::new(),
                         identifiers,
@@ -623,6 +624,7 @@ pub(crate) async fn execute(
         None,
         &format!("forms-run:{}:opportunity", run.id),
         crm::OpportunityInput {
+            billing_frequency: None,
             title: format!("{}: {display_name}", mapping.title_prefix.trim())
                 .chars()
                 .take(200)

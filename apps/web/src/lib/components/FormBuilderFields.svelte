@@ -189,20 +189,20 @@
   .pair {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 16px;
+    gap: var(--space-4);
     align-items: end;
   }
   .option {
     display: flex;
     align-items: end;
-    gap: 8px;
+    gap: var(--space-2);
   }
   .option label {
     flex: 1;
-    margin: 8px 0;
+    margin: var(--space-2) 0;
   }
   .option button {
-    margin-bottom: 8px;
+    margin-bottom: var(--space-2);
   }
   /* Option editing only applies to choice questions; visible without CSS :has. */
   .question:not(
@@ -215,14 +215,14 @@
     display: none;
   }
   .source {
-    margin: 12px 0 4px;
-    font-size: 13px;
-    font-weight: 550;
+    margin: var(--space-3) 0 var(--space-1);
+    font-size: var(--font-size-13);
+    font-weight: var(--font-weight-label);
   }
   .actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 12px;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
   }
 </style>

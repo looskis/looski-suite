@@ -47,3 +47,7 @@ pub mod time;
 pub mod scheduling;
 
 pub mod communications;
+
+pub mod records;
+
+pub mod visitors;

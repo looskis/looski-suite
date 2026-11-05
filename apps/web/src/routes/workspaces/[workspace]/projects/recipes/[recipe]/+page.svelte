@@ -107,7 +107,7 @@
 
 <style>
   strong.attention {
-    color: #953b31;
+    color: var(--error-text);
   }
   small {
     display: block;

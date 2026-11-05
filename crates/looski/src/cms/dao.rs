@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 use sqlx::{PgConnection, types::Json};
 use uuid::Uuid;
 
-const TYPE: &str = "jsonb_build_object('id',t.id,'name',t.name,'description',t.description,'fields',t.fields,'public_key',t.public_key,'archived',t.archived_at IS NOT NULL,
+const TYPE: &str = "jsonb_build_object('id',t.id,'name',t.name,'description',t.description,'fields',t.fields,'public_key',t.public_key,'headless',t.headless,'archived',t.archived_at IS NOT NULL,
  'published_entries',(SELECT count(*) FROM cms.entries e WHERE e.workspace_id=t.workspace_id AND e.type_id=t.id AND e.published_revision_id IS NOT NULL),
  'version',t.version,'created_at',t.created_at::text,'updated_at',t.updated_at::text)";
 const MEDIA: &str = "jsonb_build_object('id',m.id,'file_id',m.file_id,'title',m.title,'alt_text',m.alt_text,'media_type',m.media_type,'filename',f.filename,'byte_length',f.byte_length,'archived',m.archived_at IS NOT NULL,'file_archived',f.archived_at IS NOT NULL,'version',m.version,'created_at',m.created_at::text,'updated_at',m.updated_at::text) FROM cms.media m JOIN files.files f ON f.workspace_id=m.workspace_id AND f.id=m.file_id";
@@ -70,8 +70,8 @@ pub(super) async fn insert_type(
     input: &SaveContentType,
     public_key: &str,
 ) -> Result<Uuid, Error> {
-    Ok(sqlx::query_scalar("INSERT INTO cms.content_types(workspace_id,name,description,fields,public_key) VALUES($1,$2,$3,$4,$5) RETURNING id")
-        .bind(ws).bind(input.name.trim()).bind(&input.description).bind(Json(&input.fields)).bind(public_key)
+    Ok(sqlx::query_scalar("INSERT INTO cms.content_types(workspace_id,name,description,fields,public_key,headless) VALUES($1,$2,$3,$4,$5,$6) RETURNING id")
+        .bind(ws).bind(input.name.trim()).bind(&input.description).bind(Json(&input.fields)).bind(public_key).bind(input.headless.unwrap_or(false))
         .fetch_one(db).await?)
 }
 pub(super) async fn update_type(
@@ -80,8 +80,8 @@ pub(super) async fn update_type(
     id: Uuid,
     input: &SaveContentType,
 ) -> Result<(), Error> {
-    sqlx::query("UPDATE cms.content_types SET name=$3,description=$4,fields=$5,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2")
-        .bind(ws).bind(id).bind(input.name.trim()).bind(&input.description).bind(Json(&input.fields))
+    sqlx::query("UPDATE cms.content_types SET name=$3,description=$4,fields=$5,headless=COALESCE($6,headless),version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2")
+        .bind(ws).bind(id).bind(input.name.trim()).bind(&input.description).bind(Json(&input.fields)).bind(input.headless)
         .execute(db).await?;
     Ok(())
 }
@@ -423,18 +423,23 @@ pub(super) async fn known_media(
         .bind(ws).bind(ids).bind(active_only).fetch_one(db).await?)
 }
 pub(super) struct PublicType {
+    pub headless: bool,
     pub workspace: Uuid,
     pub id: Uuid,
 }
 pub(super) async fn public_type(db: &mut PgConnection, key: &str) -> Result<PublicType, Error> {
-    let (workspace, id) = sqlx::query_as::<_, (Uuid, Uuid)>(
-        "SELECT workspace_id,id FROM cms.content_types WHERE public_key=$1 AND archived_at IS NULL",
+    let (workspace, id, headless) = sqlx::query_as::<_, (Uuid, Uuid, bool)>(
+        "SELECT workspace_id,id,headless FROM cms.content_types WHERE public_key=$1 AND archived_at IS NULL",
     )
     .bind(key)
     .fetch_optional(db)
     .await?
     .ok_or(Error::NotFound)?;
-    Ok(PublicType { workspace, id })
+    Ok(PublicType {
+        workspace,
+        id,
+        headless,
+    })
 }
 pub(super) async fn public_name(
     db: &mut PgConnection,

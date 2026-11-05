@@ -37,38 +37,41 @@
     >
   </form>
 </section>
-<section>
-  <h2>Create a task from a revision</h2>
-  <form method="POST" action="?/instantiate">
-    <input
-      type="hidden"
-      name="idempotency_key"
-      value={form?.instantiateDraft?.key ?? data.instantiateKey}
-    /><label
-      >Revision ID<input
-        name="revision_id"
-        value={form?.instantiateDraft?.revision_id ?? data.template.revision.id}
-        required
-      /></label
-    ><label
-      >Base calendar date<input
-        type="date"
-        name="base_on"
-        value={form?.instantiateDraft?.base_on ?? data.today}
-        required
-      /></label
-    ><label
-      >Contextual owner membership ID (when required)<input
-        name="context_owner_membership_id"
-        value={form?.instantiateDraft?.context_owner_membership_id ?? ''}
-      /></label
-    ><button disabled={data.template.archived}>Create task</button>
-  </form>
-  <p class="muted">
-    The default base date is today in UTC. Choose another date if your business
-    day differs.
-  </p>
-</section>
+<details class="creation-panel" open={Boolean(form?.message)}>
+  <summary>Create a task from a revision</summary>
+  <div class="creation-content">
+    <form method="POST" action="?/instantiate">
+      <input
+        type="hidden"
+        name="idempotency_key"
+        value={form?.instantiateDraft?.key ?? data.instantiateKey}
+      /><label
+        >Revision ID<input
+          name="revision_id"
+          value={form?.instantiateDraft?.revision_id ??
+            data.template.revision.id}
+          required
+        /></label
+      ><label
+        >Base calendar date<input
+          type="date"
+          name="base_on"
+          value={form?.instantiateDraft?.base_on ?? data.today}
+          required
+        /></label
+      ><label
+        >Contextual owner membership ID (when required)<input
+          name="context_owner_membership_id"
+          value={form?.instantiateDraft?.context_owner_membership_id ?? ''}
+        /></label
+      ><button disabled={data.template.archived}>Create task</button>
+    </form>
+    <p class="muted">
+      The default base date is today in UTC. Choose another date if your
+      business day differs.
+    </p>
+  </div>
+</details>
 <section>
   <h2>Immutable revisions</h2>
   <ol>

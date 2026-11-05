@@ -77,7 +77,9 @@ services:
       GOTRUE_API_PORT: "9999"
       API_EXTERNAL_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1
       GOTRUE_SITE_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
-      GOTRUE_URI_ALLOW_LIST: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/confirm
+      GOTRUE_URI_ALLOW_LIST: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/confirm,${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/callback
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${LOOSKI_GOOGLE_AUTH_ENABLED:-false}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1/callback
       GOTRUE_DB_DRIVER: postgres
       GOTRUE_JWT_ISSUER: ${LOOSKI_AUTH_ISSUER:-${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1}
       GOTRUE_JWT_ADMIN_ROLES: service_role
@@ -95,7 +97,7 @@ services:
       GOTRUE_MAILER_TEMPLATES_RECOVERY: http://auth-templates:8080/recovery.html
       GOTRUE_MAILER_SUBJECTS_MAGIC_LINK: Sign in to Looski Suite
       GOTRUE_MAILER_SUBJECTS_RECOVERY: Reset your Looski Suite password
-    secrets: [db_password, jwt_secret, auth_mail]
+    secrets: [db_password, jwt_secret, auth_mail, auth_google]
     volumes:
       - ./infra/auth/entrypoint.sh:/opt/looski/auth-entrypoint.sh:ro
     healthcheck:
@@ -146,6 +148,7 @@ services:
       LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
       LOOSKI_AUTH_MAIL_ENABLED: ${LOOSKI_AUTH_MAIL_ENABLED:-false}
       LOOSKI_COMMUNICATIONS_CONFIG_FILE: /run/secrets/communications
+      LOOSKI_CALENDARS_CONFIG_FILE: /run/secrets/calendars
       LOOSKI_INVITATION_KEY_FILE: /run/secrets/invitation_key
       LOOSKI_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
       LOOSKI_AUTH_ISSUER: ${LOOSKI_AUTH_ISSUER:-${LOOSKI_PUBLIC_URL:-http://localhost:58888}/auth/v1}
@@ -153,7 +156,7 @@ services:
       LOOSKI_DIAGNOSTICS_MODE: ${LOOSKI_DIAGNOSTICS_MODE:-local}
       LOOSKI_DIAGNOSTICS_KEY_FILE: /run/secrets/diagnostics_key
       RUST_LOG: info
-    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key, communications]
+    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key, communications, calendars]
     tmpfs:
       - /run/looski:size=64k,mode=0755
     depends_on:
@@ -176,6 +179,7 @@ services:
       LOOSKI_DATABASE_URL_FILE: /run/secrets/database_url
       LOOSKI_AUTH_MAIL_ENABLED: ${LOOSKI_AUTH_MAIL_ENABLED:-false}
       LOOSKI_COMMUNICATIONS_CONFIG_FILE: /run/secrets/communications
+      LOOSKI_CALENDARS_CONFIG_FILE: /run/secrets/calendars
       LOOSKI_INVITATION_KEY_FILE: /run/secrets/invitation_key
       LOOSKI_JWT_SECRET_FILE: /run/secrets/jwt_secret
       LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
@@ -185,7 +189,7 @@ services:
       LOOSKI_DIAGNOSTICS_KEY_FILE: /run/secrets/diagnostics_key
       LOOSKI_SMTP_CONFIG_FILE: /run/secrets/auth_mail
       RUST_LOG: info
-    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key, auth_mail, communications]
+    secrets: [database_url, jwt_secret, invitation_key, diagnostics_key, auth_mail, communications, calendars]
     tmpfs:
       - /run/looski:size=64k,mode=0755
     depends_on:
@@ -232,6 +236,8 @@ services:
       HOST: 0.0.0.0
       PORT: "3000"
       BODY_SIZE_LIMIT: "12M"
+      LOOSKI_GOOGLE_AUTH_ENABLED: ${LOOSKI_GOOGLE_AUTH_ENABLED:-false}
+      LOOSKI_PUBLIC_URL: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
       ORIGIN: ${LOOSKI_PUBLIC_URL:-http://localhost:58888}
       LOOSKI_API_INTERNAL_URL: http://api:8080
       LOOSKI_AUTH_INTERNAL_URL: http://auth:9999
@@ -302,6 +308,10 @@ services:
       retries: 10
 
 secrets:
+  auth_google:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/auth-google.json
+  calendars:
+    file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/calendars.json
   communications:
     file: ./.local/${COMPOSE_PROJECT_NAME:-looski-suite}/communications.json
   owner_claim:

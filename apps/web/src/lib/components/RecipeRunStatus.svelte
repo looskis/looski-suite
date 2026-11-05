@@ -17,13 +17,13 @@
 
 <style>
   strong.attention {
-    color: #953b31;
+    color: var(--error-text);
   }
   small {
     display: block;
   }
   a {
-    margin-right: 10px;
-    font-size: 12px;
+    margin-right: var(--space-2-5);
+    font-size: var(--font-size-12);
   }
 </style>

@@ -9,10 +9,13 @@
 <svelte:head><title>Revisions · Looski</title></svelte:head>
 <header><a href={root}>← Back to editing</a></header>
 <h1>Revisions</h1>
-<p>
-  Every saved change is kept. Restoring copies a revision into the draft as a
-  new revision; the public page changes only when you publish.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Every saved change is kept. Restoring copies a revision into the draft as a
+    new revision; the public page changes only when you publish.
+  </p>
+</details>
 {#if form?.message}<p role="alert">{form.message}</p>{/if}
 <div class="table-wrap">
   <table>

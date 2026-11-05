@@ -31,6 +31,8 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct OpportunityInput {
+    #[serde(default)]
+    pub billing_frequency: Option<String>,
     pub title: String,
     #[serde(default)]
     pub notes: String,
@@ -50,6 +52,8 @@ pub struct EditOpportunity {
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct Opportunity {
+    #[serde(default = "one_time")]
+    pub billing_frequency: String,
     pub id: Uuid,
     pub title: String,
     pub notes: String,
@@ -71,6 +75,8 @@ pub struct Opportunity {
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct DealInput {
+    #[serde(default)]
+    pub billing_frequency: Option<String>,
     pub title: String,
     #[serde(default)]
     pub notes: String,
@@ -98,6 +104,8 @@ pub struct EditDeal {
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct Deal {
+    #[serde(default = "one_time")]
+    pub billing_frequency: String,
     pub id: Uuid,
     pub title: String,
     pub notes: String,
@@ -357,6 +365,7 @@ pub(crate) async fn save_opportunity_in(
     key: &str,
     input: OpportunityInput,
 ) -> Result<Opportunity, Error> {
+    validate_frequency(input.billing_frequency.as_deref())?;
     validate(
         &input.title,
         &input.notes,
@@ -574,6 +583,7 @@ pub async fn save_deal(
     key: &str,
     input: DealInput,
 ) -> Result<Deal, Error> {
+    validate_frequency(input.billing_frequency.as_deref())?;
     validate(
         &input.title,
         &input.notes,
@@ -838,3 +848,13 @@ pub mod status_jobs;
 pub mod starter;
 
 pub mod timeline;
+
+fn one_time() -> String {
+    "one_time".into()
+}
+fn validate_frequency(value: Option<&str>) -> Result<(), Error> {
+    if value.is_some_and(|v| !["one_time", "monthly", "quarterly", "annually"].contains(&v)) {
+        return Err(Error::Invalid("Unsupported billing frequency"));
+    }
+    Ok(())
+}

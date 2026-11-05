@@ -257,6 +257,17 @@ enum Command {
         #[command(subcommand)]
         action: TimeCommand,
     },
+    /// Visitors records. Mutations read JSON from stdin.
+    Visitors {
+        #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
+        api_url: String,
+        #[arg(long, env = "LOOSKI_ACCESS_TOKEN_FILE")]
+        token_file: Option<std::path::PathBuf>,
+        #[arg(long)]
+        workspace: uuid::Uuid,
+        #[command(subcommand)]
+        action: VisitorsCommand,
+    },
     /// Scheduling records. Mutations read JSON from stdin.
     Scheduling {
         #[arg(long, env = "LOOSKI_API_URL", default_value = "http://localhost:58888")]
@@ -2425,6 +2436,9 @@ async fn run() -> anyhow::Result<()> {
                         .contacts(
                             workspace,
                             &looski::contacts::ListContacts {
+                                filter: None,
+                                sort: None,
+                                direction: None,
                                 limit: Some(limit),
                                 after,
                                 search,
@@ -2528,6 +2542,9 @@ async fn run() -> anyhow::Result<()> {
                         .organizations(
                             workspace,
                             &looski::contacts::ListContacts {
+                                filter: None,
+                                sort: None,
+                                direction: None,
                                 limit: Some(limit),
                                 after,
                                 search,
@@ -5074,6 +5091,76 @@ async fn run() -> anyhow::Result<()> {
             };
             println!("{}", serde_json::to_string_pretty(&result)?);
         }
+        Command::Visitors {
+            api_url,
+            token_file,
+            workspace,
+            action,
+        } => {
+            fn body<T: serde::de::DeserializeOwned>() -> anyhow::Result<T> {
+                Ok(serde_json::from_reader(std::io::stdin())?)
+            }
+            let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
+            let result = match action {
+                VisitorsCommand::Sites => {
+                    serde_json::to_value(client.visitors_sites(workspace).await?)?
+                }
+                VisitorsCommand::SaveSite { idempotency_key } => serde_json::to_value(
+                    client
+                        .visitors_save_site(workspace, &idempotency_key, &body()?)
+                        .await?,
+                )?,
+                VisitorsCommand::List { after } => serde_json::to_value(
+                    client
+                        .visitors_list(
+                            workspace,
+                            &looski::visitors::Query {
+                                after,
+                                ..Default::default()
+                            },
+                        )
+                        .await?,
+                )?,
+                VisitorsCommand::Get { id } => {
+                    serde_json::to_value(client.visitors_get(workspace, id).await?)?
+                }
+                VisitorsCommand::Events { id, after } => serde_json::to_value(
+                    client
+                        .visitors_events(workspace, id, &looski::visitors::EventsQuery { after })
+                        .await?,
+                )?,
+                VisitorsCommand::Resolve { idempotency_key } => serde_json::to_value(
+                    client
+                        .visitors_resolve(workspace, &idempotency_key, &body()?)
+                        .await?,
+                )?,
+                VisitorsCommand::Review {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .visitors_review(workspace, id, &idempotency_key, &body()?)
+                        .await?,
+                )?,
+                VisitorsCommand::Link {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .visitors_link(workspace, id, &idempotency_key, &body()?)
+                        .await?,
+                )?,
+                VisitorsCommand::Delete {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .visitors_delete(workspace, id, &idempotency_key)
+                        .await?,
+                )?,
+            };
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
         Command::Scheduling {
             api_url,
             token_file,
@@ -5215,6 +5302,9 @@ async fn run() -> anyhow::Result<()> {
                         .communications_list(
                             workspace,
                             &ConversationQuery {
+                                newest_first: None,
+                                search: None,
+                                account_id: None,
                                 after,
                                 limit,
                                 contact_id,
@@ -5236,7 +5326,15 @@ async fn run() -> anyhow::Result<()> {
                 )?,
                 CommunicationsCommand::Messages { id, after, limit } => serde_json::to_value(
                     client
-                        .communications_messages(workspace, id, &MessageQuery { after, limit })
+                        .communications_messages(
+                            workspace,
+                            id,
+                            &MessageQuery {
+                                after,
+                                limit,
+                                newest_first: None,
+                            },
+                        )
                         .await?,
                 )?,
                 CommunicationsCommand::Send {
@@ -5951,8 +6049,8 @@ async fn run() -> anyhow::Result<()> {
             .fetch_one(&db)
             .await?;
             anyhow::ensure!(
-                schema == 37,
-                "Worker requires schema 37 but the database is at {schema}; apply migrations first"
+                schema == 40,
+                "Worker requires schema 40 but the database is at {schema}; apply migrations first"
             );
             let invitation_key =
                 std::fs::read_to_string(std::env::var("LOOSKI_INVITATION_KEY_FILE")?)?;
@@ -5983,6 +6081,9 @@ async fn run() -> anyhow::Result<()> {
                 let result = looski::jobs::run_once(&db, &mailer, &outbox).await;
                 if communications_tick.is_multiple_of(10) {
                     let _ = looski::communications::poll_once(&db).await;
+                }
+                if communications_tick.is_multiple_of(60) {
+                    let _ = looski::visitors::prune(&db).await;
                 }
                 communications_tick = communications_tick.wrapping_add(1);
                 diagnostics.worker(
@@ -6094,4 +6195,44 @@ async fn shutdown() {
     }
     #[cfg(not(unix))]
     let _ = tokio::signal::ctrl_c().await;
+}
+
+#[derive(clap::Subcommand)]
+enum VisitorsCommand {
+    Sites,
+    SaveSite {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    List {
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    Get {
+        id: uuid::Uuid,
+    },
+    Events {
+        id: uuid::Uuid,
+        #[arg(long)]
+        after: Option<uuid::Uuid>,
+    },
+    Resolve {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Review {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Link {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    Delete {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
 }

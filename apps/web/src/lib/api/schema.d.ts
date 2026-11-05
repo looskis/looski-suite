@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/cms/{public_key}/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPublicContentData"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/public/cms/{public_key}/entries/{slug}": {
         parameters: {
             query?: never;
@@ -274,6 +290,54 @@ export interface paths {
         get: operations["scheduling_slots"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/visitors/{site_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPublicVisitorSite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/visitors/{site_key}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["collectVisitorEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/visitors/{site_key}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["withdrawVisitorConsent"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3144,6 +3208,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspace_id}/records/{kind}/fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["record_fields"];
+        put?: never;
+        post: operations["record_save_field"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/records/{kind}/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["record_views"];
+        put?: never;
+        post: operations["record_create_view"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/records/{kind}/views/{view_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["record_update_view"];
+        post?: never;
+        delete: operations["record_delete_view"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspace_id}/scheduling/appointments": {
         parameters: {
             query?: never;
@@ -3544,6 +3656,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workspaces/{workspace_id}/visitors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listVisitors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/visitors/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resolveVisitor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/visitors/sites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listVisitorSites"];
+        put?: never;
+        post: operations["saveVisitorSite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/visitors/{visitor_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getVisitor"];
+        put?: never;
+        post?: never;
+        delete: operations["deleteVisitor"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/visitors/{visitor_id}/contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["linkVisitorContact"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/visitors/{visitor_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listVisitorEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/visitors/{visitor_id}/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reviewVisitorMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/ready": {
         parameters: {
             query?: never;
@@ -3805,6 +4029,9 @@ export interface components {
             date: string;
             windows: components["schemas"]["MinuteWindow"][];
         };
+        BTreeMap: {
+            [key: string]: string;
+        };
         /** @description Columns and the cards this member can see; hidden tasks are not counted anywhere. */
         Board: {
             columns: components["schemas"]["BoardColumn"][];
@@ -3886,6 +4113,16 @@ export interface components {
             label: string;
             starts_at: string;
         };
+        Candidate: {
+            /** Format: uuid */
+            candidate_id: string;
+            reason: string;
+            /** Format: double */
+            score: number;
+            state: string;
+            /** Format: int64 */
+            version: number;
+        };
         Capabilities: {
             attachments: boolean;
             calls: boolean;
@@ -3945,6 +4182,15 @@ export interface components {
             refresh_token: string;
             token_type: string;
             user: components["schemas"]["SessionUser"];
+        };
+        Collect: {
+            components?: components["schemas"]["BTreeMap"];
+            consent: boolean;
+            /** Format: uuid */
+            event_id: string;
+            page: string;
+            referrer_host?: string | null;
+            token: string;
         };
         /** @enum {string} */
         Collection: "coordination_rules" | "contact_organizations" | "contact_tags" | "organization_tags" | "opportunity_tags" | "deal_tags" | "contacts" | "organizations" | "tags" | "opportunities" | "deals" | "tasks" | "files" | "task_types" | "task_templates" | "task_revisions" | "task_history" | "activity_types" | "activity_history" | "coordination_templates" | "coordination_revisions" | "deal_coordination" | "pipelines" | "stages" | "categories" | "statuses" | "opportunity_contacts" | "opportunity_organizations" | "deal_contacts" | "deal_organizations" | "opportunity_tasks" | "opportunity_history" | "deal_tasks" | "deal_history" | "contact_activities" | "opportunity_activities" | "deal_activities" | "forms" | "form_versions" | "form_submissions" | "cms_content_types" | "cms_entries" | "cms_revisions" | "cms_media" | "projects" | "project_members" | "project_columns" | "project_cards" | "project_comments" | "appointment_types" | "appointments" | "appointment_events" | "time_entries" | "time_budgets" | "communication_conversations" | "communication_messages" | "helpdesk_tickets" | "helpdesk_messages" | "knowledge_collections" | "knowledge_collection_members" | "knowledge_documents" | "knowledge_revisions";
@@ -4029,6 +4275,9 @@ export interface components {
             notes: string;
             /** Format: uuid */
             owner_membership_id: string;
+            properties?: {
+                [key: string]: unknown;
+            };
             updated_at: string;
             /** Format: int64 */
             version: number;
@@ -4048,6 +4297,9 @@ export interface components {
             notes?: string;
             /** Format: uuid */
             owner_membership_id?: string | null;
+            properties?: {
+                [key: string]: unknown;
+            } | null;
         };
         ContactPage: {
             items: components["schemas"]["Contact"][];
@@ -4124,6 +4376,7 @@ export interface components {
             created_at: string;
             description: string;
             fields: components["schemas"]["ContentField"][];
+            headless: boolean;
             /** Format: uuid */
             id: string;
             name: string;
@@ -4309,6 +4562,7 @@ export interface components {
         };
         Deal: {
             archived: boolean;
+            billing_frequency?: string;
             /** Format: uuid */
             category_id: string;
             category_name: string;
@@ -4372,6 +4626,7 @@ export interface components {
             next_cursor?: string | null;
         };
         DealInput: {
+            billing_frequency?: string | null;
             /** Format: uuid */
             category_id: string;
             currency_code?: string | null;
@@ -4458,6 +4713,10 @@ export interface components {
             /** Format: int64 */
             expected_version: number;
         };
+        DeleteView: {
+            /** Format: int64 */
+            expected_version: number;
+        };
         DeletedContact: {
             deleted_at: string;
             /** Format: uuid */
@@ -4512,6 +4771,12 @@ export interface components {
              * @description Unfinished work with no deadline.
              */
             unscheduled: number;
+        };
+        Detail: {
+            candidates: components["schemas"]["Candidate"][];
+            components: components["schemas"]["BTreeMap"];
+            events: components["schemas"]["VisitEvent"][];
+            visitor: components["schemas"]["Visitor"];
         };
         EditActivity: components["schemas"]["ActivityInput"] & {
             /** Format: int64 */
@@ -4625,6 +4890,11 @@ export interface components {
             /** @enum {string} */
             kind: "task_link";
         };
+        EventsPage: {
+            items: components["schemas"]["VisitEvent"][];
+            /** Format: uuid */
+            next_cursor?: string | null;
+        };
         ExchangeCode: {
             code: string;
             code_verifier: string;
@@ -4704,6 +4974,18 @@ export interface components {
             updated_at: string;
             /** Format: int64 */
             version: number;
+        };
+        Filter: {
+            field: string;
+            operator: string;
+            /** @enum {string} */
+            type: "condition";
+            value?: unknown;
+        } | {
+            operator: string;
+            rules: components["schemas"]["Filter"][];
+            /** @enum {string} */
+            type: "group";
         };
         Form: {
             accepting: boolean;
@@ -5104,6 +5386,12 @@ export interface components {
         KnowledgeSuggestions: {
             items: components["schemas"]["KnowledgeSuggestion"][];
         };
+        Link: {
+            /** Format: uuid */
+            contact_id?: string | null;
+            /** Format: int64 */
+            expected_version: number;
+        };
         LinkEvent: {
             /** Format: uuid */
             audit_event_id: string;
@@ -5292,6 +5580,7 @@ export interface components {
         };
         Opportunity: {
             archived: boolean;
+            billing_frequency?: string;
             closed_at?: string | null;
             created_at: string;
             currency_code?: string | null;
@@ -5315,6 +5604,7 @@ export interface components {
             version: number;
         };
         OpportunityInput: {
+            billing_frequency?: string | null;
             currency_code?: string | null;
             expected_close_on?: string | null;
             expected_value?: string | null;
@@ -5347,6 +5637,9 @@ export interface components {
             notes: string;
             /** Format: uuid */
             owner_membership_id: string;
+            properties?: {
+                [key: string]: unknown;
+            };
             updated_at: string;
             /** Format: int64 */
             version: number;
@@ -5357,6 +5650,9 @@ export interface components {
             notes?: string;
             /** Format: uuid */
             owner_membership_id?: string | null;
+            properties?: {
+                [key: string]: unknown;
+            } | null;
             website_url?: string | null;
         };
         OrganizationPage: {
@@ -5366,6 +5662,11 @@ export interface components {
         };
         /** @enum {string} */
         Outcome: "open" | "won" | "lost";
+        Page: {
+            items: components["schemas"]["Visitor"][];
+            /** Format: uuid */
+            next_cursor?: string | null;
+        };
         Participant: {
             /** Format: uuid */
             canonical_id: string;
@@ -5464,6 +5765,19 @@ export interface components {
             /** Format: int64 */
             version: number;
         };
+        /** @description Headless delivery exposes only current published revision values, never drafts. */
+        PublicContentPage: {
+            items: components["schemas"]["PublicDataEntry"][];
+            next_cursor?: string | null;
+        };
+        PublicDataEntry: {
+            published_at: string;
+            slug: string;
+            title: string;
+            values: {
+                [key: string]: unknown;
+            };
+        };
         PublicEntryLink: {
             published_at: string;
             slug: string;
@@ -5482,14 +5796,21 @@ export interface components {
         PublicIndex: {
             description: string;
             entries: components["schemas"]["PublicEntryLink"][];
+            headless: boolean;
             name: string;
             next_cursor?: string | null;
         };
         PublicPage: {
             fields: components["schemas"]["PublicField"][];
+            headless: boolean;
             published_at?: string | null;
             slug: string;
             title: string;
+        };
+        PublicSite: {
+            fingerprint_enabled: boolean;
+            /** Format: int32 */
+            retention_days: number;
         };
         PublicSubmission: {
             answers: {
@@ -5580,6 +5901,27 @@ export interface components {
             /** Format: int32 */
             number: number;
         };
+        RecordField: {
+            archived: boolean;
+            custom: boolean;
+            editable: boolean;
+            field_type: string;
+            key: string;
+            name: string;
+            options: string[];
+            /** Format: int64 */
+            version: number;
+        };
+        RecordView: {
+            config: components["schemas"]["ViewConfig"];
+            /** Format: uuid */
+            id: string;
+            mine: boolean;
+            name: string;
+            shared: boolean;
+            /** Format: int64 */
+            version: number;
+        };
         RefreshSession: {
             refresh_token: string;
         };
@@ -5653,6 +5995,13 @@ export interface components {
             form_version_id?: string | null;
             starts_at: string;
         };
+        Resolve: {
+            /** Format: uuid */
+            contact_id: string;
+            evidence: string;
+            site_key: string;
+            token: string;
+        };
         ResolveIntake: {
             contact?: components["schemas"]["ContactInput"] | null;
             /** Format: uuid */
@@ -5685,6 +6034,13 @@ export interface components {
         RetryRun: {
             /** Format: int64 */
             expected_version: number;
+        };
+        Review: {
+            /** Format: uuid */
+            candidate_id: string;
+            /** Format: int64 */
+            expected_version: number;
+            state: string;
         };
         RevisionPage: {
             items: components["schemas"]["ContentRevision"][];
@@ -5824,6 +6180,8 @@ export interface components {
              */
             expected_version?: number | null;
             fields?: components["schemas"]["ContentField"][];
+            /** @description Disable built-in HTML pages while retaining public JSON delivery. Omitted updates preserve the setting. */
+            headless?: boolean | null;
             name: string;
         };
         SaveCoordinationRule: {
@@ -5871,6 +6229,15 @@ export interface components {
             values?: {
                 [key: string]: unknown;
             };
+        };
+        SaveField: {
+            archived?: boolean;
+            /** Format: int64 */
+            expected_version?: number | null;
+            field_type: string;
+            key: string;
+            name: string;
+            options?: string[];
         };
         SaveForm: {
             confirmation_message?: string;
@@ -5924,6 +6291,21 @@ export interface components {
             grants: components["schemas"]["Grant"][];
             name: string;
         };
+        SaveSite: {
+            enabled: boolean;
+            /** Format: int64 */
+            expected_version?: number | null;
+            fingerprint_enabled?: boolean;
+            /** Format: uuid */
+            id?: string | null;
+            name: string;
+            origins: string[];
+            /** Format: int32 */
+            retention_days: number;
+            similarity_enabled?: boolean;
+            /** Format: double */
+            threshold: number;
+        };
         SaveTag: {
             archived?: boolean | null;
             color?: string | null;
@@ -5970,6 +6352,13 @@ export interface components {
             project_id?: string | null;
             start_timer?: boolean;
             work_on: string;
+        };
+        SaveView: {
+            config: components["schemas"]["ViewConfig"];
+            /** Format: int64 */
+            expected_version?: number | null;
+            name: string;
+            shared?: boolean;
         };
         ScheduleCard: {
             /**
@@ -6029,6 +6418,22 @@ export interface components {
             /** Format: int64 */
             expected_version: number;
             tag_ids: string[];
+        };
+        Site: {
+            enabled: boolean;
+            fingerprint_enabled: boolean;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            origins: string[];
+            public_key: string;
+            /** Format: int32 */
+            retention_days: number;
+            similarity_enabled: boolean;
+            /** Format: double */
+            threshold: number;
+            /** Format: int64 */
+            version: number;
         };
         StarterInstallation: components["schemas"]["StarterSummary"] & {
             records: components["schemas"]["StarterRecord"][];
@@ -6437,6 +6842,38 @@ export interface components {
             /** Format: int32 */
             number: number;
         };
+        ViewConfig: {
+            archived?: boolean;
+            columns: string[];
+            direction: string;
+            filter?: components["schemas"]["Filter"] | null;
+            sort: string;
+        };
+        VisitEvent: {
+            created_at: string;
+            /** Format: uuid */
+            id: string;
+            page: string;
+            referrer_host?: string | null;
+        };
+        Visitor: {
+            /** Format: uuid */
+            contact_id?: string | null;
+            evidence?: string | null;
+            expires_at: string;
+            first_seen: string;
+            /** Format: uuid */
+            id: string;
+            last_seen: string;
+            /** Format: uuid */
+            site_id: string;
+            /** Format: int64 */
+            suggestions: number;
+            /** Format: int64 */
+            version: number;
+            /** Format: int64 */
+            views: number;
+        };
         WeeklyWindow: {
             /** Format: int32 */
             end: number;
@@ -6444,6 +6881,9 @@ export interface components {
             start: number;
             /** Format: int32 */
             weekday: number;
+        };
+        Withdraw: {
+            token: string;
         };
         Workspace: {
             id: string;
@@ -6749,6 +7189,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublicIndex"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPublicContentData: {
+        parameters: {
+            query?: {
+                after?: string;
+            };
+            header?: never;
+            path: {
+                public_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicContentPage"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             404: {
@@ -7625,6 +8120,147 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getPublicVisitorSite: {
+        parameters: {
+            query?: never;
+            header: {
+                Origin: string;
+            };
+            path: {
+                site_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicSite"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    collectVisitorEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                Origin: string;
+            };
+            path: {
+                site_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Collect"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Receipt"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    withdrawVisitorConsent: {
+        parameters: {
+            query?: never;
+            header: {
+                Origin: string;
+            };
+            path: {
+                site_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Withdraw"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Receipt"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10627,6 +11263,9 @@ export interface operations {
     communications_list: {
         parameters: {
             query?: {
+                newest_first?: boolean;
+                search?: string;
+                account_id?: string;
                 after?: string;
                 limit?: number;
                 contact_id?: string;
@@ -10847,6 +11486,7 @@ export interface operations {
     communications_messages: {
         parameters: {
             query?: {
+                newest_first?: boolean;
                 after?: string;
                 limit?: number;
             };
@@ -11360,6 +12000,9 @@ export interface operations {
     listContacts: {
         parameters: {
             query?: {
+                filter?: string;
+                sort?: string;
+                direction?: string;
                 limit?: number;
                 after?: string;
                 archived?: boolean;
@@ -22943,6 +23586,9 @@ export interface operations {
     listOrganizations: {
         parameters: {
             query?: {
+                filter?: string;
+                sort?: string;
+                direction?: string;
                 limit?: number;
                 after?: string;
                 archived?: boolean;
@@ -25801,6 +26447,308 @@ export interface operations {
             };
         };
     };
+    record_fields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordField"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    record_save_field: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveField"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordField"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    record_views: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordView"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    record_create_view: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveView"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordView"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    record_update_view: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                kind: string;
+                view_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveView"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordView"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    record_delete_view: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                kind: string;
+                view_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteView"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordView"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     scheduling_list: {
         parameters: {
             query?: {
@@ -28613,6 +29561,400 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listVisitors: {
+        parameters: {
+            query?: {
+                after?: string;
+                site_id?: string;
+                contact_id?: string;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    resolveVisitor: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Resolve"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visitor"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listVisitorSites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Site"][];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    saveVisitorSite: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveSite"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Site"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getVisitor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+                visitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Detail"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteVisitor: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                visitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Receipt"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    linkVisitorContact: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                visitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Link"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Visitor"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listVisitorEvents: {
+        parameters: {
+            query?: {
+                after?: string;
+            };
+            header?: never;
+            path: {
+                workspace_id: string;
+                visitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventsPage"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    reviewVisitorMatch: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                visitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Review"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Receipt"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

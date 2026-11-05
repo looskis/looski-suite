@@ -24,12 +24,16 @@
 
 <svelte:head><title>CRM recipe · Forms · Looski</title></svelte:head>
 <h1>CRM inquiry recipe</h1>
-<p>
-  Turn each new submission into a contact association and one CRM inquiry. The
-  original answers are kept unchanged, and public answers never edit an existing
-  contact. Respondents are matched on their exact email or phone: one match is
-  reused, no match creates a contact, and anything ambiguous waits for review.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Turn each new submission into a contact association and one CRM inquiry. The
+    original answers are kept unchanged, and public answers never edit an
+    existing contact. Respondents are matched on their exact email or phone: one
+    match is reused, no match creates a contact, and anything ambiguous waits
+    for review.
+  </p>
+</details>
 {#if form?.message}<p role="alert">{form.message}</p>{/if}
 {#if !data.crmAvailable}
   <p role="status">

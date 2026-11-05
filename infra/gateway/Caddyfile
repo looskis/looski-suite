@@ -37,6 +37,16 @@ import /etc/caddy/web.caddy
   handle @emailFallback {
     import web
   }
+  # Only Google's GET callback is public. OAuth start and PKCE token exchange
+  # run server-side; all other raw Auth endpoints remain private.
+  @googleCallback {
+    method GET
+    path /auth/v1/callback
+  }
+  handle @googleCallback {
+    header Referrer-Policy "no-referrer"
+    reverse_proxy supabase-gateway:8000
+  }
   @private path /auth/v1 /auth/v1/* /rest/v1 /rest/v1/* /storage/v1 /storage/v1/* /pg/*
   handle @private {
     respond "Not found" 404

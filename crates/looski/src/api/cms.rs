@@ -5,9 +5,9 @@ use crate::{
     cms::{
         self, ArchiveContent, ContentEntry, ContentMedia, ContentRevision, ContentType,
         ContentTypePage, CreateEntry, EntryPage, ExpectedVersion, ListContentTypes, ListEntries,
-        ListMedia, MediaContent, MediaPage, PublicIndex, PublicIndexQuery, PublicPage,
-        RegisterMedia, RestoredEntry, RevisionPage, RevisionQuery, SaveContentType, SaveEntry,
-        SaveMedia,
+        ListMedia, MediaContent, MediaPage, PublicContentPage, PublicIndex, PublicIndexQuery,
+        PublicPage, RegisterMedia, RestoredEntry, RevisionPage, RevisionQuery, SaveContentType,
+        SaveEntry, SaveMedia,
     },
     identity::Identity,
 };
@@ -363,6 +363,16 @@ async fn public_index(
         cms::public_index(&state.db, &public_key, query).await?,
     ))
 }
+#[utoipa::path(get,path="/api/v1/public/cms/{public_key}/data",operation_id="getPublicContentData",tag="cms",params(("public_key"=String,Path),PublicIndexQuery),responses((status=200,body=PublicContentPage),(status=400,body=ApiError),(status=404,body=ApiError),(status=429,body=ApiError),(status=503,body=ApiError)))]
+async fn public_data(
+    State(state): State<AppState>,
+    Path(public_key): Path<String>,
+    headers: HeaderMap,
+    Query(query): Query<PublicIndexQuery>,
+) -> Result<Json<PublicContentPage>, Failure> {
+    admit(&state, &headers, "cms.read", 300)?;
+    Ok(Json(cms::public_data(&state.db, &public_key, query).await?))
+}
 #[utoipa::path(get,path="/api/v1/public/cms/{public_key}/entries/{slug}",operation_id="getPublicContentEntry",tag="cms",params(("public_key"=String,Path),("slug"=String,Path)),responses((status=200,body=PublicPage),(status=404,body=ApiError),(status=429,body=ApiError),(status=503,body=ApiError)))]
 async fn public_entry(
     State(state): State<AppState>,
@@ -428,6 +438,7 @@ pub(super) fn routes() -> OpenApiRouter<AppState> {
         .routes(routes!(archive_media))
         .routes(routes!(media_content))
         .routes(routes!(public_index))
+        .routes(routes!(public_data))
         .routes(routes!(public_entry))
         .routes(routes!(public_media))
 }

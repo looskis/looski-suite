@@ -23,6 +23,7 @@ export async function loadPublicIndex(
         ? 'This page does not exist'
         : (result.error?.message ?? unavailable),
     );
+  if (result.data.headless) error(404, 'This page does not exist');
   return { index: result.data, key: event.params.public_key };
 }
 
@@ -44,5 +45,6 @@ export async function loadPublicEntry(
         ? 'This page does not exist'
         : (result.error?.message ?? unavailable),
     );
+  if (result.data.headless) error(404, 'This page does not exist');
   return { page: result.data, key: event.params.public_key };
 }

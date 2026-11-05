@@ -250,7 +250,11 @@ pub(crate) async fn block_module(
         ],
         "forms" => &["forms.crm_inquiry"],
         "communications" => &["communications.send"],
-        "scheduling" => &["scheduling.crm_inquiry", "scheduling.reminder"],
+        "scheduling" => &[
+            "scheduling.crm_inquiry",
+            "scheduling.reminder",
+            "scheduling.calendar",
+        ],
         "projects" => &["projects.deal_conversion"],
         _ => &[],
     };
@@ -275,7 +279,7 @@ async fn modules_ready(
                 vec!["scheduling", "crm"]
             }
         }
-        "scheduling.reminder" => vec!["scheduling"],
+        "scheduling.reminder" | "scheduling.calendar" => vec!["scheduling"],
         "projects.deal_conversion" => vec!["projects", "crm"],
         "mail.notification" => {
             purpose = dao::purpose(db, workspace, id).await?;
@@ -371,7 +375,7 @@ async fn execute(
         "workspace.invitation_email" => "workspace.access.admin",
         "forms.crm_inquiry" => "forms.recipes.manage",
         "scheduling.crm_inquiry" => "scheduling.recipes.manage",
-        "scheduling.reminder" => "scheduling.manage",
+        "scheduling.reminder" | "scheduling.calendar" => "scheduling.manage",
         "projects.deal_conversion" => "projects.recipes.manage",
         "mail.notification" => {
             crate::mail::authority(&dao::purpose(&mut tx, claim.workspace, claim.id).await?)
@@ -390,6 +394,9 @@ async fn execute(
                 &mut tx, &actor, claim.id, mailer,
             )
             .await?
+        }
+        "scheduling.calendar" => {
+            crate::scheduling::calendar::execute(&mut tx, &actor, claim.id).await?
         }
         "forms.crm_inquiry" => crate::forms::recipes::execute(&mut tx, &actor, claim.id).await?,
         "scheduling.crm_inquiry" => crate::scheduling::execute(&mut tx, &actor, claim.id).await?,

@@ -22,9 +22,11 @@ mod invitations;
 mod knowledge;
 mod organizations;
 mod projects;
+mod records;
 mod scheduling;
 mod tags;
 mod time;
+mod visitors;
 use axum::{
     Json, Router,
     extract::State,
@@ -99,7 +101,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 37)
+        .is_ok_and(|version| version == 40)
     };
     let auth = async {
         state
@@ -231,6 +233,7 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .routes(routes!(workspaces))
         .merge(cli_login::routes())
         .merge(contacts::routes())
+        .merge(records::routes())
         .merge(organizations::routes())
         .merge(tags::routes())
         .merge(workspace_access::routes())
@@ -255,6 +258,7 @@ fn documented_routes() -> OpenApiRouter<AppState> {
         .merge(scheduling::routes())
         .merge(helpdesk::routes())
         .merge(communications::routes())
+        .merge(visitors::routes())
 }
 
 pub fn openapi() -> utoipa::openapi::OpenApi {
@@ -560,6 +564,10 @@ async fn request_context(
     response.headers_mut().insert(
         "cache-control",
         axum::http::HeaderValue::from_static("no-store"),
+    );
+    response.headers_mut().insert(
+        "x-robots-tag",
+        axum::http::HeaderValue::from_static("noindex"),
     );
     diagnostics.request(
         id,

@@ -4,10 +4,13 @@
 
 <header><a href="/workspaces">← Workspace</a></header>
 <h1>Background work</h1>
-<p>
-  Blocked or exhausted work requires an explicit resume. Resuming retains the
-  initiating user and rechecks their current permissions.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Blocked or exhausted work requires an explicit resume. Resuming retains the
+    initiating user and rechecks their current permissions.
+  </p>
+</details>
 <ul>
   {#each data.page.items as job}<li>
       <a href={`/workspaces/${data.workspace.id}/jobs/${job.id}`}

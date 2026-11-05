@@ -8,12 +8,15 @@
 <svelte:head><title>New document · Looski</title></svelte:head>
 <header><a href={root}>← Knowledge base</a></header>
 <h1>New document</h1>
-<p>
-  Plain text with <code># headings</code>, <code>**bold**</code>,
-  <code>*italic*</code>, <code>- lists</code> and
-  <code>[links](https://example.com)</code>. Any HTML stays as literal text. To
-  link another document, use the link shown on its page.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Plain text with <code># headings</code>, <code>**bold**</code>,
+    <code>*italic*</code>, <code>- lists</code> and
+    <code>[links](https://example.com)</code>. Any HTML stays as literal text.
+    To link another document, use the link shown on its page.
+  </p>
+</details>
 {#if form?.message}<p role="alert">{form.message}</p>{/if}
 <form method="POST">
   <input type="hidden" name="idempotency_key" value={form?.key ?? data.key} />

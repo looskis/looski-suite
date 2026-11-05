@@ -1,85 +1,66 @@
 <script lang="ts">
+  import { page } from '$app/state';
+  import RecordDrawer from '$lib/components/ui/RecordDrawer.svelte';
+  import RecordViewControls from '$lib/components/RecordViewControls.svelte';
+  import RecordTable from '$lib/components/RecordTable.svelte';
   import OrganizationFields from '$lib/components/OrganizationFields.svelte';
   import type { PageData, ActionData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
-  const nextPage = () =>
-    `?${new URLSearchParams({ search: data.search, ...(data.tagId ? { tag_id: data.tagId } : {}), archived: String(data.archived), after: data.page.next_cursor ?? '' })}`;
+  function nextPage() {
+    const query = new URLSearchParams(page.url.searchParams);
+    query.set('after', data.page.next_cursor ?? '');
+    return `?${query}`;
+  }
 </script>
 
 <svelte:head
   ><title>Organizations · {data.workspace.name} · Looski</title></svelte:head
 >
-<header>
-  <a href={`/workspaces/${data.workspace.id}/tags`}>Tags</a>
-  <a href="/workspaces">← Workspaces</a><span>{data.workspace.name}</span><a
-    href={`/workspaces/${data.workspace.id}/contacts`}>Contacts</a
-  >
-  <form method="POST" action="/logout">
-    <button class="secondary">Sign out</button>
-  </form>
-</header>
-<h1>Organizations you work with.</h1>
-<p class="muted">
-  Connect companies to the people you know and keep their relationship history
-  together.
-</p>
-<section aria-label="Organizations">
-  <div class="toolbar">
-    <h2>{data.archived ? 'Archived organizations' : 'Organizations'}</h2>
-    <a href={data.archived ? '?' : '?archived=true'}
-      >{data.archived
-        ? 'Show active organizations'
-        : 'Show archived organizations'}</a
+<div class="page-heading">
+  <h1>
+    Organizations<span class="count"
+      >{data.page.items.length}{data.page.next_cursor ? ' +' : ''} shown</span
+    >
+  </h1>
+  <div class="page-actions">
+    <RecordDrawer
+      title="New organization"
+      error={Boolean(form?.message && form?.input)}
+      >{#if form?.message}<p role="alert" class="error">{form.message}</p>{/if}
+      <form method="POST" action="?/create">
+        <input
+          type="hidden"
+          name="idempotency_key"
+          value={form?.idempotencyKey ?? data.idempotencyKey}
+        /><OrganizationFields
+          organization={form?.input}
+          fields={data.fields}
+        /><button>Create organization</button>
+      </form></RecordDrawer
     >
   </div>
-  <form method="GET" class="inline">
-    {#if data.tagId}<input type="hidden" name="tag_id" value={data.tagId} /><a
-        href="?">Clear tag filter</a
-      >{/if}
-    <label
-      >Find by name<input
-        name="search"
-        value={data.search}
-        placeholder="Search organizations"
-      /></label
-    ><input
-      type="hidden"
-      name="archived"
-      value={String(data.archived)}
-    /><button>Search</button>
-  </form>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Name</th><th>Website</th></tr></thead><tbody
-        >{#each data.page.items as organization (organization.id)}<tr
-            ><td
-              ><a
-                href={`/workspaces/${data.workspace.id}/organizations/${organization.id}`}
-                >{organization.name}</a
-              ></td
-            ><td>{organization.website_url ?? '—'}</td></tr
-          >{:else}<tr
-            ><td colspan="2"
-              >{data.search
-                ? 'No matching organizations.'
-                : 'No organizations here yet.'}</td
-            ></tr
-          >{/each}</tbody
-      >
-    </table>
-  </div>
-  {#if data.page.next_cursor}<p><a href={nextPage()}>Next page →</a></p>{/if}
-</section>
-<section aria-labelledby="create-heading">
-  <h2 id="create-heading">Add an organization</h2>
-  {#if form?.message}<p role="alert" class="error">{form.message}</p>{/if}
-  <form method="POST" action="?/create">
-    <input
-      type="hidden"
-      name="idempotency_key"
-      value={form?.idempotencyKey ?? data.idempotencyKey}
-    /><OrganizationFields organization={form?.input} /><button
-      >Create organization</button
-    >
-  </form>
-</section>
+</div>
+{#if form?.message && !form?.input}<p role="alert" class="error">
+    {form.message}
+  </p>{/if}
+<RecordViewControls
+  fields={data.fields}
+  views={data.views}
+  config={data.config}
+  viewId={data.viewId}
+  viewKey={data.viewKey}
+  kind="organizations"
+  workspace={data.workspace.id}
+  search={data.search}
+  tagId={data.tagId}
+/>
+<RecordTable
+  items={data.page.items}
+  fields={data.fields}
+  config={data.config}
+  root={`/workspaces/${data.workspace.id}/organizations`}
+/>
+<div class="list-footer">
+  <span>{data.page.items.length} organizations on this page</span
+  >{#if data.page.next_cursor}<a href={nextPage()}>Next page →</a>{/if}
+</div>

@@ -167,16 +167,16 @@
 
 <style>
   .comment {
-    border-top: 1px solid var(--line, #ddd);
-    padding: 10px 0;
+    border-top: 1px solid var(--border-default);
+    padding: var(--space-2-5) 0;
     overflow-wrap: anywhere;
   }
   .comment small {
-    color: var(--muted);
-    margin-left: 6px;
+    color: var(--text-secondary);
+    margin-left: var(--space-1-5);
   }
   .removed {
-    color: var(--muted);
+    color: var(--text-secondary);
     font-style: italic;
   }
   .notes {

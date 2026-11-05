@@ -1,0 +1,9 @@
+{
+  "name": "@looski/visitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./browser.mjs", "./server": "./server.mjs" },
+  "scripts": { "test": "node --test visitor.test.mjs" }
+}

@@ -21,7 +21,6 @@
 
 <svelte:head><title>Submissions · Forms · Looski</title></svelte:head>
 <h1>Submissions</h1>
-<p>Original answers, kept with the form version each respondent answered.</p>
 <section>
   <div class="toolbar">
     <h2>Newest first</h2>

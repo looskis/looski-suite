@@ -1,9 +1,13 @@
 <script lang="ts">
+  import RecordPropertyFields from './RecordPropertyFields.svelte';
+  import type { Field } from '$lib/records';
   import type { components } from '$lib/api/schema';
   let {
     contact,
+    fields,
     allowSharingReview = true,
   }: {
+    fields?: Field[];
     contact?: components['schemas']['ContactInput'];
     allowSharingReview?: boolean;
   } = $props();
@@ -23,7 +27,7 @@
     >Email addresses <textarea
       name="emails"
       rows="3"
-      placeholder="One email address per line"
+      placeholder="Primary email first; secondary emails on following lines"
       autocomplete="off"
       value={contact?.identifiers
         ?.filter((i) => i.kind === 'email')
@@ -63,3 +67,8 @@
     separate contact.</label
   >
 {/if}
+
+{#if fields}<RecordPropertyFields
+    {fields}
+    properties={contact?.properties}
+  />{/if}

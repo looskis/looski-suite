@@ -146,6 +146,32 @@ class SetupConfigurationTests(unittest.TestCase):
         dev.configure_mail(config)
         self.assertEqual(json.loads((state/'auth-mail.json').read_text())['port'],1)
 
+    def test_google_provider_requires_valid_private_credentials(self):
+        state = self.root / '.local/looski-suite'
+        state.mkdir(parents=True)
+        config = {**dev.configuration(), 'LOOSKI_GOOGLE_AUTH_ENABLED': 'true'}
+        path = state / 'google-oauth.json'
+        credential = {'client_id': '123-example.apps.googleusercontent.com', 'client_secret': 'private-google-test-secret'}
+        with self.assertRaises(SystemExit): dev.configure_google(config)
+        path.write_text(json.dumps(credential)); path.chmod(0o644)
+        with self.assertRaises(SystemExit): dev.configure_google(config)
+        path.chmod(0o600)
+        dev.configure_google(config)
+        output = state / 'auth-google.json'
+        self.assertEqual(json.loads(output.read_text()), credential)
+        self.assertEqual(output.stat().st_mode & 0o777, 0o600)
+        for changed in [{'client_id': 'other.invalid'}, {'client_secret': 'secret\nvalue'}, {'client_secret': None}]:
+            path.write_text(json.dumps({**credential, **changed}))
+            with self.assertRaises(SystemExit) as failure: dev.configure_google(config)
+            self.assertNotIn(credential['client_secret'], str(failure.exception))
+            self.assertEqual(json.loads(output.read_text()), credential)
+        path.write_text(json.dumps(credential))
+        dev.configure_google(dev.configuration())
+        self.assertEqual(json.loads(output.read_text()), {})
+        self.assertEqual(json.loads(path.read_text()), credential)
+        with patch.dict(os.environ, {'LOOSKI_GOOGLE_AUTH_ENABLED': 'yes'}), self.assertRaises(SystemExit):
+            dev.configuration()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -69,7 +69,7 @@
   }
   li {
     padding: 1rem 0;
-    border-bottom: 1px solid #dce5de;
+    border-bottom: 1px solid var(--thread-border);
   }
   li p {
     white-space: pre-wrap;
@@ -77,7 +77,7 @@
   }
   small {
     display: block;
-    color: #68786e;
+    color: var(--thread-text);
   }
   form {
     margin-top: 1.5rem;

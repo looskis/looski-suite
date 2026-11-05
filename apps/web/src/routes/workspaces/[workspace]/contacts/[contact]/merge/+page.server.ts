@@ -1,3 +1,4 @@
+import { recordFields } from '$lib/server/record-views';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 import { workspaceClient, requireSameOrigin } from '$lib/server/session';
@@ -59,6 +60,7 @@ export const load: PageServerLoad = async (event) => {
   const survivorTags = await tags(survivor.id);
   const sourceTags = source ? await tags(source.id) : null;
   return {
+    fields: await recordFields(client, workspace.id, 'contacts'),
     survivorTags,
     sourceTags,
     workspace,

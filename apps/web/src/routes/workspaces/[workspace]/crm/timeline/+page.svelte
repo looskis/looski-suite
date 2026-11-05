@@ -15,11 +15,14 @@
   >
 </header>
 <h1>Timeline · {data.page.anchor_name}</h1>
-<p>
-  Newest recorded changes first. Each activity and task requires its own read
-  access. Task history includes work before and after its link to this record;
-  ending a link preserves the history.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Newest recorded changes first. Each activity and task requires its own read
+    access. Task history includes work before and after its link to this record;
+    ending a link preserves the history.
+  </p>
+</details>
 <a href={`?${query}`}>Refresh timeline</a>
 <ol>
   {#each data.page.items as item}<li>
@@ -119,7 +122,7 @@
   }
   li {
     padding-block: 1rem;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--border-subtle);
   }
   ol {
     list-style: none;

@@ -15,15 +15,16 @@
 </script>
 
 <svelte:head><title>Export data · Looski Suite</title></svelte:head>
-<header>
-  <a href="/workspaces">← Workspaces</a><span>{data.workspace.name}</span>
-</header>
+
 <h1>Export data</h1>
-<p>
-  Download the records you can read as JSON. Each download contains up to 25
-  records and a manifest. Follow the next page to continue. Live records can
-  change between pages.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Download the records you can read as JSON. Each download contains up to 25
+    records and a manifest. Follow the next page to continue. Live records can
+    change between pages.
+  </p>
+</details>
 <section>
   <form method="GET">
     <input type="hidden" name="run" value="true" />
@@ -96,6 +97,6 @@
   }
   .button {
     display: inline-block;
-    margin: 12px 12px 12px 0;
+    margin: var(--space-3) var(--space-3) var(--space-3) 0;
   }
 </style>

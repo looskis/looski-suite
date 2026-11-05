@@ -1,8 +1,14 @@
 <script lang="ts">
+  import RecordPropertyFields from './RecordPropertyFields.svelte';
+  import type { Field } from '$lib/records';
   import type { components } from '$lib/api/schema';
   let {
     organization,
-  }: { organization?: components['schemas']['OrganizationInput'] } = $props();
+    fields,
+  }: {
+    fields?: Field[];
+    organization?: components['schemas']['OrganizationInput'];
+  } = $props();
 </script>
 
 <label
@@ -30,3 +36,8 @@
     maxlength="10000"
     value={organization?.notes ?? ''}></textarea></label
 >
+
+{#if fields}<RecordPropertyFields
+    {fields}
+    properties={organization?.properties}
+  />{/if}

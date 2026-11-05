@@ -25,6 +25,8 @@ pub struct IdentifierInput {
 #[derive(Clone, Deserialize, Serialize, JsonSchema, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ContactInput {
+    #[serde(default)]
+    pub properties: Option<serde_json::Map<String, serde_json::Value>>,
     pub display_name: String,
     #[serde(default)]
     pub notes: String,
@@ -58,6 +60,8 @@ pub struct ContactIdentifier {
 }
 #[derive(Deserialize, Serialize, JsonSchema, ToSchema)]
 pub struct Contact {
+    #[serde(default)]
+    pub properties: serde_json::Map<String, serde_json::Value>,
     pub id: Uuid,
     pub display_name: String,
     pub notes: String,
@@ -72,6 +76,9 @@ pub struct Contact {
 #[derive(Default, Deserialize, Serialize, JsonSchema, IntoParams)]
 #[into_params(parameter_in = Query)]
 pub struct ListContacts {
+    pub filter: Option<String>,
+    pub sort: Option<String>,
+    pub direction: Option<String>,
     pub limit: Option<i64>,
     pub after: Option<Uuid>,
     pub archived: Option<bool>,
@@ -174,7 +181,7 @@ fn validate(input: &ContactInput) -> Result<Vec<Identifier>, Error> {
             });
         }
     }
-    identifiers.sort_by(|a, b| (&a.kind, &a.normalized).cmp(&(&b.kind, &b.normalized)));
+    // Input order preserves the explicitly chosen primary identifier. Locks sort separately.
     Ok(identifiers)
 }
 
@@ -328,6 +335,8 @@ async fn create_in_transaction(
         input.allow_shared,
     )
     .await?;
+    crate::records::validate_properties(db, actor.workspace, "contacts", input.properties.as_ref())
+        .await?;
     let id = dao::insert(db, actor.workspace, authority.owner, input).await?;
     dao::set_identifiers(db, actor.workspace, id, &identifiers).await?;
     reliability::audit(
@@ -426,6 +435,13 @@ pub async fn edit(
         &identifiers,
         &[&existing],
         input.contact.allow_shared,
+    )
+    .await?;
+    crate::records::validate_properties(
+        &mut tx,
+        workspace,
+        "contacts",
+        input.contact.properties.as_ref(),
     )
     .await?;
     dao::update(&mut tx, workspace, id, owner, &input.contact).await?;
@@ -544,6 +560,7 @@ pub async fn merge(
     let target = dao::get(&mut tx, workspace, survivor, &read, false).await?;
     for contact in [&source, &target] {
         let preserved = validate(&ContactInput {
+            properties: None,
             display_name: contact.display_name.clone(),
             notes: String::new(),
             identifiers: contact
@@ -573,7 +590,7 @@ pub async fn merge(
             "Merged contact would exceed the supported limit of 20 identifiers; no records were changed",
         ));
     }
-    identifiers.sort_by(|a, b| (&a.kind, &a.normalized).cmp(&(&b.kind, &b.normalized)));
+    // Input order preserves the explicitly chosen primary identifier. Locks sort separately.
     dao::lock_identifiers(&mut tx, workspace, &identifiers).await?;
     let mut ids = [survivor, input.source_id];
     ids.sort();
@@ -607,6 +624,13 @@ pub async fn merge(
         &identifiers,
         &[&source, &target],
         input.resolved.allow_shared,
+    )
+    .await?;
+    crate::records::validate_properties(
+        &mut tx,
+        workspace,
+        "contacts",
+        input.resolved.properties.as_ref(),
     )
     .await?;
     dao::update(&mut tx, workspace, survivor, owner, &input.resolved).await?;

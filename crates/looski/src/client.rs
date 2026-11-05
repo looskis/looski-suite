@@ -7,6 +7,7 @@ mod knowledge;
 mod projects;
 mod scheduling;
 mod time;
+mod visitors;
 
 #[derive(Debug, serde::Serialize)]
 pub struct ApiFailure {

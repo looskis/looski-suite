@@ -40,6 +40,7 @@ pub struct Permission {
 /// Only implemented actions are assignable. Adding a permission never grants it implicitly.
 fn supported() -> Vec<Permission> {
     let workspace = [
+        "records.fields.manage",
         "communications.configure",
         "workspace.data.export",
         "tasks.configuration.read",

@@ -1,106 +1,186 @@
 <script lang="ts">
+  import BrandLogo from './BrandLogo.svelte';
+  import BrandFooter from './BrandFooter.svelte';
+  import Icon from './Icon.svelte';
+  import { brand } from '$lib/brand';
   let { children } = $props();
 </script>
 
-<div class="auth-frame">
-  <header>
-    <a class="brand" href="/"
-      ><span class="brand-mark">l</span>looski<span>suite</span></a
-    ><a class="back" href="/">← Back to home</a>
-  </header>
-  <div class="auth-content">
-    <aside>
-      <p class="eyebrow">YOUR BUSINESS, TOGETHER</p>
-      <h2>A place for<br />good work.</h2>
-      <p>
-        Your people, your plans, your next step.<br />Pick up where you left
-        off.
-      </p>
-      <div class="auth-art" aria-hidden="true">
-        <span></span><span></span><span></span>
+<div class="brand-surface auth-frame">
+  <a class="brand-skip" href="#auth-content">Skip to sign in</a>
+  <div class="auth-layout">
+    <aside class="auth-story">
+      <BrandLogo inverse />
+      <div class="story-copy">
+        <p class="brand-kicker">A little less scattered.</p>
+        <h2>Your people.<br />Your possibilities.<br /><em>Your place.</em></h2>
+        <p>
+          All the moving parts of your business.<br />A shared home to move them
+          forward.
+        </p>
+        <div class="brand-art" aria-hidden="true">
+          <div class="mark-glow"></div>
+          <img
+            src="/brand/looski-mark.svg"
+            alt=""
+            width="180"
+            height="180"
+          /><span class="art-label people"
+            ><Icon name="people" size={16} />Relationships</span
+          ><span class="art-label projects"
+            ><Icon name="board" size={16} />Projects</span
+          ><span class="art-label ideas"
+            ><Icon name="book" size={16} />Knowledge</span
+          >
+        </div>
       </div>
-      <small>Independent tools. One shared home.</small>
+      <a class="story-footer" href={brand.website}
+        ><span>Open source. Built for your kind of business.</span><span
+          >Discover Looski ↗</span
+        ></a
+      >
     </aside>
-    <div class="auth-card">{@render children()}</div>
+    <div class="auth-entry" id="auth-content">
+      <div class="entry-note"><span></span>Your workspace is waiting</div>
+      <div class="auth-card">{@render children()}</div>
+      <p class="ownership-note">
+        <Icon name="access" size={15} />Your infrastructure. Your data. Your
+        call.
+      </p>
+    </div>
   </div>
-  <footer>Looski Suite · Business software, on your terms.</footer>
+  <BrandFooter compact />
 </div>
 
 <style>
-  .auth-frame {
-    max-width: 1160px;
-    padding: 0 40px;
-    margin: auto;
-  }
-  header {
-    min-height: 96px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--line);
-  }
-  .brand > span:last-child {
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--muted);
-    letter-spacing: 0;
-  }
-  .back {
-    font-size: 12px;
-    color: var(--muted);
-    text-decoration: none;
-  }
-  .auth-content {
-    min-height: calc(100dvh - 170px);
+  .auth-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-items: center;
-    gap: 72px;
-    padding: 56px 30px;
+    grid-template-columns: 1.05fr 1fr;
+    min-height: calc(100dvh - 80px);
   }
-  aside h2 {
-    font-size: clamp(38px, 4.5vw, 58px);
-    font-weight: 550;
-    letter-spacing: -0.05em;
-    line-height: 1.12;
-    margin: 24px 0;
+  .auth-story {
+    background: var(--brand-glow), var(--brand-night);
+    color: var(--brand-night-text);
+    padding: 38px clamp(28px, 5.5vw, 90px) 30px;
+    display: flex;
+    flex-direction: column;
   }
-  aside > p:not(.eyebrow) {
+  .story-copy {
+    margin-block: auto;
+    padding: 55px 0 18px;
+  }
+  .brand-kicker {
+    color: var(--brand-mint);
+    margin: 0 0 20px;
+  }
+  h2 {
+    color: var(--brand-night-text);
+    font-size: clamp(43px, 4.5vw, 67px);
+    line-height: 1.04;
+    margin: 0;
+  }
+  h2 em {
+    color: #c8d5df;
+  }
+  .story-copy > p:not(.brand-kicker) {
     font-size: 15px;
-    color: var(--muted);
+    color: var(--brand-night-muted);
+    margin: 24px 0 0;
   }
-  aside small {
-    font-size: 11px;
+  .brand-art {
+    height: 245px;
+    position: relative;
+    max-width: 390px;
+    display: grid;
+    place-items: center;
+    margin-top: 20px;
   }
-  .auth-art {
+  .brand-art img {
+    transform: rotate(-7deg);
+    opacity: 0.85;
+  }
+  .mark-glow {
+    position: absolute;
+    inset: 10% 10%;
+    background: conic-gradient(
+      from 30deg,
+      #75b4ff20,
+      #9ee5ce20,
+      #f8d67b15,
+      #f3a7c720,
+      #be9de620,
+      #75b4ff20
+    );
+    filter: blur(35px);
+    border-radius: 50%;
+  }
+  .art-label {
+    position: absolute;
     display: flex;
     align-items: center;
-    padding: 30px 0;
+    gap: 9px;
+    padding: 12px 15px;
+    border: 1px solid var(--brand-night-line);
+    border-radius: 10px;
+    font-size: 11px;
+    color: var(--brand-night-text);
+    background: var(--brand-night-raised);
+    box-shadow: 0 8px 24px #0003;
   }
-  .auth-art span {
-    width: 64px;
-    height: 64px;
-    background: #dbe9e0;
-    border: 5px solid var(--canvas);
-    border-radius: 18px;
-    transform: rotate(-10deg);
+  .people {
+    left: 0;
+    top: 35px;
   }
-  .auth-art span + span {
-    margin-left: -14px;
-    background: #e8e6d9;
-    transform: rotate(5deg);
+  .projects {
+    right: 0;
+    top: 100px;
   }
-  .auth-art span:last-child {
-    background: #dce5ed;
-    transform: rotate(18deg);
+  .ideas {
+    left: 28px;
+    bottom: 22px;
+  }
+  .story-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: var(--brand-night-muted);
+    text-decoration: none;
+    font-size: 10px;
+    border-top: 1px solid var(--brand-night-line);
+    padding-top: 22px;
+  }
+  .story-footer span:last-child {
+    color: var(--brand-night-text);
+  }
+  .story-footer:hover span:last-child {
+    text-decoration: underline;
+  }
+  .auth-entry {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 65px 35px;
+  }
+  .entry-note {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 30px;
+    font: 9px var(--brand-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--brand-muted);
+  }
+  .entry-note > span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #4e8767;
   }
   .auth-card {
-    background: white;
-    padding: 36px;
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    box-shadow: var(--shadow);
-    min-width: 0;
+    width: 100%;
+    max-width: 390px;
   }
   :global(.auth-card main) {
     margin: 0;
@@ -108,70 +188,96 @@
     max-width: none;
   }
   :global(.auth-card h1) {
-    font-size: 27px;
-    margin: 10px 0;
+    font-size: 35px;
+    line-height: 1.15;
+    margin: 0 0 14px;
   }
   :global(.auth-card p) {
     font-size: 13px;
-    color: var(--muted);
+    color: var(--brand-muted);
   }
   :global(.auth-card .eyebrow) {
-    color: var(--accent);
-    font-size: 10px;
+    font: 500 10px var(--brand-mono);
+    color: var(--brand-muted);
+    letter-spacing: 0.08em;
+    margin: 0 0 15px;
   }
   :global(.auth-card label) {
-    margin-bottom: 7px;
+    margin-top: 22px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 500;
   }
   :global(.auth-card button) {
     width: 100%;
     margin-top: 22px;
-    justify-content: space-between;
+    justify-content: center;
   }
   :global(.auth-card .help) {
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--brand-line);
     padding-top: 20px;
-    margin-top: 24px;
+    margin-top: 25px;
     font-size: 11px;
+    line-height: 1.7;
   }
   :global(.auth-card a) {
     font-size: 12px;
   }
   :global(.auth-card .error) {
-    color: #953b31;
+    color: var(--error-text);
   }
-  footer {
-    min-height: 74px;
-    padding: 24px 0;
-    font-size: 11px;
-    color: var(--muted);
-    border-top: 1px solid var(--line);
+  .ownership-note {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    color: var(--brand-muted);
+    font-size: 10px;
+    margin: 30px 0 0;
   }
-  @media (max-width: 800px) {
-    .auth-content {
-      padding-inline: 0;
-      gap: 30px;
-    }
-    .auth-card {
-      padding: 28px;
+  @media (min-width: 1500px) {
+    .auth-story {
+      padding-inline: max(70px, calc((100vw - 1280px) / 2));
     }
   }
-  @media (max-width: 620px) {
-    .auth-frame {
-      padding: 0 22px;
+  @media (max-width: 900px) {
+    .auth-story {
+      padding-inline: 28px;
     }
-    header {
-      min-height: 80px;
+    h2 {
+      font-size: 45px;
     }
-    aside {
-      display: none;
+    .auth-entry {
+      padding-inline: 28px;
     }
-    .auth-content {
+    .brand-art {
+      max-width: 300px;
+    }
+    .art-label {
+      padding: 10px;
+      font-size: 9px;
+    }
+  }
+  @media (max-width: 650px) {
+    .auth-layout {
       display: block;
       min-height: auto;
-      padding: 40px 0;
     }
-    .auth-card {
-      padding: 26px 22px;
+    .auth-story {
+      padding: 24px;
+    }
+    .story-copy,
+    .story-footer {
+      display: none;
+    }
+    .auth-entry {
+      padding: 35px 24px 40px;
+      min-height: calc(100dvh - 220px);
+    }
+    .entry-note {
+      margin-bottom: 28px;
+    }
+    :global(.auth-card h1) {
+      font-size: 32px;
     }
   }
 </style>

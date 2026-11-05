@@ -34,4 +34,8 @@ if [ "${LOOSKI_DIAGNOSTICS_MODE:-disabled}" = local ]; then
     export LOOSKI_DIAGNOSTICS_KEY_FILE=/run/looski/diagnostics_key
   fi
 fi
+if [ -n "${LOOSKI_CALENDARS_CONFIG_FILE:-}" ]; then
+    install -D -o 10001 -g 10001 -m 0400 "$LOOSKI_CALENDARS_CONFIG_FILE" /run/looski/calendars.json
+    export LOOSKI_CALENDARS_CONFIG_FILE=/run/looski/calendars.json
+fi
 exec setpriv --reuid=10001 --regid=10001 --clear-groups --no-new-privs looski "$@"

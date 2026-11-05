@@ -6,10 +6,15 @@ use crate::{
 };
 use sqlx::{PgConnection, Row, postgres::PgRow};
 use uuid::Uuid;
-const COLUMNS: &str = r#"o.id,o.name,o.website_url,o.notes,o.owner_membership_id,o.archived_at IS NOT NULL AS archived,o.version,
+const COLUMNS: &str = r#"o.properties,o.id,o.name,o.website_url,o.notes,o.owner_membership_id,o.archived_at IS NOT NULL AS archived,o.version,
  o.created_at::text,o.updated_at::text"#;
 fn decode(row: PgRow) -> Result<Organization, Error> {
     Ok(Organization {
+        properties: row
+            .try_get::<sqlx::types::Json<serde_json::Map<String, serde_json::Value>>, _>(
+                "properties",
+            )?
+            .0,
         id: row.try_get("id")?,
         name: row.try_get("name")?,
         website_url: row.try_get("website_url")?,
@@ -54,31 +59,62 @@ pub(super) async fn list(
     if let Some(cursor) = query.after {
         get(db, workspace, cursor, access, false).await?;
     }
-    let sql = format!(
-        "SELECT {COLUMNS} FROM contacts.organizations o WHERE o.workspace_id=$1 AND ($2 OR o.owner_membership_id=$3) AND (o.archived_at IS NOT NULL)=$4 AND ($5::uuid IS NULL OR (o.created_at,o.id)>(SELECT created_at,id FROM contacts.organizations WHERE workspace_id=$1 AND id=$5)) AND ($6::text IS NULL OR strpos(lower(o.name),lower($6))>0) AND ($8::uuid IS NULL OR EXISTS(SELECT 1 FROM contacts.organization_tags t WHERE t.workspace_id=o.workspace_id AND t.organization_id=o.id AND t.tag_id=$8)) ORDER BY o.created_at,o.id LIMIT $7"
-    );
-    sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
-        .bind(workspace)
-        .bind(access.workspace_wide)
-        .bind(access.membership_id)
-        .bind(query.archived.unwrap_or(false))
-        .bind(query.after)
-        .bind(&query.search)
-        .bind(limit)
-        .bind(query.tag_id)
+    let fields = crate::records::definitions(db, workspace, "organizations").await?;
+    let filter = query
+        .filter
+        .as_ref()
+        .map(|s| {
+            if s.len() > 16384 {
+                return Err(Error::Invalid("Filter is too large"));
+            }
+            serde_json::from_str::<crate::records::Filter>(s)
+                .map_err(|_| Error::Invalid("Invalid filter expression"))
+        })
+        .transpose()?;
+    if let Some(f) = &filter {
+        crate::records::validate_filter(f, &fields)?;
+    }
+    let columns = COLUMNS.replace("o.", "r.");
+    let mut sql = sqlx::QueryBuilder::<sqlx::Postgres>::new(format!(
+        "SELECT {columns} FROM contacts.organizations r WHERE r.workspace_id="
+    ));
+    sql.push_bind(workspace)
+        .push(" AND (")
+        .push_bind(access.workspace_wide)
+        .push(" OR r.owner_membership_id=")
+        .push_bind(access.membership_id)
+        .push(") AND (r.archived_at IS NOT NULL)=")
+        .push_bind(query.archived.unwrap_or(false));
+
+    if let Some(search) = &query.search {
+        sql.push(" AND strpos(lower(r.name),lower(")
+            .push_bind(search.clone())
+            .push("))>0");
+    }
+    if let Some(tag) = query.tag_id {
+        sql.push(" AND EXISTS(SELECT 1 FROM contacts.organization_tags t WHERE t.workspace_id=r.workspace_id AND t.organization_id=r.id AND t.tag_id=").push_bind(tag).push(")");
+    }
+    if let Some(f) = &filter {
+        sql.push(" AND ");
+        crate::records::append_filter(&mut sql, "organizations", &fields, f);
+    }
+    crate::records::append_sort(&mut sql, "organizations", &fields, query, workspace)?;
+    sql.push(" LIMIT ").push_bind(limit);
+    sql.build()
         .fetch_all(db)
         .await?
         .into_iter()
         .map(decode)
         .collect()
 }
+
 pub(super) async fn insert(
     db: &mut PgConnection,
     workspace: Uuid,
     owner: Uuid,
     input: &OrganizationInput,
 ) -> Result<Uuid, Error> {
-    Ok(sqlx::query_scalar("INSERT INTO contacts.organizations(workspace_id,name,website_url,notes,owner_membership_id) VALUES($1,$2,$3,$4,$5) RETURNING id").bind(workspace).bind(input.name.trim()).bind(&input.website_url).bind(&input.notes).bind(owner).fetch_one(db).await?)
+    Ok(sqlx::query_scalar("INSERT INTO contacts.organizations(workspace_id,name,website_url,notes,owner_membership_id,properties) VALUES($1,$2,$3,$4,$5,$6) RETURNING id").bind(workspace).bind(input.name.trim()).bind(&input.website_url).bind(&input.notes).bind(owner).bind(sqlx::types::Json(input.properties.clone().unwrap_or_default())).fetch_one(db).await?)
 }
 pub(super) async fn update(
     db: &mut PgConnection,
@@ -87,7 +123,7 @@ pub(super) async fn update(
     owner: Uuid,
     input: &OrganizationInput,
 ) -> Result<(), Error> {
-    sqlx::query("UPDATE contacts.organizations SET name=$3,website_url=$4,notes=$5,owner_membership_id=$6,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2").bind(workspace).bind(id).bind(input.name.trim()).bind(&input.website_url).bind(&input.notes).bind(owner).execute(db).await?;
+    sqlx::query("UPDATE contacts.organizations SET name=$3,website_url=$4,notes=$5,owner_membership_id=$6,properties=COALESCE($7,properties),version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2").bind(workspace).bind(id).bind(input.name.trim()).bind(&input.website_url).bind(&input.notes).bind(owner).bind(input.properties.as_ref().map(sqlx::types::Json)).execute(db).await?;
     Ok(())
 }
 pub(super) async fn archive(

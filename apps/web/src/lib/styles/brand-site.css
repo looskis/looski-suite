@@ -1,0 +1,153 @@
+/* Looski's public brand, shared with looski-v2. Fonts are served locally. */
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/space-grotesk-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/instrument-serif-italic-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
+}
+.brand-surface {
+  --font-family-sans: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --brand-serif: 'Instrument Serif', Georgia, serif;
+  --brand-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --brand-paper: #f6f5f1;
+  --brand-ink: #192329;
+  --brand-muted: #626c73;
+  --brand-line: #dedfd9;
+  --brand-night: #080b0e;
+  --brand-night-raised: #11191e;
+  --brand-night-text: #eef1f5;
+  --brand-night-muted: #aab7c2;
+  --brand-night-line: #ffffff20;
+  --brand-mint: #a0e2ca;
+  --brand-blue: #75b4ff;
+  --brand-violet: #be9de6;
+  --brand-amber: #f8d67b;
+  --brand-spectrum: linear-gradient(
+    115deg,
+    #75b4ff,
+    #9ee5ce,
+    #f8d67b,
+    #f3a7c7,
+    #be9de6
+  );
+  --brand-glow: radial-gradient(ellipse at 80% 40%, #1a2a3a80, transparent 65%);
+  --brand-radius: 18px;
+  --brand-gutter: clamp(20px, 5vw, 72px);
+  /* Re-declare derived tokens at this theme boundary. */
+  --accent: #0866e8;
+  --accent-hover: #0759ca;
+  --accent-subtle: #edf3fc;
+  --text-on-accent: #fff;
+  --surface-canvas: var(--brand-paper);
+  --surface-panel: #fff;
+  --surface-input: var(--surface-panel);
+  --surface-hover: #edf0f3;
+  --text-primary: var(--brand-ink);
+  --text-secondary: var(--brand-muted);
+  --border-default: var(--brand-line);
+  --border-input: #cdd2d7;
+  --focus-ring: #457ac3;
+  --focus-shadow: 0 0 0 3px #2459a620;
+  --control-height: 48px;
+  --control-radius: 9px;
+  --button-radius: 9px;
+  --shadow-button-hover: 0 4px 16px #0866e81a;
+  min-height: 100dvh;
+  color: var(--brand-ink);
+  background: var(--brand-paper);
+  font-family: var(--font-family-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.brand-surface h1,
+.brand-surface h2,
+.brand-surface h3 {
+  font-weight: 500;
+  letter-spacing: -0.045em;
+}
+.brand-surface h1 em,
+.brand-surface h2 em {
+  font-family: var(--brand-serif);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+.brand-container {
+  width: min(1280px, 100%);
+  margin-inline: auto;
+  padding-inline: var(--brand-gutter);
+}
+.brand-kicker {
+  font: 500 10px/1.6 var(--brand-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.brand-pill {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 13px 22px;
+  border: 1px solid transparent;
+  border-radius: 50px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font: 500 14px/1.4 var(--font-family-sans);
+  text-decoration: none;
+  transition:
+    background var(--duration-fast),
+    transform var(--duration-fast);
+}
+.brand-pill:hover {
+  color: var(--text-on-accent);
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+.brand-pill.mint {
+  background: var(--brand-mint);
+  color: var(--brand-ink);
+}
+.brand-pill.mint:hover {
+  background: #b8ecd9;
+}
+.brand-link {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 14px;
+  text-decoration: none;
+}
+.brand-link:hover {
+  text-decoration: underline;
+}
+.brand-surface .brand-skip {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 100;
+  padding: 12px 18px;
+  background: var(--surface-panel);
+  transform: translateY(-200%);
+}
+.brand-surface .brand-skip:focus {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-pill:hover {
+    transform: none;
+  }
+}

@@ -18,11 +18,14 @@
 <svelte:head><title>Revisions · Looski</title></svelte:head>
 <header><a href={root}>← {data.document.title}</a></header>
 <h1>Revisions</h1>
-<p>
-  Every saved change is kept. Restoring copies a revision into a new one and
-  changes nothing in this history. Revisions written in a collection you cannot
-  reach are not listed, so numbers may skip.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Every saved change is kept. Restoring copies a revision into a new one and
+    changes nothing in this history. Revisions written in a collection you
+    cannot reach are not listed, so numbers may skip.
+  </p>
+</details>
 {#if form?.message}<p role="alert">{form.message}</p>{/if}
 <div class="table-wrap">
   <table>

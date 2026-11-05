@@ -1,3 +1,4 @@
+import { recordProperties } from './record-views';
 import type { components } from '$lib/api/schema';
 
 export function contactForm(
@@ -12,6 +13,7 @@ export function contactForm(
       .map((value) => ({ kind: 'phone', value: value.trim() })),
   ].filter((item) => item.value);
   return {
+    properties: recordProperties(form),
     display_name: String(form.get('display_name') ?? ''),
     notes: String(form.get('notes') ?? ''),
     identifiers,

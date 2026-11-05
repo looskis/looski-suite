@@ -170,11 +170,11 @@
   }
   .conversation li {
     padding: 1rem;
-    border-bottom: 1px solid #dce5de;
+    border-bottom: 1px solid var(--thread-border);
   }
   .private-note {
-    background: #fff8e5;
-    border-left: 3px solid #d5a83f;
+    background: var(--note-background);
+    border-left: 3px solid var(--note-border);
   }
   .body {
     white-space: pre-wrap;
@@ -182,7 +182,7 @@
   }
   small {
     display: block;
-    color: #68786e;
+    color: var(--thread-text);
     margin-top: 0.3rem;
   }
 </style>

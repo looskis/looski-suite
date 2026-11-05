@@ -21,6 +21,7 @@ pub(crate) const APPLICATIONS: &[(&str, &str)] = &[
     ("helpdesk", "Helpdesk"),
     ("time", "Time tracking"),
     ("scheduling", "Scheduling"),
+    ("visitors", "Visitors"),
 ];
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct Module {

@@ -8,11 +8,14 @@
 
 <svelte:head><title>Notifications · Forms · Looski</title></svelte:head>
 <h1>Notifications</h1>
-<p>
-  Chosen members receive an email for each new response, with a link to read it
-  in the suite. The email holds no answers. Recipients must be able to read
-  submissions, and each delivery rechecks that.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Chosen members receive an email for each new response, with a link to read
+    it in the suite. The email holds no answers. Recipients must be able to read
+    submissions, and each delivery rechecks that.
+  </p>
+</details>
 {#if form?.message}<p role="alert">{form.message}</p>{/if}
 <section>
   <h2>Recipients for {data.form.name}</h2>

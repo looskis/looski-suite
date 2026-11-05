@@ -6,10 +6,6 @@
 
 <header><a href={`/workspaces/${data.workspace.id}/tasks`}>← Tasks</a></header>
 <h1>Task types</h1>
-<p>
-  Choose the names and classification that fit your business. Retiring a type
-  preserves its tasks and history.
-</p>
 {#if form?.message}<p role="alert" class="error">{form.message}</p>{/if}
 <a href={`?archived=${!data.archived}`}
   >{data.archived ? 'Show active' : 'Show archived'}</a
@@ -26,20 +22,22 @@
       >More types →</a
     >{/if}
 </section>
-<section>
-  <h2>Create a type</h2>
-  <form method="POST">
-    <input
-      type="hidden"
-      name="idempotency_key"
-      value={form?.draft?.key ?? data.key}
-    /><TaskTypeFields
-      fields={form?.draft ?? {
-        name: '',
+<details class="creation-panel" open={Boolean(form?.message)}>
+  <summary>Create a type</summary>
+  <div class="creation-content">
+    <form method="POST">
+      <input
+        type="hidden"
+        name="idempotency_key"
+        value={form?.draft?.key ?? data.key}
+      /><TaskTypeFields
+        fields={form?.draft ?? {
+          name: '',
 
-        position: 0,
-        archived: false,
-      }}
-    /><button>Create type</button>
-  </form>
-</section>
+          position: 0,
+          archived: false,
+        }}
+      /><button>Create type</button>
+    </form>
+  </div>
+</details>

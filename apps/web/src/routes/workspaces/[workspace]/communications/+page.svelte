@@ -1,175 +1,196 @@
 <script lang="ts">
-  import type { PageData, ActionData } from './$types';
-  let { data, form }: { data: PageData; form: ActionData } = $props();
-  const root = $derived(`/workspaces/${data.workspace.id}/communications`);
+  import { shortDate } from '$lib/format';
+  import type { PageData } from './$types';
+  let { data }: { data: PageData } = $props();
+  const root = $derived(`/workspaces/${data.workspace.id}`);
 </script>
 
-<svelte:head><title>Communications · Looski</title></svelte:head>
-<header>
-  <h1>Communications</h1>
-  <span>{data.workspace.name}</span>
-</header>
-<p>Customer conversations across your connected accounts.</p>
-{#if form?.message}<p role="alert" class="error">
-    {form.message} <a href={root}>Reload</a>
+<svelte:head><title>Inbox · {data.workspace.name} · Looski</title></svelte:head>
+<div class="page-heading">
+  <h1>Inbox</h1>
+  <a class="button secondary" href={`${root}/settings/connections`}
+    >Manage connections</a
+  >
+</div>
+<nav class="view-tabs">
+  <a href="?" aria-current={!data.archived ? 'page' : undefined}
+    >Conversations</a
+  ><a href="?archived=true" aria-current={data.archived ? 'page' : undefined}
+    >Archived</a
+  >
+</nav>
+{#if data.contact_id}<p class="muted">
+    Filtered to one contact. <a href="?">Show all conversations</a>
   </p>{/if}
-{#if data.conversations}
-  <section>
-    <div class="section-heading">
-      <h2>{data.archived ? 'Archived conversations' : 'Inbox'}</h2>
-      <a href={`?archived=${!data.archived}`}
-        >{data.archived ? 'Show active' : 'Show archived'}</a
-      >
-    </div>
-    {#if data.contact_id}<p>
-        Showing conversations linked to this contact. <a href={root}>Show all</a
+<form class="inbox-filters" method="GET" role="search">
+  <input
+    type="hidden"
+    name="archived"
+    value={String(data.archived)}
+  />{#if data.contact_id}<input
+      type="hidden"
+      name="contact_id"
+      value={data.contact_id}
+    />{/if}<label class="sr-only" for="inbox-search">Search conversations</label
+  ><input
+    id="inbox-search"
+    name="search"
+    type="search"
+    maxlength="200"
+    value={data.search}
+    placeholder="Search conversations…"
+  /><label class="sr-only" for="inbox-account">Account</label><select
+    id="inbox-account"
+    name="account_id"
+    value={data.accountId}
+    ><option value="">All accounts</option
+    >{#each data.accounts as account}<option value={account.id}
+        >{account.name}</option
+      >{/each}</select
+  ><button class="secondary">Filter</button>
+</form>
+{#if data.conversations}<div class="inbox-list">
+    {#each data.conversations.items as conversation}<a
+        class="conversation-row"
+        href={`${root}/communications/${conversation.id}`}
+        ><span class="conversation-avatar" aria-hidden="true"
+          >{(conversation.subject || conversation.channel)
+            .slice(0, 2)
+            .toUpperCase()}</span
+        ><span class="conversation-copy"
+          ><strong>{conversation.subject || 'Untitled conversation'}</strong
+          ><span
+            >{data.accounts.find((a) => a.id === conversation.account_id)
+              ?.name ?? 'Connected account'}
+            <span class="channel">{conversation.channel}</span></span
+          ></span
+        ><span class="conversation-meta"
+          ><time datetime={conversation.updated_at}
+            >{shortDate(conversation.updated_at)}</time
+          ><span aria-hidden="true">↗</span></span
+        ></a
+      >{:else}<div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">↗</span><strong
+          >{data.archived
+            ? 'No archived conversations'
+            : 'Your inbox is ready'}</strong
         >
-      </p>{/if}
-    <div class="table-wrap">
-      <table>
-        <thead
-          ><tr
-            ><th>Conversation</th><th>Channel</th><th>Account</th><th
-              >Last activity</th
-            ></tr
-          ></thead
-        ><tbody>
-          {#each data.conversations.items as c}<tr
-              ><td
-                ><a href={`${root}/${c.id}`}
-                  >{c.subject || c.provider_thread_id}</a
-                ></td
-              ><td>{c.channel}</td><td
-                >{data.accounts.find((a) => a.id === c.account_id)?.name ??
-                  'Connected account'}</td
-              ><td>{c.updated_at}</td></tr
-            >
-          {:else}<tr
-              ><td colspan="4"
-                >No conversations yet. Connect an account below; incoming
-                messages will appear here.</td
-              ></tr
-            >{/each}
-        </tbody>
-      </table>
-    </div>
-    {#if data.conversations.next_cursor}<a
-        href={`?${new URLSearchParams({ after: data.conversations.next_cursor, archived: String(data.archived), ...(data.contact_id ? { contact_id: data.contact_id } : {}) })}`}
+        <p>
+          {data.archived
+            ? 'Archived conversations will appear here.'
+            : 'Messages from your connected accounts will appear here.'}
+        </p>
+        {#if !data.archived}<a
+            class="button secondary"
+            href={`${root}/settings/connections`}>Connect an account</a
+          >{/if}
+      </div>{/each}
+  </div>
+  <div class="list-footer">
+    <span>{data.conversations.items.length} conversations on this page</span
+    >{#if data.conversations.next_cursor}<a
+        href={`?${new URLSearchParams({ after: data.conversations.next_cursor, search: data.search, account_id: data.accountId, archived: String(data.archived), ...(data.contact_id ? { contact_id: data.contact_id } : {}) })}`}
         >Next page →</a
       >{/if}
-  </section>
-  <section>
-    <h2>Connected accounts</h2>
-    {#each data.accounts as a}<article>
-        <h3>{a.name}</h3>
-        <p>
-          {a.capabilities.channels.join(', ')} · {a.shared
-            ? 'Shared with authorized staff'
-            : 'Private to owner'} · {a.enabled ? 'Active' : 'Paused'}
-        </p>
-        {#if a.sync_error}<p role="alert">
-            Connection needs attention. Check the connector and refresh.
-          </p>{/if}
-        <form method="POST" action="?/account">
-          <input type="hidden" name="id" value={a.id} /><input
-            type="hidden"
-            name="idempotency_key"
-            value={data.key + a.id}
-          /><input type="hidden" name="expected_version" value={a.version} />
-          <label
-            >Name<input
-              name="name"
-              value={a.name}
-              required
-              maxlength="120"
-            /></label
-          >
-          <label
-            ><input type="checkbox" name="enabled" checked={a.enabled} /> Receive
-            and send messages</label
-          >
-          <label
-            ><input type="checkbox" name="shared" checked={a.shared} /> Share with
-            staff who have Communications access</label
-          >
-          <button class="secondary">Save connection</button>
-        </form>
-        <form method="POST" action="?/sync">
-          <input type="hidden" name="id" value={a.id} /><button
-            class="secondary"
-            disabled={!a.enabled}>Refresh messages</button
-          >
-        </form>
-      </article>{/each}
-  </section>
-  <section>
-    <h2>Connect an account</h2>
-    <p>
-      Your administrator supplies a connection key after configuring Blueski or
-      another connector. New connections are private unless you share them.
-    </p>
-    <form method="POST" action="?/connect">
-      <input
-        type="hidden"
-        name="idempotency_key"
-        value={form?.key ?? data.key}
-      />
-      <label
-        >Name<input
-          name="name"
-          value={form?.input?.name ?? ''}
-          required
-          maxlength="120"
-          placeholder="Customer messages"
-        /></label
-      >
-      <label
-        >Connection key<input
-          name="connector_key"
-          value={form?.input?.connector_key ?? ''}
-          required
-          maxlength="120"
-        /></label
-      >
-      <label
-        ><input
-          type="checkbox"
-          name="shared"
-          checked={form?.input?.shared ?? false}
-        /> Share with authorized staff</label
-      >
-      <button>Connect account</button>
-    </form>
-  </section>
-{:else}<section>
-    <h2>Communications is turned off</h2>
-    <p>Enable it to connect accounts and manage conversations.</p>
-  </section>{/if}
-{#if data.module}<section>
-    <h2>Application selection</h2>
-    <form method="POST" action="?/module">
-      <input type="hidden" name="idempotency_key" value={data.key} /><input
-        type="hidden"
-        name="expected_version"
-        value={data.module.version}
-      /><input
-        type="hidden"
-        name="enabled"
-        value={String(!data.module.enabled)}
-      /><button class="secondary"
-        >{data.module.enabled
-          ? 'Turn off Communications'
-          : 'Turn on Communications'}</button
-      >
-    </form>
-  </section>{/if}
+  </div>
+{:else}<div class="empty-state">
+    <strong>Inbox is turned off</strong><a href={`${root}/settings/connections`}
+      >Enable in Settings →</a
+    >
+  </div>{/if}
 
 <style>
-  article {
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--border, #ddd);
+  .inbox-filters {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 20px;
   }
-  article form + form {
-    margin-top: 0.75rem;
+  .inbox-filters input {
+    max-width: 420px;
+    margin: 0;
+  }
+  .inbox-filters select {
+    max-width: 220px;
+    margin: 0;
+  }
+  @media (max-width: 600px) {
+    .inbox-filters {
+      flex-wrap: wrap;
+    }
+    .inbox-filters input {
+      flex-basis: 100%;
+    }
+  }
+  .inbox-list {
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 20px;
+    background: var(--surface-panel);
+  }
+  .conversation-row {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 20px;
+    text-decoration: none;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-default);
+  }
+  .conversation-row:last-child {
+    border: 0;
+  }
+  .conversation-row:hover {
+    background: var(--surface-hover);
+  }
+  .conversation-avatar {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    background: var(--surface-hover);
+    border: 1px solid var(--border-default);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .conversation-copy {
+    min-width: 0;
+    display: grid;
+    gap: 7px;
+    flex: 1;
+  }
+  .conversation-copy strong {
+    font-size: 14px;
+    font-weight: 550;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .conversation-copy > span,
+  .conversation-meta {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .channel {
+    margin-left: 8px;
+    padding: 2px 6px;
+    border: 1px solid var(--border-default);
+    border-radius: 4px;
+  }
+  .conversation-meta {
+    display: grid;
+    gap: 12px;
+    text-align: right;
+  }
+  .empty-icon {
+    font-size: 30px;
+    display: block;
+    margin-bottom: 20px;
+  }
+  .empty-state {
+    padding: 72px 20px;
   }
 </style>

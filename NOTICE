@@ -15,3 +15,9 @@ Dependency compatibility, corresponding-source delivery, and a separate trademar
 policy must be checked before publishing a release. See TRADEMARKS.md and
 docs/implementation/dependency-review.md. This scaffold does not grant
 endorsement rights or impose restrictions on license-compliant commercial use.
+
+The public interface uses Space Grotesk, Instrument Serif, and JetBrains Mono,
+distributed under the SIL Open Font License 1.1. Their copyright notices and
+licenses are preserved in apps/web/static/fonts/*-OFL.txt. The fonts are served
+locally. The Looski mark and public brand styling are shared with the Looski
+website (looski-v2); project branding remains subject to TRADEMARKS.md.

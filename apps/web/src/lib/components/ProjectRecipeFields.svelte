@@ -51,7 +51,7 @@
 <style>
   .check {
     display: block;
-    font-weight: 400;
+    font-weight: var(--font-weight-regular);
   }
   .check input {
     width: auto;

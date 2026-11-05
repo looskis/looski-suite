@@ -79,6 +79,9 @@ pub struct Message {
 #[derive(Default, Serialize, Deserialize, JsonSchema, IntoParams)]
 #[into_params(parameter_in=Query)]
 pub struct ConversationQuery {
+    pub newest_first: Option<bool>,
+    pub search: Option<String>,
+    pub account_id: Option<Uuid>,
     pub after: Option<Uuid>,
     pub limit: Option<i64>,
     pub contact_id: Option<Uuid>,
@@ -87,6 +90,7 @@ pub struct ConversationQuery {
 #[derive(Default, Serialize, Deserialize, JsonSchema, IntoParams)]
 #[into_params(parameter_in=Query)]
 pub struct MessageQuery {
+    pub newest_first: Option<bool>,
     pub after: Option<Uuid>,
     pub limit: Option<i64>,
 }
@@ -313,6 +317,12 @@ pub async fn list(
     let n = limit(q.limit)?;
     let mut tx = pool.begin().await?;
     let p = authority(&mut tx, a, "communications.read").await?;
+    if let Some(id) = q.after {
+        conversation(&mut tx, a, id, "communications.read").await?;
+    }
+    if q.search.as_ref().is_some_and(|s| s.chars().count() > 200) {
+        return Err(Error::Invalid("Search must be at most 200 characters"));
+    }
     let family = if let Some(id) = q.contact_id {
         references::contact_family(&mut tx, a, id).await?
     } else {
@@ -349,7 +359,15 @@ pub async fn messages(
     let n = limit(q.limit)?;
     let mut tx = pool.begin().await?;
     conversation(&mut tx, a, id, "communications.read").await?;
-    let mut items = dao::messages(&mut tx, a.workspace, id, q.after, n + 1).await?;
+    let mut items = dao::messages(
+        &mut tx,
+        a.workspace,
+        id,
+        q.after,
+        q.newest_first.unwrap_or(false),
+        n + 1,
+    )
+    .await?;
     let more = items.len() > n as usize;
     items.truncate(n as usize);
     let next_cursor = if more {

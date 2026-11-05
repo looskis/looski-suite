@@ -31,13 +31,16 @@ system = json.loads(request('/api/v1/system'))
 assert system['stage'] == 'scaffold'
 assert system['public_url'].startswith(('http://', 'https://')) and not system['public_url'].endswith('/')
 assert json.loads(request('/health/ready'))['status'] == 'ok'
-assert 'Connected to Looski Suite' in request('/')  # Present in SSR HTML, without JS.
+landing = request('/')  # Public marketing remains available without JavaScript.
+assert 'Your whole business.' in landing
+assert 'https://github.com/looskis/looski-suite/blob/main/INSTALL.md' in landing
+assert 'https://www.loo.ski' in landing
 assert json.loads(request('/api/v1/openapi.json')) == json.loads((ROOT / 'contracts/openapi.json').read_text())
 request('/auth/v1/health')
 for path in ['/auth/v1/admin/users', '/auth/v1/token', '/rest/v1/contacts', '/api/v1/contacts']:
     request(path, 404)
 request('/api/v1/workspaces', 401)
-assert 'Your business starts here.' in request('/login')
+assert 'Welcome back.' in request('/login')
 
 binary = ROOT / 'target/debug/looski'
 status = subprocess.check_output([str(binary), 'status', '--api-url', base], text=True)

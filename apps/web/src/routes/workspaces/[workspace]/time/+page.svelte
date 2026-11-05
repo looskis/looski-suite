@@ -1,67 +1,75 @@
 <script lang="ts">
+  import RecordDrawer from '$lib/components/ui/RecordDrawer.svelte';
   import type { ActionData, PageData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
   const hours = (ms: number) => (ms / 3600000).toFixed(2);
 </script>
 
 <svelte:head><title>Time tracking · Looski</title></svelte:head>
-<header><span>{data.workspace.name}</span></header>
-<h1>Time tracking</h1>
-<p>Track your work, keep billable time clear, and watch your budgets.</p>
+
+<div class="page-heading">
+  <h1>Time tracking</h1>
+  <div class="page-actions">
+    {#if data.entries}<RecordDrawer
+        message={form?.message}
+        title="Record time"
+        label="Record time"
+        error={Boolean(form?.message)}
+      >
+        <form method="POST" action="?/save">
+          <input type="hidden" name="idempotency_key" value={data.key} />
+          <label
+            >Description<input
+              name="description"
+              required
+              maxlength="2000"
+            /></label
+          >
+          <div class="inline">
+            <label
+              >Work date<input
+                name="work_on"
+                type="date"
+                required
+                value={new Date().toISOString().slice(0, 10)}
+              /></label
+            >
+            <label
+              >Project<select name="project_id"
+                ><option value="">Unassigned work</option
+                >{#each data.projects as p}<option value={p.id}>{p.name}</option
+                  >{/each}</select
+              ></label
+            >
+            <label
+              >Minutes<input
+                name="minutes"
+                type="number"
+                min="0"
+                step="any"
+                value="0"
+                required
+              /></label
+            >
+          </div>
+          <label><input name="billable" type="checkbox" /> Billable</label>
+          <div class="inline">
+            <button name="mode" value="manual">Add manual time</button><button
+              name="mode"
+              value="timer"
+              class="secondary">Start timer</button
+            >
+          </div>
+          <p>
+            Start timers at zero minutes. Work date determines the reporting
+            period, including timers that cross midnight.
+          </p>
+        </form>
+      </RecordDrawer>{/if}
+  </div>
+</div>
 {#if form?.message}<p role="alert">{form.message}</p>{/if}
 {#if data.entries}
-  <section>
-    <h2>Record time</h2>
-    <form method="POST" action="?/save">
-      <input type="hidden" name="idempotency_key" value={data.key} />
-      <label
-        >Description<input
-          name="description"
-          required
-          maxlength="2000"
-        /></label
-      >
-      <div class="inline">
-        <label
-          >Work date<input
-            name="work_on"
-            type="date"
-            required
-            value={new Date().toISOString().slice(0, 10)}
-          /></label
-        >
-        <label
-          >Project<select name="project_id"
-            ><option value="">Unassigned work</option
-            >{#each data.projects as p}<option value={p.id}>{p.name}</option
-              >{/each}</select
-          ></label
-        >
-        <label
-          >Minutes<input
-            name="minutes"
-            type="number"
-            min="0"
-            step="any"
-            value="0"
-            required
-          /></label
-        >
-      </div>
-      <label><input name="billable" type="checkbox" /> Billable</label>
-      <div class="inline">
-        <button name="mode" value="manual">Add manual time</button><button
-          name="mode"
-          value="timer"
-          class="secondary">Start timer</button
-        >
-      </div>
-      <p>
-        Start timers at zero minutes. Work date determines the reporting period,
-        including timers that cross midnight.
-      </p>
-    </form>
-  </section>
   <section>
     <h2>Entries and totals</h2>
     <form method="GET" class="inline">
@@ -292,27 +300,29 @@
       ><input type="checkbox" name="archived" checked={b?.archived ?? false} /> Archived</label
     ><button>Save budget</button>
   </form>{/snippet}
-{#if data.module}<section>
-    <h2>Application selection</h2>
-    <form method="POST" action="?/module">
-      <input type="hidden" name="idempotency_key" value={data.key} /><input
-        type="hidden"
-        name="expected_version"
-        value={data.module.version}
-      /><input
-        type="hidden"
-        name="enabled"
-        value={String(!data.module.enabled)}
-      /><button class="secondary"
-        >{data.module.enabled ? 'Turn off' : 'Turn on'} Time tracking</button
-      >
-    </form>
-  </section>{/if}
+{#if data.module}<details class="creation-panel" open={Boolean(form?.message)}>
+    <summary>Application settings</summary>
+    <div class="creation-content">
+      <form method="POST" action="?/module">
+        <input type="hidden" name="idempotency_key" value={data.key} /><input
+          type="hidden"
+          name="expected_version"
+          value={data.module.version}
+        /><input
+          type="hidden"
+          name="enabled"
+          value={String(!data.module.enabled)}
+        /><button class="secondary"
+          >{data.module.enabled ? 'Turn off' : 'Turn on'} Time tracking</button
+        >
+      </form>
+    </div>
+  </details>{/if}
 
 <style>
   article {
     padding: 1rem 0;
-    border-bottom: 1px solid var(--line, #ddd);
+    border-bottom: 1px solid var(--border-default);
   }
   progress {
     width: 100%;

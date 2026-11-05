@@ -5,10 +5,13 @@
 
 <svelte:head><title>Members · Looski</title></svelte:head>
 <h1>Members</h1>
-<p>
-  A member with an assigned Projects role can open this project only while
-  listed here. Membership does not widen what they can see in Tasks or CRM.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    A member with an assigned Projects role can open this project only while
+    listed here. Membership does not widen what they can see in Tasks or CRM.
+  </p>
+</details>
 {#if form?.message}<p role="alert">{form.message}</p>{/if}
 <div class="table-wrap">
   <table>

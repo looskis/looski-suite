@@ -1,4 +1,8 @@
 <script lang="ts">
+  import MoneyValue from '$lib/components/MoneyValue.svelte';
+  import RecordDrawer from '$lib/components/ui/RecordDrawer.svelte';
+  import { shortDate } from '$lib/format';
+  import { page } from '$app/state';
   import TagPanel from '$lib/components/TagPanel.svelte';
   import CrmRecordFields from '$lib/components/CrmRecordFields.svelte';
   import CrmWorkflowPicker from '$lib/components/CrmWorkflowPicker.svelte';
@@ -19,7 +23,58 @@
   href={`/workspaces/${data.workspace.id}/crm/timeline?anchor_kind=opportunity&anchor_id=${data.record.id}`}
   >Timeline</a
 >
-<h1>{data.record.title}</h1>
+<div class="page-heading">
+  <h1>{data.record.title}</h1>
+  <div class="page-actions">
+    {#if !data.record.archived}<RecordDrawer
+        message={form?.message}
+        title="Edit opportunity"
+        secondary
+        error={Boolean(form?.draft) || page.url.searchParams.has('parent')}
+      >
+        <CrmWorkflowPicker isDeal={false} {workflow} />
+        <form method="POST" action="?/save">
+          <input
+            type="hidden"
+            name="idempotency_key"
+            value={form?.draft?.key ?? data.key}
+          /><input
+            type="hidden"
+            name="expected_version"
+            value={form?.draft?.expected_version ?? data.record.version}
+          /><CrmRecordFields
+            isDeal={false}
+            fields={form?.draft ?? data.fields}
+            {workflow}
+          /><button>Save opportunity</button>
+        </form>
+      </RecordDrawer>{/if}
+  </div>
+</div>
+<dl class="record-summary">
+  <div>
+    <dt>Value</dt>
+    <dd>
+      <MoneyValue
+        amount={data.record.expected_value}
+        currency={data.record.currency_code}
+        billingFrequency={data.record.billing_frequency}
+      />
+    </dd>
+  </div>
+  <div>
+    <dt>Expected close</dt>
+    <dd>{data.record.expected_close_on ?? '—'}</dd>
+  </div>
+  <div>
+    <dt>Updated</dt>
+    <dd>{shortDate(data.record.updated_at)}</dd>
+  </div>
+</dl>
+<section>
+  <h2>Notes</h2>
+  <p style="white-space: pre-wrap">{data.record.notes || 'No notes added.'}</p>
+</section>
 <p>
   {data.record.pipeline_name} · {data.record.stage_name}{data.record.archived
     ? ' · Archived'
@@ -38,25 +93,7 @@
       >Discard draft and reload saved values</a
     >
   </p>{/if}
-{#if !data.record.archived}<section>
-    <h2>Edit opportunity</h2>
-    <CrmWorkflowPicker isDeal={false} {workflow} />
-    <form method="POST" action="?/save">
-      <input
-        type="hidden"
-        name="idempotency_key"
-        value={form?.draft?.key ?? data.key}
-      /><input
-        type="hidden"
-        name="expected_version"
-        value={form?.draft?.expected_version ?? data.record.version}
-      /><CrmRecordFields
-        isDeal={false}
-        fields={form?.draft ?? data.fields}
-        {workflow}
-      /><button>Save opportunity</button>
-    </form>
-  </section>{/if}
+
 <section>
   <h2>Stage history</h2>
   <ol>

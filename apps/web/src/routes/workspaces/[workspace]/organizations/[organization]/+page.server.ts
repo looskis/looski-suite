@@ -1,3 +1,4 @@
+import { recordFields } from '$lib/server/record-views';
 import { tagPanel, saveTags } from '$lib/server/tag-panel';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
@@ -38,6 +39,7 @@ export const load: PageServerLoad = async (event) => {
     event.url.searchParams.get('tag_search') ?? '',
   );
   return {
+    fields: await recordFields(client, workspace.id, 'organizations'),
     tags,
     workspace,
     organization: result.data,

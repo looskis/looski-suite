@@ -24,16 +24,16 @@
 </script>
 
 <svelte:head><title>Knowledge base · Looski</title></svelte:head>
-<header><span>{data.workspace.name}</span></header>
-<h1>Knowledge base</h1>
-<p>
-  Articles and standard operating procedures, organized in collections. Search
-  shows only what you may read.
-</p>
+
+<div class="page-heading">
+  <h1>Knowledge base</h1>
+  {#if data.collections}<a class="action-link" href={`${root}/documents/new`}
+      >New document</a
+    >{/if}
+</div>
 {#if form?.message && !form?.input}<p role="alert">{form.message}</p>{/if}
 {#if data.collections}
-  <section>
-    <h2>Search</h2>
+  <section class="index-list">
     <form method="GET" class="inline" role="search">
       <label
         >Find documents<input
@@ -81,15 +81,15 @@
         >{/if}
     {/if}
   </section>
-  <section>
+  <section class="index-list">
     <div class="toolbar">
       <h2>{data.archived ? 'Archived collections' : 'Collections'}</h2>
-      <a href={`${root}/documents/new`}>New document</a>
+
       <a href={data.archived ? '?' : '?archived=true'}
         >{data.archived ? 'Show active' : 'Show archived'}</a
       >
     </div>
-    <div class="table-wrap">
+    <div class="record-table">
       <table>
         <thead
           ><tr><th>Name</th><th>Access</th><th>Documents</th><th>Listed</th></tr
@@ -129,40 +129,43 @@
       </ul>
     </section>
   {/if}
-  <section>
-    <h2>Create a collection</h2>
-    {#if form?.message && form?.input}<p role="alert">{form.message}</p>{/if}
-    <form method="POST" action="?/createCollection">
-      <input
-        type="hidden"
-        name="idempotency_key"
-        value={form?.key ?? data.key}
-      />
-      <label
-        >Name<input
-          name="name"
-          required
-          maxlength="120"
-          value={form?.input?.name ?? ''}
-        /></label
-      >
-      <label
-        >Description<textarea
-          name="description"
-          maxlength="2000"
-          rows="2"
-          value={form?.input?.description ?? ''}></textarea></label
-      >
-      <label class="check"
-        ><input
-          type="checkbox"
-          name="restricted"
-          checked={form?.input?.restricted ?? false}
-        />Restricted: only members listed on this collection can find or read it</label
-      >
-      <button>Create collection</button>
-    </form>
-  </section>
+  <details class="creation-panel" open={Boolean(form?.message)}>
+    <summary>Create a collection</summary>
+    <div class="creation-content">
+      {#if form?.message && form?.input}<p role="alert">{form.message}</p>{/if}
+      <form method="POST" action="?/createCollection">
+        <input
+          type="hidden"
+          name="idempotency_key"
+          value={form?.key ?? data.key}
+        />
+        <label
+          >Name<input
+            name="name"
+            required
+            maxlength="120"
+            value={form?.input?.name ?? ''}
+          /></label
+        >
+        <label
+          >Description<textarea
+            name="description"
+            maxlength="2000"
+            rows="2"
+            value={form?.input?.description ?? ''}></textarea></label
+        >
+        <label class="check"
+          ><input
+            type="checkbox"
+            name="restricted"
+            checked={form?.input?.restricted ?? false}
+          />Restricted: only members listed on this collection can find or read
+          it</label
+        >
+        <button>Create collection</button>
+      </form>
+    </div>
+  </details>
 {:else}
   <section>
     <h2>The knowledge base is turned off</h2>
@@ -173,30 +176,32 @@
   </section>
 {/if}
 {#if data.module}
-  <section>
-    <h2>Application selection</h2>
-    <p>
-      The knowledge base is {data.module.enabled ? 'on' : 'off'} for this workspace.
-    </p>
-    <form method="POST" action="?/module">
-      <input type="hidden" name="idempotency_key" value={data.key} />
-      <input
-        type="hidden"
-        name="expected_version"
-        value={data.module.version}
-      />
-      <input
-        type="hidden"
-        name="enabled"
-        value={String(!data.module.enabled)}
-      />
-      <button class={data.module.enabled ? 'secondary' : ''}
-        >{data.module.enabled
-          ? 'Turn off the knowledge base'
-          : 'Turn on the knowledge base'}</button
-      >
-    </form>
-  </section>
+  <details class="creation-panel" open={Boolean(form?.message)}>
+    <summary>Application settings</summary>
+    <div class="creation-content">
+      <p>
+        The knowledge base is {data.module.enabled ? 'on' : 'off'} for this workspace.
+      </p>
+      <form method="POST" action="?/module">
+        <input type="hidden" name="idempotency_key" value={data.key} />
+        <input
+          type="hidden"
+          name="expected_version"
+          value={data.module.version}
+        />
+        <input
+          type="hidden"
+          name="enabled"
+          value={String(!data.module.enabled)}
+        />
+        <button class={data.module.enabled ? 'secondary' : ''}
+          >{data.module.enabled
+            ? 'Turn off the knowledge base'
+            : 'Turn on the knowledge base'}</button
+        >
+      </form>
+    </div>
+  </details>
 {/if}
 
 <style>
@@ -206,16 +211,16 @@
     margin: 0;
   }
   .results li {
-    padding: 12px 0;
-    border-top: 1px solid var(--line);
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--border-default);
   }
   .results small {
     display: block;
-    color: var(--muted);
+    color: var(--text-secondary);
   }
   .results p {
-    margin: 6px 0 0;
-    font-size: 13px;
-    color: var(--muted);
+    margin: var(--space-1-5) 0 0;
+    font-size: var(--font-size-13);
+    color: var(--text-secondary);
   }
 </style>

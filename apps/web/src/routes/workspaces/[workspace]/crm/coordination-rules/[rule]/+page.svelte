@@ -9,10 +9,13 @@
   >
 </header>
 <h1>{data.rule.name}</h1>
-<p>
-  Changes affect future transitions. Existing jobs retain their original
-  checklist revision and initiating user.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Changes affect future transitions. Existing jobs retain their original
+    checklist revision and initiating user.
+  </p>
+</details>
 {#if form?.message}<p role="alert" class="error">{form.message}</p>
   <a href={`?reload=${Date.now()}`}>Discard draft and reload saved values</a
   >{/if}

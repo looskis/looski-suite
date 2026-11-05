@@ -64,7 +64,7 @@
     padding: 2rem;
   }
   .brand {
-    color: #52705f;
+    color: var(--support-text);
     font-size: 0.9rem;
   }
   input {

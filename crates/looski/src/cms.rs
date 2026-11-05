@@ -21,6 +21,7 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct ContentType {
+    pub headless: bool,
     pub id: Uuid,
     pub name: String,
     pub description: String,
@@ -36,6 +37,8 @@ pub struct ContentType {
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct SaveContentType {
+    /// Disable built-in HTML pages while retaining public JSON delivery. Omitted updates preserve the setting.
+    pub headless: Option<bool>,
     pub name: String,
     #[serde(default)]
     pub description: String,
@@ -238,10 +241,24 @@ pub struct PublicEntryLink {
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct PublicIndex {
+    pub headless: bool,
     pub name: String,
     pub description: String,
     pub entries: Vec<PublicEntryLink>,
     pub next_cursor: Option<String>,
+}
+/// Headless delivery exposes only current published revision values, never drafts.
+#[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
+pub struct PublicContentPage {
+    pub items: Vec<PublicDataEntry>,
+    pub next_cursor: Option<String>,
+}
+#[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
+pub struct PublicDataEntry {
+    pub title: String,
+    pub slug: String,
+    pub published_at: String,
+    pub values: Map<String, Value>,
 }
 #[derive(Default, Serialize, Deserialize, JsonSchema, IntoParams)]
 #[into_params(parameter_in=Query)]
@@ -289,6 +306,7 @@ pub struct PublicField {
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct PublicPage {
+    pub headless: bool,
     pub title: String,
     pub slug: String,
     pub published_at: Option<String>,
@@ -1452,6 +1470,7 @@ pub async fn preview(
     )
     .await?;
     Ok(PublicPage {
+        headless: false,
         title: entry.title,
         slug: entry.slug,
         published_at: None,
@@ -1523,11 +1542,52 @@ pub async fn public_index(
         None
     };
     Ok(PublicIndex {
+        headless: identity.headless,
         name,
         description,
         entries,
         next_cursor,
     })
+}
+pub async fn public_data(
+    pool: &PgPool,
+    key: &str,
+    query: PublicIndexQuery,
+) -> Result<PublicContentPage, Error> {
+    if let Some(after) = &query.after {
+        content::validate_slug(after)?;
+    }
+    let mut tx = pool.begin().await?;
+    // A consistent publication snapshot across both the index and field reads.
+    sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        .execute(&mut *tx)
+        .await?;
+    let identity = public_identity(&mut tx, key).await?;
+    let mut links = dao::public_entries(
+        &mut tx,
+        identity.workspace,
+        identity.id,
+        query.after.as_deref(),
+        51,
+    )
+    .await?;
+    let next_cursor = if links.len() > 50 {
+        links.pop();
+        links.last().map(|e| e.slug.clone())
+    } else {
+        None
+    };
+    let mut items = Vec::with_capacity(links.len());
+    for link in links {
+        let row = dao::public_entry(&mut tx, identity.workspace, identity.id, &link.slug).await?;
+        items.push(PublicDataEntry {
+            title: row.title,
+            slug: row.slug,
+            published_at: row.published_at,
+            values: row.values,
+        });
+    }
+    Ok(PublicContentPage { items, next_cursor })
 }
 pub async fn public_entry(pool: &PgPool, key: &str, slug: &str) -> Result<PublicPage, Error> {
     content::validate_slug(slug).map_err(|_| Error::NotFound)?;
@@ -1536,6 +1596,7 @@ pub async fn public_entry(pool: &PgPool, key: &str, slug: &str) -> Result<Public
     let row = dao::public_entry(&mut tx, identity.workspace, identity.id, slug).await?;
     let fields = render(&mut tx, identity.workspace, &row.fields, &row.values).await?;
     Ok(PublicPage {
+        headless: identity.headless,
         title: row.title,
         slug: row.slug,
         published_at: Some(row.published_at),

@@ -6,10 +6,6 @@
 
 <header><a href={`/workspaces/${data.workspace.id}/crm`}>← CRM</a></header>
 <h1>Activity types</h1>
-<p>
-  Choose the names and supported behavior that fit your business. Retiring a
-  type preserves its activities and history.
-</p>
 {#if form?.message}<p role="alert" class="error">{form.message}</p>{/if}
 <a href={`?archived=${!data.archived}`}
   >{data.archived ? 'Show active' : 'Show archived'}</a
@@ -26,20 +22,22 @@
       >More types →</a
     >{/if}
 </section>
-<section>
-  <h2>Create a type</h2>
-  <form method="POST">
-    <input
-      type="hidden"
-      name="idempotency_key"
-      value={form?.draft?.key ?? data.key}
-    /><ActivityTypeFields
-      fields={form?.draft ?? {
-        name: '',
-        behavior: 'note',
-        position: 0,
-        archived: false,
-      }}
-    /><button>Create type</button>
-  </form>
-</section>
+<details class="creation-panel" open={Boolean(form?.message)}>
+  <summary>Create a type</summary>
+  <div class="creation-content">
+    <form method="POST">
+      <input
+        type="hidden"
+        name="idempotency_key"
+        value={form?.draft?.key ?? data.key}
+      /><ActivityTypeFields
+        fields={form?.draft ?? {
+          name: '',
+          behavior: 'note',
+          position: 0,
+          archived: false,
+        }}
+      /><button>Create type</button>
+    </form>
+  </div>
+</details>

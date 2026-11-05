@@ -77,6 +77,15 @@ export function saveSession(event: RequestEvent, session: Session) {
 
 /** `returnTo` is an already validated same-origin path to resume after sign-in. */
 export async function workspaceList(event: RequestEvent, returnTo?: string) {
+  // Layout and page loads run concurrently. Share validation and refresh within
+  // this request so a rotating refresh token is never consumed twice.
+  return (event.locals.workspaceSession ??= loadWorkspaceList(event, returnTo));
+}
+
+export async function loadWorkspaceList(
+  event: RequestEvent,
+  returnTo?: string,
+) {
   const client = createClient<paths>({
     baseUrl: env.LOOSKI_API_INTERNAL_URL ?? 'http://127.0.0.1:58081',
     fetch: event.fetch,

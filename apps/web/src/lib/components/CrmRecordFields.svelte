@@ -14,6 +14,7 @@
       notes: string;
       amount: string;
       currency: string;
+      frequency: string;
       date1: string;
       date2: string;
       owner: string;
@@ -70,7 +71,7 @@
       name="amount"
       value={fields.amount}
       inputmode="decimal"
-      placeholder="0.000000"
+      placeholder="0.00"
     /></label
   ><label
     >Currency code<input
@@ -82,10 +83,15 @@
     /></label
   >
 </div>
-<p class="muted">
-  Optional amount and currency go together. Up to six decimal places; no
-  currency conversion.
-</p>
+<label
+  >Billing frequency<select name="frequency" value={fields.frequency}
+    ><option value="one_time">One-time</option><option value="monthly"
+      >Monthly</option
+    ><option value="quarterly">Quarterly</option><option value="annually"
+      >Annually</option
+    ></select
+  ></label
+>
 <div class="columns">
   <label
     >{isDeal ? 'Start date' : 'Expected close date'}<input

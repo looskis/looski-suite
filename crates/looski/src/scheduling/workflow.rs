@@ -90,6 +90,7 @@ pub(super) async fn enqueue(
     version: i64,
     first: bool,
 ) -> Result<(), Error> {
+    calendar::enqueue(db, t, id, version).await?;
     if first && t.view.settings.crm.is_some() {
         let job = jobs::enqueue_recorded(
             db,
@@ -221,6 +222,7 @@ pub(crate) async fn execute(
             contacts::intake::SubmitIntake {
                 source_ref: format!("scheduling:appointment:{id}"),
                 proposed: ContactInput {
+                    properties: None,
                     display_name: name.clone(),
                     notes: String::new(),
                     identifiers,
@@ -259,6 +261,7 @@ pub(crate) async fn execute(
         None,
         &format!("booking:{id}:opportunity"),
         crm::OpportunityInput {
+            billing_frequency: None,
             title: format!("{}: {name}", mapping.title_prefix.trim())
                 .chars()
                 .take(200)

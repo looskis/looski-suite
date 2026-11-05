@@ -5,17 +5,27 @@
 </script>
 
 <svelte:head><title>Helpdesk · Looski</title></svelte:head>
-<header><span>{data.workspace.name}</span></header>
-<h1>Helpdesk</h1>
-<p>Keep customer requests, replies and the next step together.</p>
+
+<div class="page-heading">
+  <h1>Helpdesk</h1>
+  {#if data.settings?.accepting}<a
+      class="action-link"
+      href={`${data.origin}/support/new/${data.settings.public_key}`}
+      >Open support page ↗</a
+    >{/if}
+</div>
 {#if form?.message}<p role="alert">{form.message}</p>{/if}
 {#if data.tickets}
-  <section>
+  <section class="index-list">
     <div class="toolbar">
-      <h2>{data.archived ? 'Archived tickets' : 'Tickets'}</h2>
-      <a href={data.archived ? '?' : '?archived=true'}
-        >{data.archived ? 'Show active' : 'Show archived'}</a
-      >
+      <nav class="view-tabs" aria-label="Ticket views">
+        <a href="?" aria-current={!data.archived ? 'page' : undefined}
+          >All tickets</a
+        ><a
+          href="?archived=true"
+          aria-current={data.archived ? 'page' : undefined}>Archived</a
+        >
+      </nav>
     </div>
     <form method="GET" class="inline">
       <input
@@ -32,7 +42,7 @@
         ></label
       ><button class="secondary">Filter</button>
     </form>
-    <div class="table-wrap">
+    <div class="record-table">
       <table>
         <thead
           ><tr
@@ -43,7 +53,7 @@
           >{#each data.tickets.items as ticket}<tr
               ><td><a href={`${root}/${ticket.id}`}>{ticket.subject}</a></td><td
                 >{ticket.requester_name}</td
-              ><td>{ticket.status}</td><td
+              ><td><span class="status-badge">{ticket.status}</span></td><td
                 >{ticket.assignee_id ? 'Assigned' : 'Unassigned'}</td
               ></tr
             >{:else}<tr
@@ -96,21 +106,23 @@
       is enabled.
     </p>
   </section>{/if}
-{#if data.module}<section>
-    <h2>Application selection</h2>
-    <form method="POST" action="?/module">
-      <input type="hidden" name="idempotency_key" value={data.key} /><input
-        type="hidden"
-        name="expected_version"
-        value={data.module.version}
-      /><input
-        type="hidden"
-        name="enabled"
-        value={String(!data.module.enabled)}
-      /><button class="secondary"
-        >{data.module.enabled
-          ? 'Turn off Helpdesk'
-          : 'Turn on Helpdesk'}</button
-      >
-    </form>
-  </section>{/if}
+{#if data.module}<details class="creation-panel" open={Boolean(form?.message)}>
+    <summary>Application settings</summary>
+    <div class="creation-content">
+      <form method="POST" action="?/module">
+        <input type="hidden" name="idempotency_key" value={data.key} /><input
+          type="hidden"
+          name="expected_version"
+          value={data.module.version}
+        /><input
+          type="hidden"
+          name="enabled"
+          value={String(!data.module.enabled)}
+        /><button class="secondary"
+          >{data.module.enabled
+            ? 'Turn off Helpdesk'
+            : 'Turn on Helpdesk'}</button
+        >
+      </form>
+    </div>
+  </details>{/if}

@@ -1,3 +1,4 @@
+import { recordFields } from '$lib/server/record-views';
 import { tagPanel, saveTags } from '$lib/server/tag-panel';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
@@ -69,6 +70,7 @@ export const load: PageServerLoad = async (event) => {
     },
   );
   return {
+    fields: await recordFields(client, workspace.id, 'contacts'),
     conversations: conversations.data ?? null,
     tags,
     workspace,

@@ -1,0 +1,198 @@
+/* Shared workspace patterns. Legacy selectors preserve existing pages during migration. */
+.workspace-app > header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2-5) var(--space-5);
+  padding-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border-default);
+  font-size: var(--font-size-12);
+}
+.workspace-app > header a {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.workspace-app > header a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.workspace-app > header span {
+  color: var(--text-secondary);
+}
+.workspace-app h1 {
+  margin: 0 0 var(--space-2-5);
+}
+.workspace-app > p {
+  color: var(--text-secondary);
+  font-size: var(--font-size-14);
+  max-width: 76ch;
+}
+.ui-panel,
+.workspace-app section {
+  background: var(--surface-panel);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--panel-padding);
+  margin-top: var(--panel-gap);
+  box-shadow: var(--shadow-panel);
+  min-width: 0;
+}
+.ui-panel > h2:first-child,
+.workspace-app section > h2:first-child {
+  margin-top: 0;
+}
+.ui-panel > p,
+.workspace-app section > p {
+  color: var(--text-secondary);
+  font-size: var(--font-size-14);
+}
+.ui-panel nav,
+.workspace-app section nav {
+  line-height: 2.2;
+  font-size: var(--font-size-13);
+}
+.workspace-app .toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4-5);
+}
+.workspace-app .toolbar h2 {
+  margin: 0;
+}
+.workspace-app .toolbar a {
+  font-size: var(--font-size-12);
+}
+.workspace-app .columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+.workspace-app .check {
+  display: flex;
+  gap: var(--space-2-5);
+  align-items: flex-start;
+  font-weight: var(--font-weight-regular);
+  color: var(--text-secondary);
+}
+.workspace-app .check input {
+  margin-top: var(--space-0-5);
+}
+.workspace-app .inline {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-4-5) 0;
+}
+.workspace-app .inline label {
+  flex: 1 1 160px;
+  margin: 0;
+}
+.workspace-app .inline button {
+  flex: 0 0 auto;
+}
+.ui-table-frame,
+.workspace-app .table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4-5);
+}
+.ui-table-frame table,
+.workspace-app table {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: left;
+  font-size: var(--font-size-13);
+}
+.ui-table-frame th,
+.workspace-app th {
+  background: var(--surface-table-heading);
+  color: var(--text-secondary);
+  font-size: var(--font-size-11);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+.ui-table-frame th,
+.workspace-app th,
+.ui-table-frame td,
+.workspace-app td {
+  padding: var(--table-padding-block) var(--table-padding-inline);
+  border-bottom: 1px solid var(--border-default);
+  overflow-wrap: anywhere;
+}
+.ui-table-frame tbody tr:last-child td,
+.workspace-app tbody tr:last-child td {
+  border-bottom: 0;
+}
+.ui-table-frame tbody tr:hover,
+.workspace-app tbody tr:hover {
+  background: var(--surface-row-hover);
+}
+.ui-table-frame td a,
+.workspace-app td a {
+  font-weight: var(--font-weight-label);
+  text-decoration: none;
+}
+.ui-table-frame td a:hover,
+.workspace-app td a:hover {
+  text-decoration: underline;
+}
+.ui-table-frame td[colspan],
+.workspace-app td[colspan] {
+  text-align: center;
+  padding: 44px var(--space-5);
+  color: var(--text-secondary);
+}
+.workspace-app fieldset {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4-5);
+  margin: var(--space-5) 0;
+  min-width: 0;
+}
+.workspace-app legend {
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-semibold);
+}
+.workspace-app pre {
+  overflow-x: auto;
+  background: var(--surface-canvas);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  font-size: var(--font-size-12);
+}
+.workspace-app details {
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--border-default);
+}
+.workspace-app summary {
+  cursor: pointer;
+  font-weight: var(--font-weight-label);
+  font-size: var(--font-size-14);
+}
+@media (max-width: 720px) {
+  .ui-panel,
+  .workspace-app section {
+    padding: var(--panel-padding-mobile);
+  }
+  .workspace-app .columns {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .workspace-app .inline button {
+    flex-grow: 1;
+  }
+}
+@media print {
+  .ui-panel,
+  .workspace-app section {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}

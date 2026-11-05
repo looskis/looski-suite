@@ -181,15 +181,15 @@
   main {
     max-width: 640px;
     margin: 0 auto;
-    padding: 48px 20px;
+    padding: var(--space-12) var(--space-5);
     overflow-wrap: anywhere;
   }
   main.embedded {
     max-width: none;
-    padding: 16px;
+    padding: var(--space-4);
   }
   .description {
-    color: var(--muted);
+    color: var(--text-secondary);
     white-space: pre-wrap;
   }
   fieldset {
@@ -203,47 +203,47 @@
   }
   legend {
     padding: 0;
-    margin-top: 18px;
-    font-size: 13px;
-    font-weight: 550;
+    margin-top: var(--space-4-5);
+    font-size: var(--font-size-13);
+    font-weight: var(--font-weight-label);
   }
   .check {
     display: flex;
-    gap: 10px;
-    font-weight: 400;
+    gap: var(--space-2-5);
+    font-weight: var(--font-weight-regular);
   }
   .help {
     display: block;
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 400;
-    margin: 4px 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-12);
+    font-weight: var(--font-weight-regular);
+    margin: var(--space-1) 0;
     white-space: pre-wrap;
   }
   .statement {
     white-space: pre-wrap;
   }
   .required {
-    color: var(--muted);
-    font-weight: 400;
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-regular);
     margin-left: 0.35em;
   }
   .field-error {
-    color: #953b31;
-    font-size: 13px;
-    margin: 4px 0 0;
+    color: var(--error-text);
+    font-size: var(--font-size-13);
+    margin: var(--space-1) 0 0;
   }
   .invalid :global(input:not([type='checkbox'])),
   .invalid :global(select),
   .invalid :global(textarea) {
-    border-color: #953b31;
+    border-color: var(--error-text);
   }
   .confirmation p {
     white-space: pre-wrap;
   }
   .footer {
-    color: var(--muted);
-    font-size: 11px;
-    margin-top: 40px;
+    color: var(--text-secondary);
+    font-size: var(--font-size-11);
+    margin-top: var(--space-10);
   }
 </style>

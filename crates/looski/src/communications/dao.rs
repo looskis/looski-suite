@@ -56,7 +56,37 @@ pub(super) async fn list(
     family: &[Uuid],
     n: i64,
 ) -> Result<Vec<Conversation>, Error> {
-    Ok(sqlx::query_scalar::<_,Json<Conversation>>("SELECT to_jsonb(c)-'workspace_id' FROM communications.conversations c JOIN communications.accounts a ON a.id=c.account_id WHERE c.workspace_id=$1 AND (a.owner_membership_id=$2 OR (a.shared AND $3)) AND c.archived=$4 AND ($5::uuid IS NULL OR c.id>$5) AND ($6 OR c.contact_id=ANY($7)) ORDER BY c.id LIMIT $8").bind(ws).bind(p.membership_id).bind(p.workspace_wide).bind(q.archived.unwrap_or(false)).bind(q.after).bind(q.contact_id.is_none()).bind(family).bind(n).fetch_all(db).await?.into_iter().map(|v|v.0).collect())
+    let cursor = if q.newest_first.unwrap_or(false) {
+        "(c.updated_at,c.id)<(SELECT updated_at,id FROM communications.conversations WHERE workspace_id=$1 AND id=$5)"
+    } else {
+        "c.id>$5"
+    };
+    let order = if q.newest_first.unwrap_or(false) {
+        "c.updated_at DESC,c.id DESC"
+    } else {
+        "c.id"
+    };
+    let sql = format!(
+        "SELECT to_jsonb(c)-'workspace_id' FROM communications.conversations c JOIN communications.accounts a ON a.id=c.account_id WHERE c.workspace_id=$1 AND (a.owner_membership_id=$2 OR (a.shared AND $3)) AND c.archived=$4 AND ($5::uuid IS NULL OR {cursor}) AND ($6 OR c.contact_id=ANY($7)) AND ($9::text IS NULL OR strpos(lower(c.subject),lower($9))>0) AND ($10::uuid IS NULL OR c.account_id=$10) ORDER BY {order} LIMIT $8"
+    );
+    Ok(
+        sqlx::query_scalar::<_, Json<Conversation>>(sqlx::AssertSqlSafe(sql.as_str()))
+            .bind(ws)
+            .bind(p.membership_id)
+            .bind(p.workspace_wide)
+            .bind(q.archived.unwrap_or(false))
+            .bind(q.after)
+            .bind(q.contact_id.is_none())
+            .bind(family)
+            .bind(n)
+            .bind(&q.search)
+            .bind(q.account_id)
+            .fetch_all(db)
+            .await?
+            .into_iter()
+            .map(|v| v.0)
+            .collect(),
+    )
 }
 pub(super) async fn message(db: &mut PgConnection, ws: Uuid, id: Uuid) -> Result<Message, Error> {
     Ok(sqlx::query_scalar::<_,Json<Message>>("SELECT (to_jsonb(m)-'workspace_id'-'account_id'-'status_cursor'-'provider_dispatch_id') || jsonb_build_object('job_state',j.state,'job_error',j.error_code) FROM communications.messages m LEFT JOIN suite.jobs j ON j.id=m.job_id WHERE m.workspace_id=$1 AND m.id=$2").bind(ws).bind(id).fetch_optional(db).await?.ok_or(Error::NotFound)?.0)
@@ -66,6 +96,7 @@ pub(super) async fn messages(
     ws: Uuid,
     id: Uuid,
     after: Option<Uuid>,
+    newest_first: bool,
     n: i64,
 ) -> Result<Vec<Message>, Error> {
     if let Some(after) = after {
@@ -74,7 +105,27 @@ pub(super) async fn messages(
             return Err(Error::NotFound);
         }
     }
-    Ok(sqlx::query_scalar::<_,Json<Message>>("SELECT (to_jsonb(m)-'workspace_id'-'account_id'-'status_cursor'-'provider_dispatch_id') || jsonb_build_object('job_state',j.state,'job_error',j.error_code) FROM communications.messages m LEFT JOIN suite.jobs j ON j.id=m.job_id WHERE m.workspace_id=$1 AND m.conversation_id=$2 AND ($3::uuid IS NULL OR (m.created_at,m.id)>(SELECT created_at,id FROM communications.messages WHERE workspace_id=$1 AND conversation_id=$2 AND id=$3)) ORDER BY m.created_at,m.id LIMIT $4").bind(ws).bind(id).bind(after).bind(n).fetch_all(db).await?.into_iter().map(|v|v.0).collect())
+    let comparison = if newest_first { "<" } else { ">" };
+    let order = if newest_first {
+        "m.created_at DESC,m.id DESC"
+    } else {
+        "m.created_at,m.id"
+    };
+    let sql = format!(
+        "SELECT (to_jsonb(m)-'workspace_id'-'account_id'-'status_cursor'-'provider_dispatch_id') || jsonb_build_object('job_state',j.state,'job_error',j.error_code) FROM communications.messages m LEFT JOIN suite.jobs j ON j.id=m.job_id WHERE m.workspace_id=$1 AND m.conversation_id=$2 AND ($3::uuid IS NULL OR (m.created_at,m.id){comparison}(SELECT created_at,id FROM communications.messages WHERE workspace_id=$1 AND conversation_id=$2 AND id=$3)) ORDER BY {order} LIMIT $4"
+    );
+    Ok(
+        sqlx::query_scalar::<_, Json<Message>>(sqlx::AssertSqlSafe(sql.as_str()))
+            .bind(ws)
+            .bind(id)
+            .bind(after)
+            .bind(n)
+            .fetch_all(db)
+            .await?
+            .into_iter()
+            .map(|v| v.0)
+            .collect(),
+    )
 }
 pub(super) async fn update(
     db: &mut PgConnection,

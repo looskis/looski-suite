@@ -1,3 +1,4 @@
+import { recordView, saveView, deleteView } from '$lib/server/record-views';
 import { error, fail, redirect } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 import { workspaceClient, requireSameOrigin } from '$lib/server/session';
@@ -9,16 +10,28 @@ export const load: PageServerLoad = async (event) => {
     event,
     event.params.workspace,
   );
+  const view = await recordView(client, workspace.id, 'contacts', event.url);
   const search = event.url.searchParams.get('search') ?? '';
   const tagId = event.url.searchParams.get('tag_id') ?? undefined;
-  const archived = event.url.searchParams.get('archived') === 'true';
+  const archived = view.config.archived;
   const after = event.url.searchParams.get('after') ?? undefined;
   const result = await client.GET(
     '/api/v1/workspaces/{workspace_id}/contacts',
     {
       params: {
         path: { workspace_id: workspace.id },
-        query: { search, archived, after, limit: 50, tag_id: tagId },
+        query: {
+          search,
+          archived,
+          after,
+          limit: 50,
+          tag_id: tagId,
+          filter: view.config.filter
+            ? JSON.stringify(view.config.filter)
+            : undefined,
+          sort: view.config.sort,
+          direction: view.config.direction,
+        },
       },
     },
   );
@@ -29,6 +42,7 @@ export const load: PageServerLoad = async (event) => {
     );
   return {
     workspace,
+    ...view,
     page: result.data,
     tagId,
     search,
@@ -37,6 +51,8 @@ export const load: PageServerLoad = async (event) => {
   };
 };
 export const actions: Actions = {
+  deleteView: (event) => deleteView(event, 'contacts'),
+  saveView: (event) => saveView(event, 'contacts'),
   create: async (event) => {
     requireSameOrigin(event);
     const { workspace, client } = await workspaceClient(

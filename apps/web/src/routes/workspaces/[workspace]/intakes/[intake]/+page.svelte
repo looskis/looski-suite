@@ -61,27 +61,29 @@
       ><button>Link this contact</button>
     </form>
   </section>
-  <section>
-    <h2>Create a reviewed contact</h2>
-    <p>
-      Correct invalid identifiers before saving. Confirm shared identifiers only
-      when this is a separate person.
-    </p>
-    <form method="POST">
-      <input type="hidden" name="decision" value="create" /><input
-        type="hidden"
-        name="idempotency_key"
-        value={data.key + '-create'}
-      /><input
-        type="hidden"
-        name="expected_version"
-        value={data.intake.version}
-      /><ContactFields contact={data.intake.input.proposed} /><label
-        >Review reason<textarea name="reason" required maxlength="1000"
-        ></textarea></label
-      ><button>Create and associate contact</button>
-    </form>
-  </section>
+  <details class="creation-panel" open={Boolean(form?.message)}>
+    <summary>Create a reviewed contact</summary>
+    <div class="creation-content">
+      <p>
+        Correct invalid identifiers before saving. Confirm shared identifiers
+        only when this is a separate person.
+      </p>
+      <form method="POST">
+        <input type="hidden" name="decision" value="create" /><input
+          type="hidden"
+          name="idempotency_key"
+          value={data.key + '-create'}
+        /><input
+          type="hidden"
+          name="expected_version"
+          value={data.intake.version}
+        /><ContactFields contact={data.intake.input.proposed} /><label
+          >Review reason<textarea name="reason" required maxlength="1000"
+          ></textarea></label
+        ><button>Create and associate contact</button>
+      </form>
+    </div>
+  </details>
   <section>
     <h2>Dismiss input</h2>
     <p>Keep the original evidence without associating a contact.</p>

@@ -12,6 +12,8 @@ use uuid::Uuid;
 #[derive(Deserialize, Serialize, JsonSchema, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct OrganizationInput {
+    #[serde(default)]
+    pub properties: Option<serde_json::Map<String, serde_json::Value>>,
     pub name: String,
     pub website_url: Option<String>,
     #[serde(default)]
@@ -27,6 +29,8 @@ pub struct EditOrganization {
 }
 #[derive(Deserialize, Serialize, JsonSchema, ToSchema)]
 pub struct Organization {
+    #[serde(default)]
+    pub properties: serde_json::Map<String, serde_json::Value>,
     pub id: Uuid,
     pub name: String,
     pub website_url: Option<String>,
@@ -179,6 +183,13 @@ pub async fn create(
         return Ok(saved);
     }
     access::require_active_member(&mut tx, actor.workspace, owner).await?;
+    crate::records::validate_properties(
+        &mut tx,
+        actor.workspace,
+        "organizations",
+        input.properties.as_ref(),
+    )
+    .await?;
     let id = dao::insert(&mut tx, actor.workspace, owner, &input).await?;
     reliability::audit(
         &mut tx,
@@ -256,6 +267,13 @@ pub async fn edit(
         return Err(Error::Forbidden);
     }
     access::require_active_member(&mut tx, actor.workspace, owner).await?;
+    crate::records::validate_properties(
+        &mut tx,
+        actor.workspace,
+        "organizations",
+        input.organization.properties.as_ref(),
+    )
+    .await?;
     dao::update(&mut tx, actor.workspace, id, owner, &input.organization).await?;
     reliability::audit(
         &mut tx,

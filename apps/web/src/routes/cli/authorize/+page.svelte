@@ -57,10 +57,10 @@
   .code {
     display: block;
     font-family: ui-monospace, monospace;
-    font-size: 14px;
-    padding: 12px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
+    font-size: var(--font-size-14);
+    padding: var(--space-3);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
     word-break: break-all;
     user-select: all;
   }

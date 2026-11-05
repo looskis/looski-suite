@@ -6,10 +6,6 @@
 
 <svelte:head><title>Content types · Looski</title></svelte:head>
 <h1>Content types</h1>
-<p>
-  A content type sets the fields its entries have and gives them a public
-  address, shared by nothing else in the workspace.
-</p>
 <section>
   <div class="toolbar">
     <h2>{data.archived ? 'Archived types' : 'Types'}</h2>
@@ -38,26 +34,32 @@
       >Next page →</a
     >{/if}
 </section>
-<section>
-  <h2>Create a content type</h2>
-  {#if form?.message}<p role="alert">{form.message}</p>{/if}
-  <form method="POST">
-    <input type="hidden" name="idempotency_key" value={form?.key ?? data.key} />
-    <label
-      >Name<input
-        name="name"
-        required
-        maxlength="120"
-        value={form?.input?.name ?? ''}
-      /></label
-    >
-    <label
-      >Description (shown on the public list of pages)<textarea
-        name="description"
-        maxlength="2000"
-        rows="2"
-        value={form?.input?.description ?? ''}></textarea></label
-    >
-    <button>Create content type</button>
-  </form>
-</section>
+<details class="creation-panel" open={Boolean(form?.message)}>
+  <summary>Create a content type</summary>
+  <div class="creation-content">
+    {#if form?.message}<p role="alert">{form.message}</p>{/if}
+    <form method="POST">
+      <input
+        type="hidden"
+        name="idempotency_key"
+        value={form?.key ?? data.key}
+      />
+      <label
+        >Name<input
+          name="name"
+          required
+          maxlength="120"
+          value={form?.input?.name ?? ''}
+        /></label
+      >
+      <label
+        >Description (shown on the public list of pages)<textarea
+          name="description"
+          maxlength="2000"
+          rows="2"
+          value={form?.input?.description ?? ''}></textarea></label
+      >
+      <button>Create content type</button>
+    </form>
+  </div>
+</details>

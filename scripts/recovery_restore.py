@@ -90,7 +90,7 @@ def restore(archive,identity,project,port):
     with tempfile.TemporaryDirectory(prefix='looski-restore-') as temporary:
         plaintext=Path(temporary)/'snapshot.tar';encryption.decrypt(archive,plaintext,identity)
         manifest=bundle.inspect(plaintext);metadata=manifest['metadata']
-        if metadata['schema_version'] not in (23,28,29,30,31,32,33,34,35,36,37) or not metadata['postgres_version_num'].startswith('17'):
+        if metadata['schema_version'] not in (23,28,29,30,31,32,33,34,35,36,37,38,39,40) or not metadata['postgres_version_num'].startswith('17'):
             raise ValueError('Unsupported recovery schema or PostgreSQL version')
         if metadata['configuration']['COMPOSE_PROJECT_NAME']==project:raise ValueError('Recovery must use a different installation name')
         images=metadata['images']
@@ -104,6 +104,10 @@ def restore(archive,identity,project,port):
     restored_secrets=json.loads((target/'secrets.json').read_text())
     if 'communications' in restored_secrets:
         write_private(installation.state/'communications.json',json.dumps(restored_secrets['communications']))
+    # Restore with calendar effects disabled until the operator reconciles the provider.
+    write_private(installation.state/'calendars.json', '[]')
+    if 'calendars' in restored_secrets:
+        write_private(installation.state/'calendars-paused.json',json.dumps(restored_secrets['calendars']))
     for name in CORE_SECRETS:
         value=secrets.token_hex(32)+'\n' if name=='jwt_secret' else restored_secrets['core'][name]
         write_private(installation.state/'secrets'/name,value)

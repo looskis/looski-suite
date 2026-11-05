@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RecordDrawer from '$lib/components/ui/RecordDrawer.svelte';
   import type { ActionData, PageData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
   const root = $derived(`/workspaces/${data.workspace.id}/forms`);
@@ -14,27 +15,66 @@
 </script>
 
 <svelte:head><title>Forms · Looski</title></svelte:head>
-<header><span>{data.workspace.name}</span></header>
-<h1>Forms</h1>
-<p>
-  Collect answers through a public link or an embed. Publishing freezes a
-  version; each submission stays tied to the version it answered.
-</p>
+
+<div class="page-heading">
+  <h1>Forms</h1>
+  <div class="page-actions">
+    {#if data.page}<RecordDrawer title="New form" error={Boolean(form?.input)}>
+        {#if form?.message && form?.input}<p role="alert">
+            {form.message}
+          </p>{/if}
+        <form method="POST" action="?/create">
+          <input
+            type="hidden"
+            name="idempotency_key"
+            value={form?.key ?? data.key}
+          />
+          <label
+            >Name<input
+              name="name"
+              required
+              maxlength="120"
+              value={form?.input?.name ?? ''}
+            /></label
+          >
+          <label
+            >Description (shown above the questions)<textarea
+              name="description"
+              maxlength="2000"
+              rows="2"
+              value={form?.input?.description ?? ''}></textarea></label
+          >
+          <label
+            >Confirmation message (shown after submitting)<textarea
+              name="confirmation_message"
+              maxlength="2000"
+              rows="2"
+              value={form?.input?.confirmation_message ?? ''}></textarea></label
+          >
+          <button>Create form</button>
+        </form>
+      </RecordDrawer>{/if}
+  </div>
+</div>
 {#if form?.message && !form?.input}<p role="alert">{form.message}</p>{/if}
 {#if data.page}
-  <section>
+  <section class="index-list">
     <div class="toolbar">
-      <h2>{data.archived ? 'Archived forms' : 'Forms'}</h2>
-      <a href={data.archived ? '?' : '?archived=true'}
-        >{data.archived ? 'Show active' : 'Show archived'}</a
-      >
+      <nav class="view-tabs" aria-label="Forms views">
+        <a href="?" aria-current={!data.archived ? 'page' : undefined}
+          >All forms</a
+        ><a
+          href="?archived=true"
+          aria-current={data.archived ? 'page' : undefined}>Archived</a
+        >
+      </nav>
     </div>
     <form method="GET" class="inline">
       <label>Find by name<input name="search" value={data.search} /></label>
       <input type="hidden" name="archived" value={String(data.archived)} />
       <button class="secondary">Search</button>
     </form>
-    <div class="table-wrap">
+    <div class="record-table">
       <table>
         <thead
           ><tr
@@ -64,40 +104,6 @@
         >Next page →</a
       >{/if}
   </section>
-  <section>
-    <h2>Create a form</h2>
-    {#if form?.message && form?.input}<p role="alert">{form.message}</p>{/if}
-    <form method="POST" action="?/create">
-      <input
-        type="hidden"
-        name="idempotency_key"
-        value={form?.key ?? data.key}
-      />
-      <label
-        >Name<input
-          name="name"
-          required
-          maxlength="120"
-          value={form?.input?.name ?? ''}
-        /></label
-      >
-      <label
-        >Description (shown above the questions)<textarea
-          name="description"
-          maxlength="2000"
-          rows="2"
-          value={form?.input?.description ?? ''}></textarea></label
-      >
-      <label
-        >Confirmation message (shown after submitting)<textarea
-          name="confirmation_message"
-          maxlength="2000"
-          rows="2"
-          value={form?.input?.confirmation_message ?? ''}></textarea></label
-      >
-      <button>Create form</button>
-    </form>
-  </section>
 {:else}
   <section>
     <h2>Forms is turned off</h2>
@@ -108,24 +114,26 @@
   </section>
 {/if}
 {#if data.module}
-  <section>
-    <h2>Application selection</h2>
-    <p>Forms is {data.module.enabled ? 'on' : 'off'} for this workspace.</p>
-    <form method="POST" action="?/module">
-      <input type="hidden" name="idempotency_key" value={data.key} />
-      <input
-        type="hidden"
-        name="expected_version"
-        value={data.module.version}
-      />
-      <input
-        type="hidden"
-        name="enabled"
-        value={String(!data.module.enabled)}
-      />
-      <button class={data.module.enabled ? 'secondary' : ''}
-        >{data.module.enabled ? 'Turn off Forms' : 'Turn on Forms'}</button
-      >
-    </form>
-  </section>
+  <details class="creation-panel" open={Boolean(form?.message)}>
+    <summary>Application settings</summary>
+    <div class="creation-content">
+      <p>Forms is {data.module.enabled ? 'on' : 'off'} for this workspace.</p>
+      <form method="POST" action="?/module">
+        <input type="hidden" name="idempotency_key" value={data.key} />
+        <input
+          type="hidden"
+          name="expected_version"
+          value={data.module.version}
+        />
+        <input
+          type="hidden"
+          name="enabled"
+          value={String(!data.module.enabled)}
+        />
+        <button class={data.module.enabled ? 'secondary' : ''}
+          >{data.module.enabled ? 'Turn off Forms' : 'Turn on Forms'}</button
+        >
+      </form>
+    </div>
+  </details>
 {/if}

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import RecordDrawer from '$lib/components/ui/RecordDrawer.svelte';
+  import { shortDate } from '$lib/format';
+  import { page } from '$app/state';
   import TaskFields from '$lib/components/TaskFields.svelte';
   let { data, form } = $props();
 </script>
@@ -10,11 +13,78 @@
       : data.task.status.replaceAll('_', ' ')}</span
   >
 </header>
-<h1>{data.task.title}</h1>
-{#if data.task.type_name}<p>Type: {data.task.type_name}</p>{/if}
-{#if data.task.source_template_revision_id}<p>
-    Created from template revision {data.task.source_template_revision_id}
-  </p>{/if}
+<div class="page-heading">
+  <h1>{data.task.title}</h1>
+  <div class="page-actions">
+    <RecordDrawer
+      message={form?.message}
+      title="Edit task"
+      secondary
+      error={Boolean(form?.draft || form?.archiveDraft) ||
+        page.url.searchParams.has('parent')}
+    >
+      <form method="POST" action="?/save">
+        <input
+          type="hidden"
+          name="idempotency_key"
+          value={form?.draft?.key ?? data.key}
+        />
+        <input
+          type="hidden"
+          name="expected_version"
+          value={form?.draft?.expected_version ?? data.task.version}
+        />
+        <TaskFields fields={form?.draft ?? data.fields} /><button
+          disabled={data.task.archived}>Save task</button
+        >
+      </form>
+      {#if data.task.archived}<p>Restore this task before editing.</p>{/if}
+      <form method="POST" action="?/archive">
+        <input
+          type="hidden"
+          name="idempotency_key"
+          value={form?.archiveDraft?.key ?? data.archiveKey}
+        />
+        <input
+          type="hidden"
+          name="expected_version"
+          value={form?.archiveDraft?.expected_version ?? data.task.version}
+        />
+        <input
+          type="hidden"
+          name="archived"
+          value={form?.archiveDraft?.archived ?? String(!data.task.archived)}
+        />
+        <button class="secondary"
+          >{data.task.archived ? 'Restore task' : 'Archive task'}</button
+        >
+      </form>
+    </RecordDrawer>
+  </div>
+</div>
+<dl class="record-summary">
+  <div>
+    <dt>Status</dt>
+    <dd>{data.task.status.replaceAll('_', ' ')}</dd>
+  </div>
+  <div>
+    <dt>Due date</dt>
+    <dd>{data.task.due_on ?? 'Unscheduled'}</dd>
+  </div>
+  <div>
+    <dt>Type</dt>
+    <dd>{data.task.type_name ?? 'General'}</dd>
+  </div>
+  <div>
+    <dt>Updated</dt>
+    <dd>{shortDate(data.task.updated_at)}</dd>
+  </div>
+</dl>
+<section>
+  <h2>Notes</h2>
+  <p style="white-space: pre-wrap">{data.task.notes || 'No notes added.'}</p>
+</section>
+
 {#if data.task.completed_at}<p>Completed {data.task.completed_at}</p>{/if}
 {#if form?.message}<p role="alert" class="error">{form.message}</p>{/if}
 {#if form?.draft || form?.archiveDraft}<p>
@@ -22,45 +92,7 @@
       >Discard draft and reload saved values</a
     >
   </p>{/if}
-<section>
-  <h2>Task details</h2>
-  <form method="POST" action="?/save">
-    <input
-      type="hidden"
-      name="idempotency_key"
-      value={form?.draft?.key ?? data.key}
-    />
-    <input
-      type="hidden"
-      name="expected_version"
-      value={form?.draft?.expected_version ?? data.task.version}
-    />
-    <TaskFields fields={form?.draft ?? data.fields} /><button
-      disabled={data.task.archived}>Save task</button
-    >
-  </form>
-  {#if data.task.archived}<p>Restore this task before editing.</p>{/if}
-  <form method="POST" action="?/archive">
-    <input
-      type="hidden"
-      name="idempotency_key"
-      value={form?.archiveDraft?.key ?? data.archiveKey}
-    />
-    <input
-      type="hidden"
-      name="expected_version"
-      value={form?.archiveDraft?.expected_version ?? data.task.version}
-    />
-    <input
-      type="hidden"
-      name="archived"
-      value={form?.archiveDraft?.archived ?? String(!data.task.archived)}
-    />
-    <button class="secondary"
-      >{data.task.archived ? 'Restore task' : 'Archive task'}</button
-    >
-  </form>
-</section>
+
 <section>
   <h2>History</h2>
   <ol>

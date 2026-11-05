@@ -123,7 +123,8 @@ export function recordFields(record?: Record) {
     amount: record
       ? (('pipeline_id' in record ? record.expected_value : record.value) ?? '')
       : '',
-    currency: record?.currency_code ?? '',
+    currency: record?.currency_code ?? 'USD',
+    frequency: record?.billing_frequency ?? 'one_time',
     date1: record
       ? (('pipeline_id' in record
           ? record.expected_close_on
@@ -146,7 +147,10 @@ export function opportunityInput(
     pipeline_id: text(form, 'parent_id'),
     stage_id: text(form, 'state_id'),
     expected_value: text(form, 'amount') || null,
-    currency_code: text(form, 'currency') || null,
+    currency_code: text(form, 'amount')
+      ? text(form, 'currency') || 'USD'
+      : null,
+    billing_frequency: text(form, 'frequency') || 'one_time',
     expected_close_on: text(form, 'date1') || null,
   };
 }
@@ -158,7 +162,10 @@ export function dealInput(form: FormData): components['schemas']['DealInput'] {
     category_id: text(form, 'parent_id'),
     status_id: text(form, 'state_id'),
     value: text(form, 'amount') || null,
-    currency_code: text(form, 'currency') || null,
+    currency_code: text(form, 'amount')
+      ? text(form, 'currency') || 'USD'
+      : null,
+    billing_frequency: text(form, 'frequency') || 'one_time',
     starts_on: text(form, 'date1') || null,
     ends_on: text(form, 'date2') || null,
   };
@@ -169,6 +176,7 @@ export function recordDraft(form: FormData) {
     notes: text(form, 'notes'),
     amount: text(form, 'amount'),
     currency: text(form, 'currency'),
+    frequency: text(form, 'frequency'),
     date1: text(form, 'date1'),
     date2: text(form, 'date2'),
     owner: text(form, 'owner'),

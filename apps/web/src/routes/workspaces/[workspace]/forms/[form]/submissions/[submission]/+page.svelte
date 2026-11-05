@@ -54,15 +54,15 @@
 
 <style>
   dt {
-    font-size: 13px;
-    font-weight: 550;
-    margin-top: 16px;
+    font-size: var(--font-size-13);
+    font-weight: var(--font-weight-label);
+    margin-top: var(--space-4);
   }
   dd {
-    margin: 4px 0 0;
+    margin: var(--space-1) 0 0;
     white-space: pre-wrap;
   }
   dd.empty {
-    color: var(--muted);
+    color: var(--text-secondary);
   }
 </style>

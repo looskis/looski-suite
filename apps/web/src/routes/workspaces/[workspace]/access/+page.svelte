@@ -3,44 +3,15 @@
   let { data, form } = $props();
 </script>
 
-<header>
-  <a href={`/workspaces/${data.workspace.id}/contacts`}>← Contacts</a><span
-    >{data.workspace.name}</span
+<div class="page-heading">
+  <h1>Workspace access</h1>
+  <a
+    class="action-link"
+    href={`/workspaces/${data.workspace.id}/access/invitations`}
+    >Invite members</a
   >
-</header>
-<h1>Workspace access</h1>
-<p>
-  <a href={`/workspaces/${data.workspace.id}/access/invitations`}
-    >Staff invitations</a
-  >
-</p>
-<p>
-  Manage staff roles and workspace membership. Changes apply to the next
-  authorized request.
-</p>
+</div>
 {#if form?.message}<p class="error" role="alert">{form.message}</p>{/if}
-<section>
-  <h2>Roles</h2>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Role</th><th>State</th><th>Grants</th></tr></thead><tbody
-        >{#each data.roles.items as role}<tr
-            ><td
-              ><a
-                href={`/workspaces/${data.workspace.id}/access/roles/${role.id}`}
-                >{role.name}</a
-              ></td
-            ><td>{role.archived ? 'Archived' : 'Active'}</td><td
-              >{role.grants.length}</td
-            ></tr
-          >{/each}</tbody
-      >
-    </table>
-  </div>
-  {#if data.roles.next_cursor}<p>
-      <a href={`?roles_after=${data.roles.next_cursor}`}>More roles →</a>
-    </p>{/if}
-</section>
 <section>
   <h2>Staff members</h2>
   <div class="table-wrap">
@@ -64,11 +35,35 @@
     </p>{/if}
 </section>
 <section>
-  <h2>Create role</h2>
-  <form method="POST">
-    <input type="hidden" name="idempotency_key" value={data.key} /><RoleFields
-      permissions={data.permissions}
-    />
-    <p><button>Create role</button></p>
-  </form>
+  <h2>Roles</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Role</th><th>State</th><th>Grants</th></tr></thead><tbody
+        >{#each data.roles.items as role}<tr
+            ><td
+              ><a
+                href={`/workspaces/${data.workspace.id}/access/roles/${role.id}`}
+                >{role.name}</a
+              ></td
+            ><td>{role.archived ? 'Archived' : 'Active'}</td><td
+              >{role.grants.length}</td
+            ></tr
+          >{/each}</tbody
+      >
+    </table>
+  </div>
+  {#if data.roles.next_cursor}<p>
+      <a href={`?roles_after=${data.roles.next_cursor}`}>More roles →</a>
+    </p>{/if}
 </section>
+<details class="creation-panel" open={Boolean(form?.message)}>
+  <summary>Create role</summary>
+  <div class="creation-content">
+    <form method="POST">
+      <input type="hidden" name="idempotency_key" value={data.key} /><RoleFields
+        permissions={data.permissions}
+      />
+      <p><button>Create role</button></p>
+    </form>
+  </div>
+</details>

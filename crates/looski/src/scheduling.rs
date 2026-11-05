@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //! Host calendars, public capabilities, atomic intake and durable booking follow-up.
+pub(crate) mod calendar;
 mod workflow;
 use crate::{
     access,
@@ -490,9 +491,22 @@ pub async fn slots(pool: &PgPool, key: Uuid, q: SlotQuery) -> Result<Vec<Booking
         return Err(Error::Invalid("Choose a day within the next year"));
     }
     let candidates=sqlx::query_as::<_,BookingSlot>("SELECT to_char(g AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS starts_at,to_char((g+$3*interval '1 minute') AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS ends_at,to_char(g AT TIME ZONE $2,'YYYY-MM-DD HH24:MI') || ' ' || $2 || ' (UTC' || CASE WHEN (g AT TIME ZONE $2)>=(g AT TIME ZONE 'UTC') THEN '+' ELSE '-' END || lpad((abs(extract(epoch FROM ((g AT TIME ZONE $2)-(g AT TIME ZONE 'UTC'))))::integer/3600)::text,2,'0') || ':' || lpad((abs(extract(epoch FROM ((g AT TIME ZONE $2)-(g AT TIME ZONE 'UTC'))))::integer%3600/60)::text,2,'0') || ')' AS label FROM generate_series($1::date::timestamp AT TIME ZONE 'UTC'-interval '14 hours',$1::date::timestamp AT TIME ZONE 'UTC'+interval '38 hours',interval '15 minutes') g WHERE (g AT TIME ZONE $2)::date=$1::date AND g>now() ORDER BY g").bind(&q.date).bind(&t.view.settings.timezone).bind(t.view.settings.duration_minutes).fetch_all(&mut *tx).await?;
+    let external = if let (Some(first), Some(last)) = (candidates.first(), candidates.last()) {
+        let start = chrono::DateTime::parse_from_rfc3339(&first.starts_at)
+            .map_err(|_| Error::Unavailable)?
+            - chrono::Duration::minutes(i64::from(t.view.settings.buffer_before));
+        let end = chrono::DateTime::parse_from_rfc3339(&last.ends_at)
+            .map_err(|_| Error::Unavailable)?
+            + chrono::Duration::minutes(i64::from(t.view.settings.buffer_after));
+        calendar::busy(&t, &start.to_rfc3339(), &end.to_rfc3339(), None).await?
+    } else {
+        Vec::new()
+    };
     let mut items = Vec::new();
     for slot in candidates {
-        if slot_available(&mut tx, &t, &slot.starts_at, None).await? {
+        if calendar::available(&t, &slot.starts_at, &external)?
+            && slot_available(&mut tx, &t, &slot.starts_at, None).await?
+        {
             items.push(slot);
         }
     }
@@ -540,7 +554,9 @@ pub async fn reserve(
             "A name and valid email address are required",
         ));
     }
-    if !slot_available(&mut tx, &t, &input.starts_at, None).await? {
+    if !slot_available(&mut tx, &t, &input.starts_at, None).await?
+        || !calendar::check(&t, &input.starts_at, None).await?
+    {
         return Err(Error::Conflict("This time is no longer available"));
     }
     let id = Uuid::new_v4();
@@ -633,7 +649,9 @@ async fn change_in(
                 .starts_at
                 .as_deref()
                 .ok_or(Error::Invalid("New start is required"))?;
-            if !slot_available(db, t, start, Some(id)).await? {
+            if !slot_available(db, t, start, Some(id)).await?
+                || !calendar::check(t, start, Some(id)).await?
+            {
                 return Err(Error::Conflict("This time is no longer available"));
             }
             let s = &t.view.settings;
@@ -641,6 +659,9 @@ async fn change_in(
             workflow::enqueue(db, t, id, version + 1, false).await?;
         }
         _ => return Err(Error::Invalid("Action must be cancel or reschedule")),
+    }
+    if input.action == "cancel" {
+        calendar::enqueue(db, t, id, version + 1).await?;
     }
     event(db, t.workspace, id, &input.action).await
 }

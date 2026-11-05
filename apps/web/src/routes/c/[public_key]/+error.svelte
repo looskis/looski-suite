@@ -12,6 +12,6 @@
   main {
     max-width: 720px;
     margin: 0 auto;
-    padding: 48px 20px;
+    padding: var(--space-12) var(--space-5);
   }
 </style>

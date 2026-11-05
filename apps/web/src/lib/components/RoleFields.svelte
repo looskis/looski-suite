@@ -46,14 +46,14 @@
 
 <style>
   fieldset {
-    border: 1px solid #cdd8cb;
-    border-radius: 7px;
+    border: 1px solid var(--border-permission);
+    border-radius: var(--radius-sm);
     display: inline-block;
     vertical-align: top;
-    margin: 8px 8px 0 0;
+    margin: var(--space-2) var(--space-2) 0 0;
     min-width: 220px;
   }
   legend {
-    font-size: 13px;
+    font-size: var(--font-size-13);
   }
 </style>

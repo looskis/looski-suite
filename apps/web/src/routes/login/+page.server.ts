@@ -5,9 +5,20 @@ import {
   saveSession,
 } from '$lib/server/session';
 import { safeReturnPath } from '$lib/server/return-path';
+import { googleEnabled } from '$lib/server/google-oauth';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ url }) => ({
+  googleEnabled: googleEnabled(),
+  googleFailed: url.searchParams.get('google') === 'failed',
+  googleAction:
+    '/auth/google' +
+    (safeReturnPath(url.searchParams.get('next'), url.origin)
+      ? '?' +
+        new URLSearchParams({
+          next: safeReturnPath(url.searchParams.get('next'), url.origin)!,
+        })
+      : ''),
   localLogout: url.searchParams.get('logout') === 'local',
   cliAuthorization:
     safeReturnPath(url.searchParams.get('next'), url.origin)?.startsWith(

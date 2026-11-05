@@ -12,3 +12,5 @@ supabase/.branches/
 __pycache__/
 dist/
 .installer.lock
+adhoc/
+.orca/

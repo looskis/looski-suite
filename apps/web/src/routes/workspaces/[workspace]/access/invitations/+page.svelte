@@ -5,10 +5,13 @@
 
 <a href={`/workspaces/${data.workspace.id}/access`}>← Workspace access</a>
 <h1>Staff invitations</h1>
-<p>
-  Create an expiring invitation for a specific email address. The recipient must
-  verify that address before joining.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Create an expiring invitation for a specific email address. The recipient
+    must verify that address before joining.
+  </p>
+</details>
 {#if form?.message}<p role="alert" class="error">{form.message}</p>{/if}
 <section>
   <h2>Choose roles</h2>
@@ -39,41 +42,47 @@
     </p>
   </form>
 </section>
-<section>
-  <h2>Create invitation</h2>
-  <p>
-    Selected roles: {data.selected.map((r) => r.name).join(', ') ||
-      'Choose roles above first'}
-  </p>
-  <form method="POST">
-    <input type="hidden" name="idempotency_key" value={form?.key ?? data.key} />
-    {#each form?.draft.role_ids ?? data.selected.map((r) => r.id) as id}<input
+<details class="creation-panel" open={Boolean(form?.message)}>
+  <summary>Create invitation</summary>
+  <div class="creation-content">
+    <p>
+      Selected roles: {data.selected.map((r) => r.name).join(', ') ||
+        'Choose roles above first'}
+    </p>
+    <form method="POST">
+      <input
         type="hidden"
-        name="role_ids"
-        value={id}
-      />{/each}
-    <label
-      >Email <input
-        name="email"
-        type="email"
-        maxlength="254"
-        required
-        value={form?.draft.email ?? ''}
-      /></label
-    >
-    <label
-      >Expires in hours <input
-        name="expires_in_hours"
-        type="number"
-        min="1"
-        max="168"
-        required
-        value={form?.draft.expires_in_hours ?? 72}
-      /></label
-    >
-    <button>Create invitation</button>
-  </form>
-</section>
+        name="idempotency_key"
+        value={form?.key ?? data.key}
+      />
+      {#each form?.draft.role_ids ?? data.selected.map((r) => r.id) as id}<input
+          type="hidden"
+          name="role_ids"
+          value={id}
+        />{/each}
+      <label
+        >Email <input
+          name="email"
+          type="email"
+          maxlength="254"
+          required
+          value={form?.draft.email ?? ''}
+        /></label
+      >
+      <label
+        >Expires in hours <input
+          name="expires_in_hours"
+          type="number"
+          min="1"
+          max="168"
+          required
+          value={form?.draft.expires_in_hours ?? 72}
+        /></label
+      >
+      <button>Create invitation</button>
+    </form>
+  </div>
+</details>
 <section>
   <h2>Invitation history</h2>
   <table>

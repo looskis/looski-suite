@@ -1,4 +1,10 @@
 declare global {
-  namespace App {}
+  namespace App {
+    interface Locals {
+      workspaceSession?: ReturnType<
+        typeof import('$lib/server/session').loadWorkspaceList
+      >;
+    }
+  }
 }
 export {};

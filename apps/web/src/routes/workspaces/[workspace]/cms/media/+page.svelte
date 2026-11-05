@@ -6,10 +6,14 @@
 
 <svelte:head><title>Media · Looski</title></svelte:head>
 <h1>Media</h1>
-<p>
-  Media comes from Files and stays private there. A public page can show an item
-  only while a published entry uses it. PNG, JPEG, GIF, WebP and PDF only.
-</p>
+<details class="page-help">
+  <summary>How this works</summary>
+  <p>
+    Media comes from Files and stays private there. A public page can show an
+    item only while a published entry uses it. PNG, JPEG, GIF, WebP and PDF
+    only.
+  </p>
+</details>
 {#if form?.message}<p role="alert">{form.message}</p>{/if}
 <section>
   <div class="toolbar">
@@ -41,40 +45,46 @@
       >Next page →</a
     >{/if}
 </section>
-<section>
-  <h2>Upload</h2>
-  <form method="POST" action="?/upload" enctype="multipart/form-data">
-    <input type="hidden" name="idempotency_key" value={form?.key ?? data.key} />
-    <input
-      type="hidden"
-      name="file_key"
-      value={form?.fileKey ?? data.fileKey}
-    />
-    <label
-      >File<input
-        type="file"
-        name="file"
-        required
-        accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"
-      /></label
-    >
-    <label
-      >Title<input
-        name="title"
-        maxlength="200"
-        value={form?.input?.title ?? ''}
-      /></label
-    >
-    <label
-      >Description for people who cannot see it<input
-        name="alt_text"
-        maxlength="1000"
-        value={form?.input?.alt_text ?? ''}
-      /></label
-    >
-    <button>Upload</button>
-  </form>
-</section>
+<details class="creation-panel" open={Boolean(form?.message)}>
+  <summary>Upload</summary>
+  <div class="creation-content">
+    <form method="POST" action="?/upload" enctype="multipart/form-data">
+      <input
+        type="hidden"
+        name="idempotency_key"
+        value={form?.key ?? data.key}
+      />
+      <input
+        type="hidden"
+        name="file_key"
+        value={form?.fileKey ?? data.fileKey}
+      />
+      <label
+        >File<input
+          type="file"
+          name="file"
+          required
+          accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"
+        /></label
+      >
+      <label
+        >Title<input
+          name="title"
+          maxlength="200"
+          value={form?.input?.title ?? ''}
+        /></label
+      >
+      <label
+        >Description for people who cannot see it<input
+          name="alt_text"
+          maxlength="1000"
+          value={form?.input?.alt_text ?? ''}
+        /></label
+      >
+      <button>Upload</button>
+    </form>
+  </div>
+</details>
 {#if data.files.length}
   <section>
     <h2>Use a file already in Files</h2>

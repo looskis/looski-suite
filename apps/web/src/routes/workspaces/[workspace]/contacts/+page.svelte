@@ -1,103 +1,65 @@
 <script lang="ts">
+  import { page } from '$app/state';
+  import RecordDrawer from '$lib/components/ui/RecordDrawer.svelte';
+  import RecordViewControls from '$lib/components/RecordViewControls.svelte';
+  import RecordTable from '$lib/components/RecordTable.svelte';
   import ContactFields from '$lib/components/ContactFields.svelte';
   import type { PageData, ActionData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
-  const nextPage = () =>
-    `?${new URLSearchParams({ search: data.search, ...(data.tagId ? { tag_id: data.tagId } : {}), archived: String(data.archived), after: data.page.next_cursor ?? '' })}`;
+  function nextPage() {
+    const query = new URLSearchParams(page.url.searchParams);
+    query.set('after', data.page.next_cursor ?? '');
+    return `?${query}`;
+  }
 </script>
 
 <svelte:head
   ><title>Contacts · {data.workspace.name} · Looski</title></svelte:head
 >
-
-<h1>People behind the business.</h1>
-<p class="muted">
-  Keep relationships in one place. Contacts work independently of your sales
-  pipeline.
-</p>
-<section aria-label="Contacts">
-  <div class="toolbar">
-    <h2>{data.archived ? 'Archived contacts' : 'Contacts'}</h2>
-    <a href={data.archived ? '?' : '?archived=true'}
-      >{data.archived ? 'Show active contacts' : 'Show archived contacts'}</a
+<div class="page-heading">
+  <h1>
+    Contacts<span class="count"
+      >{data.page.items.length}{data.page.next_cursor ? ' +' : ''} shown</span
+    >
+  </h1>
+  <div class="page-actions">
+    <RecordDrawer
+      title="New contact"
+      error={Boolean(form?.message && form?.input)}
+      >{#if form?.message}<p role="alert" class="error">{form.message}</p>{/if}
+      <form method="POST" action="?/create">
+        <input
+          type="hidden"
+          name="idempotency_key"
+          value={form?.idempotencyKey ?? data.idempotencyKey}
+        /><ContactFields contact={form?.input} fields={data.fields} /><button
+          >Create contact</button
+        >
+      </form></RecordDrawer
     >
   </div>
-  <form method="GET" class="inline">
-    {#if data.tagId}<input type="hidden" name="tag_id" value={data.tagId} /><a
-        href="?">Clear tag filter</a
-      >{/if}
-    <label
-      >Find by name<input
-        name="search"
-        value={data.search}
-        placeholder="Search contacts"
-      /></label
-    ><input
-      type="hidden"
-      name="archived"
-      value={String(data.archived)}
-    /><button>Search</button>
-  </form>
-  <div class="table-wrap">
-    <table class="contacts-table">
-      <thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead><tbody>
-        {#each data.page.items as contact (contact.id)}
-          <tr
-            ><td
-              ><a
-                href={`/workspaces/${data.workspace.id}/contacts/${contact.id}`}
-                >{contact.display_name}</a
-              ></td
-            ><td
-              >{contact.identifiers
-                .filter((i) => i.kind === 'email')
-                .map((i) => i.value)
-                .join(', ') || '—'}</td
-            ><td
-              >{contact.identifiers
-                .filter((i) => i.kind === 'phone')
-                .map((i) => i.value)
-                .join(', ') || '—'}</td
-            ></tr
-          >
-        {:else}<tr
-            ><td colspan="3"
-              >{data.search
-                ? 'No matching contacts.'
-                : 'No contacts here yet.'}</td
-            ></tr
-          >{/each}
-      </tbody>
-    </table>
-  </div>
-  {#if data.page.next_cursor}<p><a href={nextPage()}>Next page →</a></p>{/if}
-</section>
-<section aria-labelledby="create-heading">
-  <h2 id="create-heading">Add a contact</h2>
-  {#if form?.message}<p role="alert" class="error">{form.message}</p>{/if}
-  <form method="POST" action="?/create">
-    <input
-      type="hidden"
-      name="idempotency_key"
-      value={form?.idempotencyKey ?? data.idempotencyKey}
-    /><ContactFields contact={form?.input} /><button>Create contact</button>
-  </form>
-</section>
-
-<style>
-  .contacts-table {
-    table-layout: fixed;
-  }
-  .contacts-table th:first-child {
-    width: 30%;
-  }
-  .contacts-table th:nth-child(2) {
-    width: 45%;
-  }
-  .contacts-table th:nth-child(3) {
-    width: 25%;
-  }
-  .contacts-table:has(tbody td:not([colspan])) {
-    min-width: 620px;
-  }
-</style>
+</div>
+{#if form?.message && !form?.input}<p role="alert" class="error">
+    {form.message}
+  </p>{/if}
+<RecordViewControls
+  fields={data.fields}
+  views={data.views}
+  config={data.config}
+  viewId={data.viewId}
+  viewKey={data.viewKey}
+  kind="contacts"
+  workspace={data.workspace.id}
+  search={data.search}
+  tagId={data.tagId}
+/>
+<RecordTable
+  items={data.page.items}
+  fields={data.fields}
+  config={data.config}
+  root={`/workspaces/${data.workspace.id}/contacts`}
+/>
+<div class="list-footer">
+  <span>{data.page.items.length} contacts on this page</span
+  >{#if data.page.next_cursor}<a href={nextPage()}>Next page →</a>{/if}
+</div>

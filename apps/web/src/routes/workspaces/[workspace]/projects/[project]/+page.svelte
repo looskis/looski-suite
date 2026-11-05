@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { shortDate } from '$lib/format';
+  import RecordDrawer from '$lib/components/ui/RecordDrawer.svelte';
   import { projectStatusLabel, taskStatusLabel } from '$lib/project-labels';
   import type { ActionData, PageData } from './$types';
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -27,7 +29,9 @@
 <h1>{data.board.project.name}</h1>
 <p>
   {projectStatusLabel(data.board.project.status)}{#if data.board.project.due_on}
-    · due {data.board.project.due_on}{/if}{#if data.board.project.archived}
+    · due {shortDate(
+      data.board.project.due_on,
+    )}{/if}{#if data.board.project.archived}
     · archived{/if}
 </p>
 {#if data.board.project.description}<p class="description">
@@ -92,7 +96,9 @@
               {card.assignee_name ?? 'Outside this project'}
             </dd>
             <dt>Deadline</dt>
-            <dd>{card.task.due_on ?? 'None'}</dd>
+            <dd>
+              {card.task.due_on ? shortDate(card.task.due_on) : 'No deadline'}
+            </dd>
             <dt>Status</dt>
             <dd>{taskStatusLabel(card.task.status)}</dd>
             {#if card.comment_count}<dt>Comments</dt>
@@ -184,8 +190,7 @@
   {/each}
 </div>
 {#if !locked}
-  <section>
-    <h2>Add a task</h2>
+  <RecordDrawer title="Add a task" error={Boolean(form?.input)}>
     <form method="POST" action="?/add">
       <input
         type="hidden"
@@ -244,60 +249,64 @@
         <button class="secondary">Add to board</button>
       </form>
     {/if}
-  </section>
+  </RecordDrawer>
 {/if}
 
 <style>
   .board {
     display: flex;
-    gap: 14px;
+    gap: var(--space-3-5);
     align-items: flex-start;
     overflow-x: auto;
-    padding-bottom: 12px;
+    padding-bottom: var(--space-3);
   }
   .column {
-    flex: 0 0 280px;
+    flex: 0 0 300px;
+    border: 0;
+    min-height: 360px;
     margin: 0;
-    padding: 12px;
-    background: var(--panel, #f4f5f2);
-    border-radius: 8px;
+    padding: var(--space-3);
+    background: var(--surface-board);
+    border-radius: var(--radius-md);
   }
   .column h2 {
-    font-size: 15px;
-    margin: 0 0 6px;
+    font-size: 12px;
+    padding: 4px 0 12px;
+    margin: 0 0 var(--space-1-5);
   }
   .column h2 small {
-    color: var(--muted);
-    font-weight: 400;
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-regular);
   }
   .hint {
-    font-size: 12px;
-    color: var(--muted);
-    margin: 0 0 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin: 0 0 var(--space-2);
   }
   .card {
-    background: #fff;
-    border: 1px solid var(--line, #ddd);
-    border-radius: 6px;
-    padding: 10px;
-    margin-bottom: 10px;
+    background: var(--surface-panel);
+    border: 1px solid var(--border-default);
+    border-radius: 9px;
+    box-shadow: 0 1px 3px #00000005;
+    padding: 16px;
+    margin-bottom: var(--space-2-5);
   }
   .card[draggable='true'] {
     cursor: grab;
   }
   .title {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     overflow-wrap: anywhere;
   }
   dl {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 2px 8px;
-    margin: 8px 0;
-    font-size: 12px;
+    gap: var(--space-0-5) var(--space-2);
+    margin: var(--space-2) 0;
+    font-size: 11px;
   }
   dt {
-    color: var(--muted);
+    color: var(--text-secondary);
   }
   dd {
     margin: 0;
@@ -306,18 +315,18 @@
   .moves {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--space-1);
     align-items: center;
   }
   .moves form {
     display: flex;
-    gap: 4px;
+    gap: var(--space-1);
     margin: 0;
   }
   .moves button,
   .moves select {
-    padding: 2px 8px;
-    font-size: 12px;
+    padding: var(--space-0-5) var(--space-2);
+    font-size: 11px;
     width: auto;
     min-height: 0;
   }

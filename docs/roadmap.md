@@ -59,3 +59,11 @@ These references informed the initial workflow comparisons; they are not frozen 
 - [Typeform platform overview](https://www.typeform.com/platform-overview)
 - [Contentful content models](https://www.contentful.com/help/content-models/)
 - [Airtable automation concepts](https://support.airtable.com/articles/3669392397-Getting-started-with-airtable-automations)
+
+## Current integration priorities
+
+The next adoption work is Gmail/IMAP communications, embeddable scheduling and Google Calendar synchronization, optional visitor attribution for concierge, and the existing website's CMS data-source cutover with URL/metadata/rendering parity. These extend the initial applications rather than replacing their standalone scope.
+
+Expansion designs: [quotes and invoicing](implementation/quotes-invoicing-plan.md), [expenses and approvals](implementation/expenses-approvals-plan.md), [inventory and purchasing](implementation/inventory-purchasing-plan.md). Visitor work follows the supplied [web visitors plan](implementation/web-visitors-plan.md), including its integration decisions and consent/identity boundaries.
+
+The November adoption implementation now includes embeddable scheduling, provider-neutral Gmail/IMAP and Google Calendar adapters, and the optional Visitors application. Google live authorization is still a deployment step. Website CMS data delivery has cut over to Suite with URL/rendering/indexing-input parity. See [email and calendar connectors](email-calendar-connectors.md) and [visitor attribution](visitors.md) for implemented scope and outstanding host integrations.
