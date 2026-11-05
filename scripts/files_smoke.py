@@ -107,7 +107,7 @@ mcp_body=payload(b'MCP bytes');mcp_result=f.mcp('files_upload',{'workspace_id':f
 mcp_file=json.loads(mcp_result['content'][0]['text'])
 assert json.loads(f.mcp('files_content',{'workspace_id':f.workspace,'id':mcp_file['id']})['content'][0]['text'])['content_base64']==mcp_body['content_base64']
 with f.browser.open(f.base+f'/workspaces/{f.workspace}/files') as response:
- assert 'Upload a file' in response.read().decode()
+ assert 'Upload file' in response.read().decode()
 with f.browser.open(f.base+f'/workspaces/{f.workspace}/files/'+file['id']+'/download') as response:
  assert response.headers['Content-Disposition'].startswith('attachment;') and response.headers['Cache-Control']=='no-store' and response.headers['X-Content-Type-Options']=='nosniff'
  assert response.read()==raw

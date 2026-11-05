@@ -243,7 +243,7 @@ def page(url):
         return html,fields.values
 web_path='/workspaces/'+workspace+'/contacts'
 html,fields=page(web_path+'?search='+name.replace(' ','%20'))
-assert 'People behind the business.' in html and name in html
+assert '<title>Contacts · ' in html and name in html
 web_name=name+' browser'
 form={**fields,'display_name':web_name,'emails':'','phones':'','notes':'Browser fixture'}
 try:

@@ -112,7 +112,7 @@ def page(path):
         html=response.read().decode();fields=Fields();fields.feed(html);return html,fields.values
 web='/workspaces/'+fixture.workspace
 html,fields=page(web+'/organizations')
-assert 'Organizations you work with.' in html
+assert '<title>Organizations · ' in html
 form={**fields,'name':name+' browser','website_url':'https://example.com','notes':'Organization form test'}
 with fixture.browser.open(Request(fixture.base+web+'/organizations?/create',data=urlencode(form).encode(),headers={'Origin':fixture.base,'Accept':'text/html'}),timeout=20) as response:
     location=response.geturl();assert 'Organization form test' in response.read().decode()

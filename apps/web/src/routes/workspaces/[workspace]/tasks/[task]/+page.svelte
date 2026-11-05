@@ -75,6 +75,10 @@
     <dt>Type</dt>
     <dd>{data.task.type_name ?? 'General'}</dd>
   </div>
+  {#if data.task.source_template_revision_id}<div>
+      <dt>Created from</dt>
+      <dd>Template revision {data.task.source_template_revision_id}</dd>
+    </div>{/if}
   <div>
     <dt>Updated</dt>
     <dd>{shortDate(data.task.updated_at)}</dd>

@@ -39,7 +39,7 @@ initial={m['key']:m['enabled'] for m in f.call(base+'/modules')}
 # Selection, type builder and entry editing with Forms and CRM off.
 module('crm',False);module('forms',False);module('cms',False)
 html,_=staff(web);assert 'Content is turned off' in html and 'Enable Content' in html
-html,_=staff(web+'?/module',form_on(html,'?/module'));assert 'Create an entry' in html
+html,_=staff(web+'?/module',form_on(html,'?/module'));assert 'New entry' in html
 types,_=staff(web+'/types')
 assert 'Create a content type' in types
 name='Browser pages '+key()

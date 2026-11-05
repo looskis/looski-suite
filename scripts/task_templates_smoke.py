@@ -164,7 +164,7 @@ forms,_,_=browser(browser_path);execution=forms.form('base_on');execution['base_
 forms,_,_=browser(browser_path+'?/instantiate',execution,400);assert forms.form('base_on')==execution
 execution['base_on']='2028-02-29';forms,html,url=browser(browser_path+'?/instantiate',execution);browser_task=urlparse(url).path.rsplit('/',1)[1]
 assert call(base+'/tasks/'+browser_task)['source_template_revision_id']==execution['revision_id']
-assert 'Created from template revision' in html
+assert 'Template revision '+execution['revision_id'] in html
 fields_form=forms.form('title');assert fields_form['type_id']==browser_type
 fields_form['type_id']='';browser(web+'/'+browser_task+'?/save',fields_form)
 assert call(base+'/tasks/'+browser_task)['type_id'] is None

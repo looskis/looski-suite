@@ -68,7 +68,7 @@ def wait_for(predicate,what,seconds=30):
 # Forms is selected in its own page and works with CRM off.
 module('crm',False);module('forms',False)
 html,_=staff(web);assert 'Forms is turned off' in html and 'Turn on Forms' in html
-html,_=staff(web+'?/module',form_on(html,'?/module'));assert 'Create a form' in html
+html,_=staff(web+'?/module',form_on(html,'?/module'));assert 'New form' in html
 name='Browser form '+key()
 html,url=staff(web+'?/create',replace(form_on(html,'?/create'),name=name,description='Tell us more',confirmation_message='Thanks from the browser test.'))
 form_id=url.rsplit('/',1)[-1];path=base+'/forms/'+form_id
