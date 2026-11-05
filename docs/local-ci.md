@@ -11,9 +11,10 @@ python3 scripts/ci_local.py --ref HEAD --port 58891
 
 The preflight snapshots the specified **commit**, excluding uncommitted edits,
 `.env`, local secrets, dependencies and existing databases. It checks the exact
-Node, pnpm and Rust versions against `.github/workflows/check.yml`, then runs its
-dependency installation, `make check test`, frontend build, Rust build, fresh
-Docker installation and full acceptance suite in order. It refuses to run if the
+Node, pnpm, Bun and Rust versions against `.github/workflows/check.yml`, then runs
+its dependency installation, concierge tests, `make check test`, frontend build,
+Google sign-in smoke, Rust build, fresh Docker installation, full acceptance suite
+and communications browser smoke in order. It refuses to run if the
 workflow command list or environment keys have changed without updating the runner.
 
 Each invocation gets a new `*-identity-check` Compose project and fresh volumes.
@@ -30,7 +31,7 @@ retained for diagnosis. They can consume substantial disk space; review the proj
 identity before removing old preflight resources. No remote workflow is triggered.
 
 Prerequisites are a running Docker engine with Compose, Python 3.9+, and the
-workflow's pinned Node, pnpm and Rust tools. The runner prefers tools installed in
+workflow's pinned Node, pnpm, Bun and Rust tools. The runner prefers tools installed in
 `.local/ci-tools/node-v<VERSION>-<PLATFORM>-<ARCH>/bin`,
 `.local/ci-tools/pnpm/node_modules/.bin`, and `~/.cargo/bin`, then checks PATH.
 It never upgrades global tools.

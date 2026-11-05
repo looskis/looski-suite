@@ -96,12 +96,15 @@ def main():
         # Fail closed if the workflow changes instead of silently skipping new steps.
         commands = re.findall(r'^\s+- run: (.+)$', workflow, re.MULTILINE)
         pnpm = json.loads((source / 'package.json').read_text())['packageManager']
-        expected = [f'npm install -g {pnpm}', 'pnpm install --frozen-lockfile',
-                    'make check test', 'pnpm build', 'cargo build --locked', 'make up', 'make acceptance']
+        expected = [f'npm install -g {pnpm}', 'pnpm install --frozen-lockfile', 'bun run test:concierge',
+                    'make check test', 'pnpm build', 'python3 scripts/google_oauth_smoke.py',
+                    'cargo build --locked', 'make up', 'make acceptance',
+                    'COMMUNICATIONS_BROWSER=1 python3 scripts/communications_smoke.py']
         if commands != expected:
             raise SystemExit('Workflow commands changed; update ci_local.py before claiming parity')
         node = re.search(r'node-version: ([\d.]+)', workflow).group(1)
         rust = re.search(r'dtolnay/rust-toolchain@([\d.]+)', workflow).group(1)
+        bun = re.search(r'bun-version: ([\d.]+)', workflow).group(1)
         # Avoid inheriting local mail, tunnel, Compose, API, or credential settings.
         keep = ('PATH', 'HOME', 'USER', 'TMPDIR', 'DOCKER_HOST', 'DOCKER_CONTEXT',
                 'DOCKER_CONFIG', 'RUSTUP_HOME', 'CARGO_HOME')
@@ -111,9 +114,10 @@ def main():
                       ROOT / '.local/ci-tools/pnpm/node_modules/.bin', Path.home() / '.cargo/bin']
         env['PATH'] = os.pathsep.join([*(str(path) for path in tool_paths if path.is_dir()), env.get('PATH', '')])
         versions = {name: output(name, '--version', cwd=source, env=env)
-                    for name in ('node', 'pnpm', 'rustc', 'cargo', 'python3')}
-        if versions['node'] != 'v' + node or versions['pnpm'] != pnpm.split('@')[1] or versions['rustc'].split()[1] != rust:
-            raise SystemExit(f'Expected Node {node}, {pnpm}, Rust {rust}; found {versions}. Adjust PATH and retry.')
+                    for name in ('node', 'pnpm', 'bun', 'rustc', 'cargo', 'python3')}
+        if (versions['node'] != 'v' + node or versions['pnpm'] != pnpm.split('@')[1]
+                or versions['bun'] != bun or versions['rustc'].split()[1] != rust):
+            raise SystemExit(f'Expected Node {node}, {pnpm}, Bun {bun}, Rust {rust}; found {versions}. Adjust PATH and retry.')
         versions['docker'] = output('docker', 'info', '--format', '{{.ServerVersion}} {{.Architecture}}', env=env)
         versions['compose'] = output('docker', 'compose', 'version', '--short', env=env)
         project = 'looski-local-' + stamp + '-identity-check'
@@ -154,8 +158,10 @@ def main():
         forwarder = None
         try:
             step('dependencies', ['pnpm', 'install', '--frozen-lockfile'])
+            step('concierge-tests', ['bun', 'run', 'test:concierge'])
             step('checks-and-tests', ['make', 'check', 'test'])
             step('web-build', ['pnpm', 'build'])
+            step('google-oauth-smoke', ['python3', 'scripts/google_oauth_smoke.py'])
             step('rust-build', ['cargo', 'build', '--locked'])
             stack_started = True
             step('fresh-install', ['make', 'up'])
@@ -166,6 +172,7 @@ def main():
                 print(report['adaptations'][0], flush=True)
                 save()
             step('acceptance', ['make', 'acceptance'])
+            step('communications-browser-smoke', ['env', 'COMMUNICATIONS_BROWSER=1', 'python3', 'scripts/communications_smoke.py'])
             report['result'] = 'passed'
         except (subprocess.CalledProcessError, OSError, RuntimeError, KeyboardInterrupt) as error:
             report['result'] = 'failed'
