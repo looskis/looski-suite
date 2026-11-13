@@ -134,8 +134,104 @@ pub(super) struct MediaArchiveArgs {
     change: ArchiveContent,
 }
 
+#[derive(Deserialize, JsonSchema)]
+pub(super) struct ContributorWorkspaceArgs {
+    workspace_id: Uuid,
+}
+#[derive(Deserialize, JsonSchema)]
+pub(super) struct SaveContributorArgs {
+    workspace_id: Uuid,
+    idempotency_key: String,
+    input: crate::cms::contributors::SaveContributor,
+}
+#[derive(Deserialize, JsonSchema)]
+pub(super) struct ReviewChangeArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    input: crate::cms::contributors::ReviewChange,
+}
+#[derive(Deserialize, JsonSchema)]
+pub(super) struct CoauthorSettingsArgs {
+    workspace_id: Uuid,
+    id: Uuid,
+    idempotency_key: String,
+    input: crate::cms::contributors::CoauthorSettings,
+}
 #[tool_router(router = cms_tools, vis = "pub(super)")]
 impl McpServer {
+    #[tool(
+        description = "cms writing access. Uses current permissions and explicit collection grants."
+    )]
+    async fn cms_writing_access(
+        &self,
+        Parameters(a): Parameters<ContributorWorkspaceArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.cms_writing_access(a.workspace_id).await)
+    }
+
+    #[tool(
+        description = "cms contributors. Uses current permissions and explicit collection grants."
+    )]
+    async fn cms_contributors(
+        &self,
+        Parameters(a): Parameters<ContributorWorkspaceArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.cms_contributors(a.workspace_id).await)
+    }
+
+    #[tool(
+        description = "save cms contributor. Uses current permissions and explicit collection grants."
+    )]
+    async fn save_cms_contributor(
+        &self,
+        Parameters(a): Parameters<SaveContributorArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .save_cms_contributor(a.workspace_id, &a.idempotency_key, &a.input)
+                .await,
+        )
+    }
+
+    #[tool(
+        description = "cms contribution events. Uses current permissions and explicit collection grants."
+    )]
+    async fn cms_contribution_events(
+        &self,
+        Parameters(a): Parameters<ContributorWorkspaceArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(self.client.cms_contribution_events(a.workspace_id).await)
+    }
+
+    #[tool(
+        description = "review cms contribution. Uses current permissions and explicit collection grants."
+    )]
+    async fn review_cms_contribution(
+        &self,
+        Parameters(a): Parameters<ReviewChangeArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .review_cms_contribution(a.workspace_id, a.id, &a.idempotency_key, &a.input)
+                .await,
+        )
+    }
+
+    #[tool(
+        description = "save cms coauthor. Uses current permissions and explicit collection grants."
+    )]
+    async fn save_cms_coauthor(
+        &self,
+        Parameters(a): Parameters<CoauthorSettingsArgs>,
+    ) -> Result<CallToolResult, ErrorData> {
+        business_result(
+            self.client
+                .save_cms_coauthor(a.workspace_id, a.id, &a.idempotency_key, &a.input)
+                .await,
+        )
+    }
+
     #[tool(description = "List content types.")]
     async fn list_cms_types(
         &self,

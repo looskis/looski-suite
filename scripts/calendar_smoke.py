@@ -70,7 +70,7 @@ try:
             sql((ROOT/'supabase/migrations/20261104000200_calendar_jobs.sql').read_text())
         if sql('SELECT version FROM suite.schema_version')=='39':
             sql((ROOT/'supabase/migrations/20261104000300_visitors.sql').read_text())
-        assert sql('SELECT version FROM suite.schema_version')=='40'
+        assert sql('SELECT version FROM suite.schema_version')=='41'
         forward="const net=require('net');for(const [port,host,target] of [[5432,'db',5432],[9999,'auth',9999]])net.createServer(c=>{const s=net.connect(target,host);c.pipe(s);s.pipe(c);s.on('error',()=>c.destroy());c.on('error',()=>s.destroy())}).listen(port,'0.0.0.0')"
         docker('run','--rm','-d','--name',proxy,'--network',project+'_default','-p','127.0.0.1::5432','-p','127.0.0.1::9999','--entrypoint','node',project+'-web:latest','-e',forward,stdout=subprocess.DEVNULL)
         ports=json.loads(subprocess.check_output(['docker','inspect',proxy,'--format','{{json .NetworkSettings.Ports}}']))

@@ -12,16 +12,31 @@ Restoring a revision copies it into the draft as a new revision and leaves what 
 
 ### Permissions
 
-All are workspace-wide and assignable in roles.
+Staff CMS permissions are workspace-wide and assignable in roles. `cms.contribute` is separately limited by explicit collection grants and ownership.
 
 | Permission | Grants |
 | --- | --- |
+| `cms.contribute` | Own entries, revisions and uploads in explicitly approved collections; no publication or schema management. |
 | `cms.read` | Content types, media and published entries. Unpublished entries do not exist to a member with only this; lists show published titles. |
 | `cms.drafts.read` | Drafts, previews and revision history. Editing and publishing also need it. |
 | `cms.entries.edit` | Create, edit, restore and archive drafts. |
 | `cms.entries.publish` | Publish and unpublish. Also required to archive a published entry, or to archive or restore a type with published entries, since those change what is live. |
 | `cms.types.manage` | Create, edit and archive content types. |
 | `cms.media.manage` | Register Files as media; edit and archive media. Registering also needs `files.read` on that file, including its record scope. |
+
+### Invited contributors and review
+
+Apply the contributor migration with the application update. In Content → Contributors, **Create a contributor role and invite** creates a minimal role: `workspace.read`, `cms.contribute`, and `files.create`/`files.read` with Assigned scope. Invite through Workspace access using that role. After acceptance, approve the member for the appropriate collection and enter their public author name. Do not add workspace-wide staff CMS, Files, CRM or administrative grants to this role. Existing invitation delivery and verified recipient acceptance remain the source of account access; approval here does not send another invitation.
+
+An invitation alone grants no article access. Contributors see their own entries, revisions, profile and uploads in approved collections. An administrator-assigned profile image is also readable by that contributor, without permission to edit the shared media. Removing a collection grant, suspending membership or revoking the role takes effect on the next request, including retries and direct API/CLI/MCP calls. Administrators can revoke collection grants after suspension or image withdrawal. Contributors cannot publish, change collection schemas, approve themselves, or archive media. Uploaded files and author images remain private until referenced by a published revision.
+
+The review flow is **Draft → Submitted → Changes requested / Published**. Save and preview first, then submit the saved revision. Submission locks it against editing and restoration. A contributor can withdraw; an editor can return it with feedback. Editors use the Review queue, preview the submitted revision and approve with the existing publishing permission. Approval rejects stale versions and collection-field changes rather than publishing unseen words. Existing live content stays unchanged while its revision is in progress. Contributed article revisions retain the public address and original publication time. In-app **Updates** shows the latest 50 submissions, feedback and publications; this does not send email.
+
+Author name, bio, profile media and the collection co-author are snapshotted into immutable revisions. Profile/configuration changes apply on the next save, with publication requiring review. For Looski Insights, open the collection and save the **Contributor co-author** preset: **Looski**, **Use the Looski logo**. This reuses `/brand/looski-mark.svg`; it is not enabled globally or retroactively for unrelated articles. Public pages and headless JSON expose `authors`, with each public image URL resolved on the Suite origin. Website adapters should render that array for both bylines and author images; the existing text `author` field, when present, is populated from trusted attribution for compatibility. Membership IDs and login email addresses are not public attribution.
+
+Browser, API, CLI and MCP share the same checks. CLI operations include `cms contributors`, `contributor-save`, `coauthor`, `review`, `contribution-events`, and `entry-list --review-state submitted`; mutations take JSON with `expected_version` and an idempotency key. Collection grant updates use version zero for creation. Authors can update only their own existing profile; administrators control access and collection assignment. The grant directory returns up to 100 records; large installations should manage grants by explicit member/collection IDs through the API.
+
+`scripts/cms_contributors_smoke.py` exercises real contributor and reviewer identities, collection/record/media isolation, direct and cursor reads, revision snapshots, stale saves, retries, publication, revocation, mixed action permissions, public author images and representative browser/CLI/MCP flows. It runs with the acceptance suite on an isolated installation.
 
 ### Public access
 
@@ -63,4 +78,4 @@ A one-off headless Chrome run on November 1, 2026 confirmed what those clients c
 
 Latency, measured once on an Apple M6 through the gateway on the local fixture, 200 sequential requests to one page with rich text, one image and one form: rendered page p50 3.3 ms and p95 4.3 ms; API read p50 1.3 ms and p95 1.6 ms. This excludes image transfer and any tunnel, and is not a load test. CMS adds no background work or service, and its whole-stack footprint was not measured separately.
 
-Not supported: a visual site builder, templates or themes (roadmap 19), custom domains or pretty site paths, scheduled publishing, approval workflows, comments, localization, inline images or forms inside rich text (media and forms are fields, rendered in field order), references between entries, nested Markdown lists or tables, public search, redirects from old addresses, rotating a public key, per-page passwords, image resizing, CDN caching (responses are `no-store`), and video or other media formats. Frames have a fixed minimum height and scroll rather than resizing to the form. Throttles are per client and in memory, as for Forms; a public media response holds up to 8 MiB in memory while it is sent.
+Not supported: a visual site builder, templates or themes (roadmap 19), custom domains or pretty site paths, scheduled publishing, public unsolicited submissions, email review notifications, comments, localization, inline images or forms inside rich text (media and forms are fields, rendered in field order), references between entries, nested Markdown lists or tables, public search, redirects from old addresses, rotating a public key, per-page passwords, image resizing, CDN caching (responses are `no-store`), and video or other media formats. Frames have a fixed minimum height and scroll rather than resizing to the form. Throttles are per client and in memory, as for Forms; a public media response holds up to 8 MiB in memory while it is sent.

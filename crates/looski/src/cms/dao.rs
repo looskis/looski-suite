@@ -9,13 +9,13 @@ use serde_json::{Map, Value};
 use sqlx::{PgConnection, types::Json};
 use uuid::Uuid;
 
-const TYPE: &str = "jsonb_build_object('id',t.id,'name',t.name,'description',t.description,'fields',t.fields,'public_key',t.public_key,'headless',t.headless,'archived',t.archived_at IS NOT NULL,
+const TYPE: &str = "jsonb_build_object('contribution_coauthor',t.contribution_coauthor,'id',t.id,'name',t.name,'description',t.description,'fields',t.fields,'public_key',t.public_key,'headless',t.headless,'archived',t.archived_at IS NOT NULL,
  'published_entries',(SELECT count(*) FROM cms.entries e WHERE e.workspace_id=t.workspace_id AND e.type_id=t.id AND e.published_revision_id IS NOT NULL),
  'version',t.version,'created_at',t.created_at::text,'updated_at',t.updated_at::text)";
 const MEDIA: &str = "jsonb_build_object('id',m.id,'file_id',m.file_id,'title',m.title,'alt_text',m.alt_text,'media_type',m.media_type,'filename',f.filename,'byte_length',f.byte_length,'archived',m.archived_at IS NOT NULL,'file_archived',f.archived_at IS NOT NULL,'version',m.version,'created_at',m.created_at::text,'updated_at',m.updated_at::text) FROM cms.media m JOIN files.files f ON f.workspace_id=m.workspace_id AND f.id=m.file_id";
-const REVISION: &str = "jsonb_build_object('id',r.id,'entry_id',r.entry_id,'number',r.number,'title',r.title,'slug',r.slug,'values',r.content,'fields',r.fields,'restored_from_number',r.restored_from_number,'created_at',r.created_at::text,'last_published_at',r.last_published_at::text)";
-const ENTRY: &str = "jsonb_build_object('id',e.id,'type_id',e.type_id,'type_name',t.name,'title',e.title,'slug',e.slug,'values',e.draft_values,
- 'head_number',h.number,'published',CASE WHEN p.id IS NULL THEN NULL ELSE jsonb_build_object('revision_id',p.id,'revision_number',p.number,'title',p.title,'slug',e.public_slug,'values',p.content,'published_at',e.published_at::text) END,
+const REVISION: &str = "jsonb_build_object('authors',r.authors,'id',r.id,'entry_id',r.entry_id,'number',r.number,'title',r.title,'slug',r.slug,'values',r.content,'fields',r.fields,'restored_from_number',r.restored_from_number,'created_at',r.created_at::text,'last_published_at',r.last_published_at::text)";
+const ENTRY: &str = "jsonb_build_object('authors',e.authors,'contributor_id',e.contributor_id,'review_state',e.review_state,'review_note',e.review_note,'id',e.id,'type_id',e.type_id,'type_name',t.name,'title',e.title,'slug',e.slug,'values',e.draft_values,
+ 'head_number',h.number,'published',CASE WHEN p.id IS NULL THEN NULL ELSE jsonb_build_object('authors',p.authors,'revision_id',p.id,'revision_number',p.number,'title',p.title,'slug',e.public_slug,'values',p.content,'published_at',e.published_at::text) END,
  'public_key',t.public_key,'type_archived',t.archived_at IS NOT NULL,'archived',e.archived_at IS NOT NULL,'version',e.version,'created_at',e.created_at::text,'updated_at',e.updated_at::text)
  FROM cms.entries e JOIN cms.content_types t ON t.workspace_id=e.workspace_id AND t.id=e.type_id
  JOIN LATERAL (SELECT number FROM cms.revisions x WHERE x.workspace_id=e.workspace_id AND x.entry_id=e.id ORDER BY number DESC LIMIT 1) h ON true
@@ -46,9 +46,10 @@ pub(super) async fn content_types(
     ws: Uuid,
     q: &ListContentTypes,
     limit: i64,
+    member: Option<Uuid>,
 ) -> Result<Vec<ContentType>, Error> {
     let sql = format!(
-        "SELECT {TYPE} FROM cms.content_types t WHERE t.workspace_id=$1 AND (t.archived_at IS NOT NULL)=$2 AND ($3::uuid IS NULL OR (t.created_at,t.id)>(SELECT created_at,id FROM cms.content_types WHERE workspace_id=$1 AND id=$3)) AND ($4::text IS NULL OR strpos(lower(t.name),lower($4))>0) ORDER BY t.created_at,t.id LIMIT $5"
+        "SELECT {TYPE} FROM cms.content_types t WHERE t.workspace_id=$1 AND (t.archived_at IS NOT NULL)=$2 AND ($3::uuid IS NULL OR (t.created_at,t.id)>(SELECT created_at,id FROM cms.content_types WHERE workspace_id=$1 AND id=$3)) AND ($4::text IS NULL OR strpos(lower(t.name),lower($4))>0) AND ($6::uuid IS NULL OR (EXISTS(SELECT 1 FROM cms.contributors c WHERE c.workspace_id=t.workspace_id AND c.type_id=t.id AND c.membership_id=$6 AND c.active))) ORDER BY t.created_at,t.id LIMIT $5"
     );
     Ok(
         sqlx::query_scalar::<_, Json<ContentType>>(sqlx::AssertSqlSafe(sql.as_str()))
@@ -57,6 +58,7 @@ pub(super) async fn content_types(
             .bind(q.after)
             .bind(&q.search)
             .bind(limit)
+            .bind(member)
             .fetch_all(db)
             .await?
             .into_iter()
@@ -145,8 +147,9 @@ pub(super) async fn summaries(
     q: &ListEntries,
     drafts: bool,
     limit: i64,
+    member: Option<Uuid>,
 ) -> Result<Vec<EntrySummary>, Error> {
-    let sql = "SELECT jsonb_build_object('id',e.id,'type_id',e.type_id,'type_name',t.name,
+    let sql = "SELECT jsonb_build_object('contributor_id',CASE WHEN $6 THEN e.contributor_id END,'review_state',CASE WHEN $6 THEN e.review_state ELSE '' END,'review_note',CASE WHEN $6 THEN e.review_note ELSE '' END,'id',e.id,'type_id',e.type_id,'type_name',t.name,
       'title',CASE WHEN $6 THEN e.title ELSE p.title END,'slug',CASE WHEN $6 THEN e.slug ELSE e.public_slug END,
       'published_revision_number',p.number,'published_slug',e.public_slug,
       'unpublished_changes',CASE WHEN $6 THEN p.id IS NULL OR p.number<>(SELECT max(number) FROM cms.revisions x WHERE x.workspace_id=e.workspace_id AND x.entry_id=e.id) ELSE false END,
@@ -157,7 +160,7 @@ pub(super) async fn summaries(
       AND ($3::uuid IS NULL OR (e.created_at,e.id)>(SELECT created_at,id FROM cms.entries WHERE workspace_id=$1 AND id=$3))
       AND ($4::uuid IS NULL OR e.type_id=$4)
       AND ($7::text IS NULL OR strpos(lower(CASE WHEN $6 THEN e.title ELSE p.title END),lower($7))>0)
-     ORDER BY e.created_at,e.id LIMIT $5";
+     AND ($8::uuid IS NULL OR (e.contributor_id=$8 AND EXISTS(SELECT 1 FROM cms.contributors c WHERE c.workspace_id=e.workspace_id AND c.type_id=e.type_id AND c.membership_id=$8 AND c.active))) AND ($9::text IS NULL OR (e.contributor_id IS NOT NULL AND e.review_state=$9 AND $6)) ORDER BY e.created_at,e.id LIMIT $5";
     Ok(sqlx::query_scalar::<_, Json<EntrySummary>>(sql)
         .bind(ws)
         .bind(q.archived.unwrap_or(false))
@@ -166,6 +169,8 @@ pub(super) async fn summaries(
         .bind(limit)
         .bind(drafts)
         .bind(&q.search)
+        .bind(member)
+        .bind(&q.review_state)
         .fetch_all(db)
         .await?
         .into_iter()
@@ -188,7 +193,7 @@ pub(super) async fn update_draft(
     id: Uuid,
     draft: &Draft,
 ) -> Result<(), Error> {
-    sqlx::query("UPDATE cms.entries SET title=$3,slug=$4,draft_values=$5,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2")
+    sqlx::query("UPDATE cms.entries SET title=$3,slug=$4,draft_values=$5,review_state='draft',submitted_revision_id=NULL,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2")
         .bind(ws).bind(id).bind(draft.title.trim()).bind(&draft.slug).bind(Json(&draft.values))
         .execute(db).await?;
     Ok(())
@@ -205,11 +210,21 @@ pub(super) async fn insert_revision(
     restored_from: Option<i32>,
     author: Uuid,
 ) -> Result<(Uuid, i32), Error> {
-    let (id, number): (Uuid, i32) = sqlx::query_as("INSERT INTO cms.revisions(workspace_id,entry_id,number,title,slug,content,fields,restored_from_number,created_by_membership_id)
-      SELECT $1,$2,COALESCE(max(number),0)+1,$3,$4,$5,$6,$7,$8 FROM cms.revisions WHERE workspace_id=$1 AND entry_id=$2 RETURNING id,number")
+    let (id, number): (Uuid, i32) = sqlx::query_as("INSERT INTO cms.revisions(workspace_id,entry_id,number,title,slug,content,fields,restored_from_number,created_by_membership_id,authors)
+      SELECT $1,$2,COALESCE(max(number),0)+1,$3,$4,$5,$6,$7,$8,(SELECT authors FROM cms.entries WHERE workspace_id=$1 AND id=$2) FROM cms.revisions WHERE workspace_id=$1 AND entry_id=$2 RETURNING id,number")
         .bind(ws).bind(entry).bind(draft.title.trim()).bind(&draft.slug).bind(Json(&draft.values)).bind(Json(fields)).bind(restored_from).bind(author)
         .fetch_one(&mut *db).await?;
-    for media_id in media {
+    let authors: Json<Vec<super::contributors::Author>> =
+        sqlx::query_scalar("SELECT authors FROM cms.entries WHERE workspace_id=$1 AND id=$2")
+            .bind(ws)
+            .bind(entry)
+            .fetch_one(&mut *db)
+            .await?;
+    let mut all_media = media.to_vec();
+    all_media.extend(authors.0.iter().filter_map(|a| a.media_id));
+    all_media.sort();
+    all_media.dedup();
+    for media_id in &all_media {
         sqlx::query(
             "INSERT INTO cms.revision_media(workspace_id,revision_id,media_id) VALUES($1,$2,$3)",
         )
@@ -300,7 +315,7 @@ pub(super) async fn publish(
     revision: Uuid,
     slug: &str,
 ) -> Result<(), Error> {
-    sqlx::query("UPDATE cms.entries SET published_revision_id=$3,public_slug=$4,published_at=now(),version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2")
+    sqlx::query("UPDATE cms.entries SET published_revision_id=$3,public_slug=$4,published_at=CASE WHEN contributor_id IS NOT NULL THEN COALESCE(published_at,now()) ELSE now() END,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2")
         .bind(ws).bind(entry).bind(revision).bind(slug).execute(&mut *db).await?;
     sqlx::query("UPDATE cms.revisions SET last_published_at=now() WHERE workspace_id=$1 AND id=$2")
         .bind(ws)
@@ -310,7 +325,7 @@ pub(super) async fn publish(
     Ok(())
 }
 pub(super) async fn unpublish(db: &mut PgConnection, ws: Uuid, entry: Uuid) -> Result<(), Error> {
-    sqlx::query("UPDATE cms.entries SET published_revision_id=NULL,public_slug=NULL,published_at=NULL,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2")
+    sqlx::query("UPDATE cms.entries SET published_revision_id=NULL,public_slug=NULL,published_at=NULL,review_state='draft',submitted_revision_id=NULL,version=version+1,updated_at=now() WHERE workspace_id=$1 AND id=$2")
         .bind(ws).bind(entry).execute(db).await?;
     Ok(())
 }
@@ -350,9 +365,10 @@ pub(super) async fn media_page(
     ws: Uuid,
     q: &ListMedia,
     limit: i64,
+    member: Option<Uuid>,
 ) -> Result<Vec<ContentMedia>, Error> {
     let sql = format!(
-        "SELECT {MEDIA} WHERE m.workspace_id=$1 AND (m.archived_at IS NOT NULL)=$2 AND ($3::uuid IS NULL OR (m.created_at,m.id)>(SELECT created_at,id FROM cms.media WHERE workspace_id=$1 AND id=$3)) AND ($4::text IS NULL OR strpos(lower(m.title),lower($4))>0) ORDER BY m.created_at,m.id LIMIT $5"
+        "SELECT {MEDIA} WHERE m.workspace_id=$1 AND (m.archived_at IS NOT NULL)=$2 AND ($3::uuid IS NULL OR (m.created_at,m.id)>(SELECT created_at,id FROM cms.media WHERE workspace_id=$1 AND id=$3)) AND ($4::text IS NULL OR strpos(lower(m.title),lower($4))>0) AND ($6::uuid IS NULL OR (m.contributor_id=$6)) ORDER BY m.created_at,m.id LIMIT $5"
     );
     Ok(
         sqlx::query_scalar::<_, Json<ContentMedia>>(sqlx::AssertSqlSafe(sql.as_str()))
@@ -361,6 +377,7 @@ pub(super) async fn media_page(
             .bind(q.after)
             .bind(&q.search)
             .bind(limit)
+            .bind(member)
             .fetch_all(db)
             .await?
             .into_iter()
@@ -466,6 +483,7 @@ pub(super) async fn public_entries(
         .bind(ws).bind(id).bind(after).bind(limit).fetch_all(db).await?.into_iter().map(|r| r.0).collect())
 }
 pub(super) struct PublishedRow {
+    pub authors: Vec<super::contributors::Author>,
     pub title: String,
     pub slug: String,
     pub published_at: String,
@@ -478,11 +496,12 @@ pub(super) async fn public_entry(
     id: Uuid,
     slug: &str,
 ) -> Result<PublishedRow, Error> {
-    let row = sqlx::query_as::<_, (String, String, String, Json<Vec<ContentField>>, Json<Map<String, Value>>)>(
-        "SELECT r.title,e.public_slug,e.published_at::text,r.fields,r.content FROM cms.entries e JOIN cms.revisions r ON r.workspace_id=e.workspace_id AND r.id=e.published_revision_id WHERE e.workspace_id=$1 AND e.type_id=$2 AND e.public_slug=$3",
+    let row = sqlx::query_as::<_, (String, String, String, Json<Vec<ContentField>>, Json<Map<String, Value>>, Json<Vec<super::contributors::Author>>)>(
+        "SELECT r.title,e.public_slug,e.published_at::text,r.fields,r.content,r.authors FROM cms.entries e JOIN cms.revisions r ON r.workspace_id=e.workspace_id AND r.id=e.published_revision_id WHERE e.workspace_id=$1 AND e.type_id=$2 AND e.public_slug=$3",
     )
     .bind(ws).bind(id).bind(slug).fetch_optional(db).await?.ok_or(Error::NotFound)?;
     Ok(PublishedRow {
+        authors: row.5.0,
         title: row.0,
         slug: row.1,
         published_at: row.2,

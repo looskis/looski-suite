@@ -12,6 +12,25 @@
 
 <article class="content-page">
   <h1>{page.title}</h1>
+  {#if page.authors?.length}
+    <div class="toolbar" aria-label="Authors">
+      {#each page.authors as author}
+        <span
+          >{#if author.image_url || author.media_id}<img
+              class="author-image"
+              src={author.media_id
+                ? mediaUrl(author.media_id)
+                : (author.image_url ?? '')}
+              alt=""
+              width="40"
+              height="40"
+            />{/if}<strong>{author.name}</strong>{#if author.bio}<span>
+              · {author.bio}</span
+            >{/if}</span
+        >
+      {/each}
+    </div>
+  {/if}
   {#if page.published_at}
     <p class="muted">Published {page.published_at.slice(0, 10)}</p>
   {/if}
@@ -60,6 +79,13 @@
 </article>
 
 <style>
+  .author-image {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+  }
   .content-page {
     overflow-wrap: anywhere;
   }

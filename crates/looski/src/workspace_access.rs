@@ -60,6 +60,7 @@ fn supported() -> Vec<Permission> {
         "forms.manage",
         "forms.submissions.read",
         "forms.recipes.manage",
+        "cms.contribute",
         "cms.read",
         "cms.drafts.read",
         "cms.types.manage",

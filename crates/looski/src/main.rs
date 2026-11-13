@@ -2010,6 +2010,27 @@ enum KnowledgeCommand {
 }
 #[derive(Subcommand)]
 enum CmsCommand {
+    WritingAccess,
+    Contributors,
+    ContributionEvents,
+    /// Reads SaveContributor JSON; zero expected_version creates a collection grant.
+    ContributorSave {
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    /// Reads ReviewChange JSON: submit, request_changes, or withdraw.
+    Review {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+    /// Reads CoauthorSettings JSON.
+    Coauthor {
+        id: uuid::Uuid,
+        #[arg(long)]
+        idempotency_key: String,
+    },
+
     TypeList {
         #[arg(long, default_value_t = 50)]
         limit: i64,
@@ -2044,6 +2065,8 @@ enum CmsCommand {
         restore: bool,
     },
     EntryList {
+        #[arg(long)]
+        review_state: Option<String>,
         #[arg(long, default_value_t = 50)]
         limit: i64,
         #[arg(long)]
@@ -5689,6 +5712,36 @@ async fn run() -> anyhow::Result<()> {
             }
             let client = ApiClient::new(&api_url)?.with_credentials(token_file)?;
             let result = match action {
+                CmsCommand::WritingAccess => {
+                    serde_json::to_value(client.cms_writing_access(workspace).await?)?
+                }
+                CmsCommand::Contributors => {
+                    serde_json::to_value(client.cms_contributors(workspace).await?)?
+                }
+                CmsCommand::ContributionEvents => {
+                    serde_json::to_value(client.cms_contribution_events(workspace).await?)?
+                }
+                CmsCommand::ContributorSave { idempotency_key } => serde_json::to_value(
+                    client
+                        .save_cms_contributor(workspace, &idempotency_key, &body()?)
+                        .await?,
+                )?,
+                CmsCommand::Review {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .review_cms_contribution(workspace, id, &idempotency_key, &body()?)
+                        .await?,
+                )?,
+                CmsCommand::Coauthor {
+                    id,
+                    idempotency_key,
+                } => serde_json::to_value(
+                    client
+                        .save_cms_coauthor(workspace, id, &idempotency_key, &body()?)
+                        .await?,
+                )?,
                 CmsCommand::TypeList {
                     limit,
                     after,
@@ -5742,6 +5795,7 @@ async fn run() -> anyhow::Result<()> {
                         .await?,
                 )?,
                 CmsCommand::EntryList {
+                    review_state,
                     limit,
                     after,
                     search,
@@ -5752,6 +5806,7 @@ async fn run() -> anyhow::Result<()> {
                         .cms_entries(
                             workspace,
                             &looski::cms::ListEntries {
+                                review_state,
                                 limit: Some(limit),
                                 after,
                                 search,
@@ -6049,8 +6104,8 @@ async fn run() -> anyhow::Result<()> {
             .fetch_one(&db)
             .await?;
             anyhow::ensure!(
-                schema == 40,
-                "Worker requires schema 40 but the database is at {schema}; apply migrations first"
+                schema == 41,
+                "Worker requires schema 41 but the database is at {schema}; apply migrations first"
             );
             let invitation_key =
                 std::fs::read_to_string(std::env::var("LOOSKI_INVITATION_KEY_FILE")?)?;

@@ -17,7 +17,19 @@ export const load: PageServerLoad = async (event) => {
   const search = event.url.searchParams.get('search') ?? '';
   const archived = event.url.searchParams.get('archived') === 'true';
   const typeId = event.url.searchParams.get('type') ?? '';
-  const base = { workspace, module, search, archived, typeId };
+  const reviewState = event.url.searchParams.get('review') ?? '';
+  const { writing } = await event.parent();
+  const pending = Boolean(writing?.contributor_only && !writing.can_edit);
+  const base = {
+    workspace,
+    module,
+    search,
+    archived,
+    typeId,
+    reviewState,
+    pending,
+  };
+  if (pending) return { ...base, page: null, types: [], key: randomUUID() };
   if (module && !module.enabled)
     return { ...base, page: null, types: [], key: randomUUID() };
   const [entries, types] = await Promise.all([
@@ -25,6 +37,7 @@ export const load: PageServerLoad = async (event) => {
       params: {
         path,
         query: {
+          review_state: reviewState || undefined,
           search: search || undefined,
           archived,
           type_id: typeId || undefined,

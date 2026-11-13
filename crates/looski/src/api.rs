@@ -101,7 +101,7 @@ async fn ready(State(state): State<AppState>) -> impl IntoResponse {
         )
         .fetch_one(&state.db)
         .await
-        .is_ok_and(|version| version == 40)
+        .is_ok_and(|version| version == 41)
     };
     let auth = async {
         state

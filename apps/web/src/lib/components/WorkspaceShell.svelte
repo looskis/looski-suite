@@ -32,7 +32,7 @@
   let mobileOpen = $state(false);
   const root = $derived(`/workspaces/${page.params.workspace}`);
   const email = $derived(page.data.accountEmail ?? 'Signed-in account');
-  const groups = [
+  const allGroups = [
     {
       label: 'Relationships',
       links: [
@@ -76,7 +76,22 @@
       ],
     },
   ] as const;
-  const links = groups.flatMap((group) => [...group.links]);
+  const groups = $derived(
+    page.data.writing?.contributor_only
+      ? ([
+          {
+            label: 'Writing',
+            links: [
+              { path: 'cms', label: 'My articles', icon: 'content' },
+              { path: 'cms/media', label: 'My uploads', icon: 'files' },
+              { path: 'cms/contributors', label: 'My profile', icon: 'people' },
+              { path: 'cms/activity', label: 'Updates', icon: 'inbox' },
+            ],
+          },
+        ] as const)
+      : allGroups,
+  );
+  const links = $derived(groups.flatMap((group) => [...group.links]));
   const active = $derived(
     [...links]
       .sort((a, b) => b.path.length - a.path.length)
