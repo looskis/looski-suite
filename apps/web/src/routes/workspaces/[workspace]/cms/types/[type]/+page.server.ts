@@ -29,6 +29,35 @@ export const load: PageServerLoad = async (event) => {
   };
 };
 export const actions: Actions = {
+  coauthor: async (event) => {
+    requireSameOrigin(event);
+    const { workspace, client } = await workspaceClient(
+      event,
+      event.params.workspace,
+    );
+    const form = await event.request.formData();
+    const result = await client.POST(
+      '/api/v1/workspaces/{workspace_id}/cms/types/{type_id}/coauthor',
+      {
+        params: {
+          path: { workspace_id: workspace.id, type_id: event.params.type },
+          header: {
+            'Idempotency-Key': String(form.get('idempotency_key') ?? ''),
+          },
+        },
+        body: {
+          expected_version: Number(form.get('expected_version')),
+          name: String(form.get('name') ?? ''),
+          use_looski_logo: form.get('use_looski_logo') === 'on',
+        },
+      },
+    );
+    if (!result.data)
+      return fail(result.response.status, {
+        message: result.error?.message ?? 'Could not save co-author',
+      });
+    redirect(303, event.url.pathname);
+  },
   // Every builder button submits the whole form, so no edit is ever lost.
   save: async (event) => {
     requireSameOrigin(event);

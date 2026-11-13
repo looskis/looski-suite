@@ -16,7 +16,11 @@
   let query = $state('');
   let selected = $state(0);
   const commands = $derived<Command[]>([
-    ...actionCommands(root),
+    ...actionCommands(root).filter((command) =>
+      links.some(
+        (link) => command.href === `${root}/${link.path}?action=create`,
+      ),
+    ),
     ...links.map((link) => ({
       id: `nav:${link.path}`,
       label: link.label,

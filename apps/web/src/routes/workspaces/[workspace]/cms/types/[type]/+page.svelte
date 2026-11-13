@@ -127,3 +127,41 @@
     >
   </form>
 </section>
+
+<section>
+  <h2>Contributor co-author</h2>
+  <p>
+    This co-author accompanies the contributor on new article revisions. Clear
+    the name to remove it.
+  </p>
+  <form method="POST" action="?/coauthor">
+    <input
+      type="hidden"
+      name="idempotency_key"
+      value={data.key + '-coauthor'}
+    />
+    <input type="hidden" name="expected_version" value={data.item.version} />
+    <label
+      >Name<input
+        name="name"
+        maxlength="120"
+        value={data.item.contribution_coauthor?.name ?? 'Looski'}
+      /></label
+    >
+    <label
+      ><input
+        type="checkbox"
+        name="use_looski_logo"
+        checked={!data.item.contribution_coauthor ||
+          Boolean(data.item.contribution_coauthor.image_url)}
+      /> Use the Looski logo</label
+    >
+    <img
+      src="/brand/looski-mark.svg"
+      width="48"
+      height="48"
+      alt="Looski logo"
+    />
+    <button>Save co-author</button>
+  </form>
+</section>

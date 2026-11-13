@@ -2,10 +2,91 @@
 //! CMS calls over the canonical HTTP API.
 use super::ApiClient;
 use crate::cms;
+use crate::cms::contributors::*;
 use reqwest::Method;
 use uuid::Uuid;
 
 impl ApiClient {
+    pub async fn cms_writing_access(&self, workspace: Uuid) -> anyhow::Result<WritingAccess> {
+        self.business(self.authenticated(
+            Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/cms/writing-access"),
+        )?)
+        .await
+    }
+
+    pub async fn cms_contributors(&self, workspace: Uuid) -> anyhow::Result<Vec<Contributor>> {
+        self.business(self.authenticated(
+            Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/cms/contributors"),
+        )?)
+        .await
+    }
+
+    pub async fn save_cms_contributor(
+        &self,
+        workspace: Uuid,
+        key: &str,
+        input: &SaveContributor,
+    ) -> anyhow::Result<Contributor> {
+        self.business(
+            self.authenticated(
+                Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/cms/contributors"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
+    pub async fn cms_contribution_events(
+        &self,
+        workspace: Uuid,
+    ) -> anyhow::Result<Vec<ContributionEvent>> {
+        self.business(self.authenticated(
+            Method::GET,
+            &format!("/api/v1/workspaces/{workspace}/cms/contribution-events"),
+        )?)
+        .await
+    }
+
+    pub async fn review_cms_contribution(
+        &self,
+        workspace: Uuid,
+        id: Uuid,
+        key: &str,
+        input: &ReviewChange,
+    ) -> anyhow::Result<cms::ContentEntry> {
+        self.business(
+            self.authenticated(
+                Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/cms/entries/{id}/review"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
+    pub async fn save_cms_coauthor(
+        &self,
+        workspace: Uuid,
+        id: Uuid,
+        key: &str,
+        input: &CoauthorSettings,
+    ) -> anyhow::Result<cms::ContentType> {
+        self.business(
+            self.authenticated(
+                Method::POST,
+                &format!("/api/v1/workspaces/{workspace}/cms/types/{id}/coauthor"),
+            )?
+            .header("Idempotency-Key", key)
+            .json(input),
+        )
+        .await
+    }
+
     pub async fn cms_types(
         &self,
         workspace: Uuid,

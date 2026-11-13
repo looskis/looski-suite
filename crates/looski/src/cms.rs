@@ -4,6 +4,7 @@
 //! those published revisions name; drafts, old revisions and private Files stay out
 //! of reach. Published text is rendered from typed structures, never stored HTML.
 pub mod content;
+pub mod contributors;
 mod dao;
 use crate::rich_text::RichBlock;
 use crate::{
@@ -21,6 +22,7 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct ContentType {
+    pub contribution_coauthor: Option<contributors::Author>,
     pub headless: bool,
     pub id: Uuid,
     pub name: String,
@@ -80,6 +82,8 @@ pub struct EntryDraft {
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct PublishedEntry {
+    #[serde(default)]
+    pub authors: Vec<contributors::Author>,
     pub revision_id: Uuid,
     pub revision_number: i32,
     pub title: String,
@@ -89,6 +93,15 @@ pub struct PublishedEntry {
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct ContentEntry {
+    #[serde(default)]
+    pub authors: Vec<contributors::Author>,
+    pub contributor_id: Option<Uuid>,
+    #[serde(default)]
+    #[schema(required = true)]
+    pub review_state: String,
+    #[serde(default)]
+    #[schema(required = true)]
+    pub review_note: String,
     pub id: Uuid,
     pub type_id: Uuid,
     pub type_name: String,
@@ -106,6 +119,9 @@ pub struct ContentEntry {
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct EntrySummary {
+    pub contributor_id: Option<Uuid>,
+    pub review_state: String,
+    pub review_note: String,
     pub id: Uuid,
     pub type_id: Uuid,
     pub type_name: String,
@@ -140,6 +156,7 @@ pub struct SaveEntry {
 #[derive(Default, Serialize, Deserialize, JsonSchema, IntoParams)]
 #[into_params(parameter_in=Query)]
 pub struct ListEntries {
+    pub review_state: Option<String>,
     pub limit: Option<i64>,
     pub after: Option<Uuid>,
     pub search: Option<String>,
@@ -153,6 +170,8 @@ pub struct EntryPage {
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct ContentRevision {
+    #[serde(default)]
+    pub authors: Vec<contributors::Author>,
     pub id: Uuid,
     pub entry_id: Uuid,
     pub number: i32,
@@ -255,6 +274,8 @@ pub struct PublicContentPage {
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct PublicDataEntry {
+    #[serde(default)]
+    pub authors: Vec<contributors::Author>,
     pub title: String,
     pub slug: String,
     pub published_at: String,
@@ -306,6 +327,8 @@ pub struct PublicField {
 }
 #[derive(Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct PublicPage {
+    #[serde(default)]
+    pub authors: Vec<contributors::Author>,
     pub headless: bool,
     pub title: String,
     pub slug: String,
@@ -319,6 +342,11 @@ pub struct PublicMediaBytes {
 /// Everything stored about an entry; `view` decides what a reader receives.
 #[derive(Serialize, Deserialize)]
 struct StoredEntry {
+    #[serde(default)]
+    authors: Vec<contributors::Author>,
+    contributor_id: Option<Uuid>,
+    review_state: String,
+    review_note: String,
     id: Uuid,
     type_id: Uuid,
     type_name: String,
@@ -345,6 +373,25 @@ fn view(entry: StoredEntry, drafts: bool) -> ContentEntry {
         .as_ref()
         .is_none_or(|p| p.revision_number != entry.head_number);
     ContentEntry {
+        authors: if drafts {
+            entry.authors
+        } else {
+            entry
+                .published
+                .as_ref()
+                .map_or_else(Vec::new, |p| p.authors.clone())
+        },
+        contributor_id: if drafts { entry.contributor_id } else { None },
+        review_state: if drafts {
+            entry.review_state
+        } else {
+            String::new()
+        },
+        review_note: if drafts {
+            entry.review_note
+        } else {
+            String::new()
+        },
         id: entry.id,
         type_id: entry.type_id,
         type_name: entry.type_name,
@@ -370,11 +417,26 @@ async fn authorize(
     actor: &ActorContext<'_>,
     action: &str,
 ) -> Result<access::Access, Error> {
-    let a = access::require(db, actor.identity, actor.workspace, action).await?;
-    if !a.workspace_wide {
-        return Err(Error::Forbidden);
-    }
     modules::require(db, actor.workspace, "cms").await?;
+    let a = match access::require(db, actor.identity, actor.workspace, action).await {
+        Ok(a) if a.workspace_wide => a,
+        Ok(_) | Err(Error::Forbidden)
+            if matches!(
+                action,
+                "cms.read" | "cms.drafts.read" | "cms.entries.edit" | "cms.media.manage"
+            ) =>
+        {
+            let mut a =
+                access::require(db, actor.identity, actor.workspace, "cms.contribute").await?;
+            if !contributors::has_grant(db, actor.workspace, a.membership_id).await? {
+                return Err(Error::Forbidden);
+            }
+            a.workspace_wide = false;
+            a
+        }
+        Ok(_) => return Err(Error::Forbidden),
+        Err(e) => return Err(e),
+    };
     Ok(a)
 }
 async fn may_read_drafts(db: &mut PgConnection, actor: &ActorContext<'_>) -> Result<bool, Error> {
@@ -392,8 +454,10 @@ async fn mutation(
 ) -> Result<access::Access, Error> {
     authorize(db, actor, action).await?;
     modules::lock_workspace(db, actor.workspace).await?;
-    authorize(db, actor, "cms.read").await?;
-    authorize(db, actor, action).await
+    let read = authorize(db, actor, "cms.read").await?;
+    let mut write = authorize(db, actor, action).await?;
+    write.workspace_wide &= read.workspace_wide;
+    Ok(write)
 }
 /// Editing and publishing both act on words, so both require reading them.
 async fn entry_mutation(
@@ -401,8 +465,11 @@ async fn entry_mutation(
     actor: &ActorContext<'_>,
     action: &str,
 ) -> Result<access::Access, Error> {
-    let write = mutation(db, actor, action).await?;
-    authorize(db, actor, "cms.drafts.read").await?;
+    let mut write = mutation(db, actor, action).await?;
+    write.workspace_wide &= authorize(db, actor, "cms.drafts.read")
+        .await?
+        .workspace_wide;
+    write.workspace_wide &= authorize(db, actor, "cms.read").await?.workspace_wide;
     Ok(write)
 }
 fn page_limit(limit: Option<i64>) -> Result<i64, Error> {
@@ -464,11 +531,18 @@ pub async fn list_types(
     let limit = page_limit(query.limit)?;
     search_limit(&query.search)?;
     let mut tx = pool.begin().await?;
-    authorize(&mut tx, actor, "cms.read").await?;
+    let access = authorize(&mut tx, actor, "cms.read").await?;
     if let Some(after) = query.after {
-        dao::content_type(&mut tx, actor.workspace, after, false).await?;
+        contributors::type_access(&mut tx, actor, after, "cms.read").await?;
     }
-    let mut items = dao::content_types(&mut tx, actor.workspace, &query, limit + 1).await?;
+    let mut items = dao::content_types(
+        &mut tx,
+        actor.workspace,
+        &query,
+        limit + 1,
+        (!access.workspace_wide).then_some(access.membership_id),
+    )
+    .await?;
     let next_cursor = if items.len() > limit as usize {
         items.pop();
         items.last().map(|t| t.id)
@@ -484,6 +558,7 @@ pub async fn get_type(
 ) -> Result<ContentType, Error> {
     let mut tx = pool.begin().await?;
     authorize(&mut tx, actor, "cms.read").await?;
+    contributors::type_access(&mut tx, actor, id, "cms.read").await?;
     dao::content_type(&mut tx, actor.workspace, id, false).await
 }
 pub async fn save_type(
@@ -622,15 +697,34 @@ pub async fn list_entries(
     actor: &ActorContext<'_>,
     query: ListEntries,
 ) -> Result<EntryPage, Error> {
+    if query.review_state.as_ref().is_some_and(|s| {
+        !["draft", "submitted", "changes_requested", "published"].contains(&s.as_str())
+    }) {
+        return Err(Error::Invalid("Unknown review state"));
+    }
     let limit = page_limit(query.limit)?;
     search_limit(&query.search)?;
     let mut tx = pool.begin().await?;
-    authorize(&mut tx, actor, "cms.read").await?;
+    let access = authorize(&mut tx, actor, "cms.read").await?;
     let drafts = may_read_drafts(&mut tx, actor).await?;
+    let draft_scope = if drafts {
+        Some(authorize(&mut tx, actor, "cms.drafts.read").await?)
+    } else {
+        None
+    };
+    let scoped = !access.workspace_wide || draft_scope.is_some_and(|a| !a.workspace_wide);
     if let Some(after) = query.after {
         visible(&mut tx, actor, after, drafts).await?;
     }
-    let mut items = dao::summaries(&mut tx, actor.workspace, &query, drafts, limit + 1).await?;
+    let mut items = dao::summaries(
+        &mut tx,
+        actor.workspace,
+        &query,
+        drafts,
+        limit + 1,
+        scoped.then_some(access.membership_id),
+    )
+    .await?;
     let next_cursor = if items.len() > limit as usize {
         items.pop();
         items.last().map(|e| e.id)
@@ -647,6 +741,10 @@ async fn visible(
     id: Uuid,
     drafts: bool,
 ) -> Result<ContentEntry, Error> {
+    contributors::entry_access(db, actor, id, "cms.read").await?;
+    if drafts {
+        contributors::entry_access(db, actor, id, "cms.drafts.read").await?;
+    }
     let entry = dao::entry(db, actor.workspace, id, false).await?;
     if !drafts && entry.published.is_none() {
         return Err(Error::NotFound);
@@ -682,6 +780,9 @@ async fn check_references(
         let Some(id) = content::reference(value) else {
             continue;
         };
+        if field.kind == ContentFieldKind::Media {
+            contributors::media_access(db, actor, id, "cms.read").await?;
+        }
         match field.kind {
             ContentFieldKind::Form if !forms::can_reference(db, actor, id).await? => {
                 return Err(Error::Invalid(
@@ -722,14 +823,25 @@ pub async fn create_entry(
     )
     .await?
     {
+        contributors::entry_access(&mut tx, actor, saved.id, "cms.entries.edit").await?;
         dao::entry(&mut tx, actor.workspace, saved.id, false).await?;
         return Ok(saved);
     }
+    contributors::type_access(&mut tx, actor, input.type_id, "cms.entries.edit").await?;
     let content_type = dao::content_type(&mut tx, actor.workspace, input.type_id, false).await?;
     if content_type.archived {
         return Err(Error::Conflict("Restore the content type first"));
     }
-    let values = content::validate_values(&content_type.fields, &input.values)?;
+    let mut values = content::validate_values(&content_type.fields, &input.values)?;
+    contributors::byline_values(
+        &mut tx,
+        actor.workspace,
+        input.type_id,
+        (!write.workspace_wide).then_some(write.membership_id),
+        &content_type.fields,
+        &mut values,
+    )
+    .await?;
     check_references(&mut tx, actor, &content_type.fields, &values, None).await?;
     let draft = Draft {
         title: input.title.trim().to_string(),
@@ -737,6 +849,9 @@ pub async fn create_entry(
         values,
     };
     let id = dao::insert_entry(&mut tx, actor.workspace, input.type_id, &draft).await?;
+    if !write.workspace_wide {
+        contributors::assign_entry(&mut tx, actor, id, input.type_id, write.membership_id).await?;
+    }
     dao::insert_revision(
         &mut tx,
         actor.workspace,
@@ -802,13 +917,22 @@ pub async fn update_entry(
     )
     .await?
     {
+        contributors::entry_access(&mut tx, actor, id, "cms.entries.edit").await?;
         dao::entry(&mut tx, actor.workspace, id, false).await?;
         return Ok(saved);
     }
+    contributors::entry_access(&mut tx, actor, id, "cms.entries.edit").await?;
     let current = dao::entry(&mut tx, actor.workspace, id, true).await?;
     if current.version != input.expected_version || current.archived || current.type_archived {
         return Err(Error::Conflict(
             "Entry changed or is archived; reload before editing",
+        ));
+    }
+    contributors::editable(&current)?;
+    if current.contributor_id.is_some() && current.published.is_some() && current.slug != input.slug
+    {
+        return Err(Error::Conflict(
+            "Published contributor articles keep their address",
         ));
     }
     let content_type = dao::content_type(&mut tx, actor.workspace, current.type_id, false).await?;
@@ -818,7 +942,16 @@ pub async fn update_entry(
         content_type.fields.iter().any(|f| &f.key == field)
             || current.values.get(field) != Some(value)
     });
-    let values = content::validate_values(&content_type.fields, &supplied)?;
+    let mut values = content::validate_values(&content_type.fields, &supplied)?;
+    contributors::byline_values(
+        &mut tx,
+        actor.workspace,
+        current.type_id,
+        current.contributor_id,
+        &content_type.fields,
+        &mut values,
+    )
+    .await?;
     check_references(
         &mut tx,
         actor,
@@ -832,8 +965,17 @@ pub async fn update_entry(
         slug: input.slug.clone(),
         values,
     };
+    let head = dao::head_revision(&mut tx, actor.workspace, id).await?;
+    contributors::refresh_authors(&mut tx, actor, id).await?;
+    let authors = dao::entry(&mut tx, actor.workspace, id, false)
+        .await?
+        .authors;
     // Saving nothing new adds no revision for people to wade through.
-    if draft.title != current.title || draft.slug != current.slug || draft.values != current.values
+    if draft.title != current.title
+        || draft.slug != current.slug
+        || draft.values != current.values
+        || head.fields != content_type.fields
+        || serde_json::to_value(&authors).ok() != serde_json::to_value(&head.authors).ok()
     {
         dao::update_draft(&mut tx, actor.workspace, id, &draft).await?;
         dao::insert_revision(
@@ -886,9 +1028,11 @@ pub async fn publish(
     )
     .await?
     {
+        contributors::entry_access(&mut tx, actor, id, "cms.entries.publish").await?;
         dao::entry(&mut tx, actor.workspace, id, false).await?;
         return Ok(saved);
     }
+    contributors::entry_access(&mut tx, actor, id, "cms.entries.publish").await?;
     let current = dao::entry(&mut tx, actor.workspace, id, true).await?;
     if current.version != input.expected_version {
         return Err(Error::Conflict("Entry changed; reload before publishing"));
@@ -902,6 +1046,7 @@ pub async fn publish(
     let head = dao::head_revision(&mut tx, actor.workspace, id).await?;
     let (values, _) = content::retained(&head.fields, &content_type.fields, &current.values);
     let new_revision = head.fields != content_type.fields || values != current.values;
+    contributors::publishable(&mut tx, actor.workspace, &current, head.id, new_revision).await?;
     if !new_revision
         && current
             .published
@@ -943,6 +1088,9 @@ pub async fn publish(
         head.id
     };
     dao::publish(&mut tx, actor.workspace, id, revision, &current.slug).await?;
+    if current.contributor_id.is_some() {
+        contributors::published(&mut tx, actor.workspace, id).await?;
+    }
     finish_entry(
         &mut tx,
         actor,
@@ -979,9 +1127,11 @@ pub async fn unpublish(
     )
     .await?
     {
+        contributors::entry_access(&mut tx, actor, id, "cms.entries.publish").await?;
         dao::entry(&mut tx, actor.workspace, id, false).await?;
         return Ok(saved);
     }
+    contributors::entry_access(&mut tx, actor, id, "cms.entries.publish").await?;
     let current = dao::entry(&mut tx, actor.workspace, id, true).await?;
     if current.version != input.expected_version {
         return Err(Error::Conflict("Entry changed; reload before unpublishing"));
@@ -1028,10 +1178,13 @@ pub async fn archive_entry(
     )
     .await?
     {
+        contributors::entry_access(&mut tx, actor, id, "cms.entries.edit").await?;
         dao::entry(&mut tx, actor.workspace, id, false).await?;
         return Ok(saved);
     }
+    contributors::entry_access(&mut tx, actor, id, "cms.entries.edit").await?;
     let current = dao::entry(&mut tx, actor.workspace, id, true).await?;
+    contributors::editable(&current)?;
     if current.version != input.expected_version {
         return Err(Error::Conflict("Entry changed; reload before editing"));
     }
@@ -1064,6 +1217,7 @@ pub async fn revisions(
     let mut tx = pool.begin().await?;
     authorize(&mut tx, actor, "cms.read").await?;
     authorize(&mut tx, actor, "cms.drafts.read").await?;
+    contributors::entry_access(&mut tx, actor, id, "cms.drafts.read").await?;
     dao::entry(&mut tx, actor.workspace, id, false).await?;
     if let Some(after) = query.after {
         dao::revision(&mut tx, actor.workspace, id, after).await?;
@@ -1086,6 +1240,7 @@ pub async fn revision(
     let mut tx = pool.begin().await?;
     authorize(&mut tx, actor, "cms.read").await?;
     authorize(&mut tx, actor, "cms.drafts.read").await?;
+    contributors::entry_access(&mut tx, actor, id, "cms.drafts.read").await?;
     dao::revision(&mut tx, actor.workspace, id, revision).await
 }
 /// Copy an earlier revision into the draft as a new revision. History is never
@@ -1112,28 +1267,45 @@ pub async fn restore_revision(
     )
     .await?
     {
+        contributors::entry_access(&mut tx, actor, id, "cms.entries.edit").await?;
         dao::entry(&mut tx, actor.workspace, id, false).await?;
         return Ok(saved);
     }
+    contributors::entry_access(&mut tx, actor, id, "cms.entries.edit").await?;
     let current = dao::entry(&mut tx, actor.workspace, id, true).await?;
     if current.version != input.expected_version || current.archived || current.type_archived {
         return Err(Error::Conflict(
             "Entry changed or is archived; reload before restoring",
         ));
     }
+    contributors::editable(&current)?;
     let source = dao::revision(&mut tx, actor.workspace, id, revision).await?;
     let content_type = dao::content_type(&mut tx, actor.workspace, current.type_id, false).await?;
-    let (values, dropped_fields) =
+    let (mut values, dropped_fields) =
         content::retained(&source.fields, &content_type.fields, &source.values);
+    contributors::byline_values(
+        &mut tx,
+        actor.workspace,
+        current.type_id,
+        current.contributor_id,
+        &content_type.fields,
+        &mut values,
+    )
+    .await?;
     let draft = Draft {
         title: source.title.clone(),
-        slug: source.slug.clone(),
+        slug: if current.contributor_id.is_some() && current.published.is_some() {
+            current.slug.clone()
+        } else {
+            source.slug.clone()
+        },
         values,
     };
     if draft.title == current.title && draft.slug == current.slug && draft.values == current.values
     {
         return Err(Error::Conflict("The draft already matches this revision"));
     }
+    contributors::refresh_authors(&mut tx, actor, id).await?;
     dao::update_draft(&mut tx, actor.workspace, id, &draft).await?;
     dao::insert_revision(
         &mut tx,
@@ -1180,11 +1352,18 @@ pub async fn list_media(
     let limit = page_limit(query.limit)?;
     search_limit(&query.search)?;
     let mut tx = pool.begin().await?;
-    authorize(&mut tx, actor, "cms.read").await?;
+    let access = authorize(&mut tx, actor, "cms.read").await?;
     if let Some(after) = query.after {
-        dao::media(&mut tx, actor.workspace, after, false).await?;
+        contributors::media_access(&mut tx, actor, after, "cms.read").await?;
     }
-    let mut items = dao::media_page(&mut tx, actor.workspace, &query, limit + 1).await?;
+    let mut items = dao::media_page(
+        &mut tx,
+        actor.workspace,
+        &query,
+        limit + 1,
+        (!access.workspace_wide).then_some(access.membership_id),
+    )
+    .await?;
     let next_cursor = if items.len() > limit as usize {
         items.pop();
         items.last().map(|m| m.id)
@@ -1200,6 +1379,7 @@ pub async fn get_media(
 ) -> Result<ContentMedia, Error> {
     let mut tx = pool.begin().await?;
     authorize(&mut tx, actor, "cms.read").await?;
+    contributors::media_access(&mut tx, actor, id, "cms.read").await?;
     dao::media(&mut tx, actor.workspace, id, false).await
 }
 /// Staff read of media bytes, including media no published page uses yet.
@@ -1211,6 +1391,7 @@ pub async fn media_content(
     use base64::{Engine, engine::general_purpose::STANDARD};
     let mut tx = pool.begin().await?;
     authorize(&mut tx, actor, "cms.read").await?;
+    contributors::media_access(&mut tx, actor, id, "cms.read").await?;
     let media = dao::media(&mut tx, actor.workspace, id, false).await?;
     let bytes = files::active_bytes(&mut tx, actor.workspace, media.file_id).await?;
     Ok(MediaContent {
@@ -1242,6 +1423,7 @@ pub async fn register_media(
     )
     .await?
     {
+        contributors::media_access(&mut tx, actor, saved.id, "cms.media.manage").await?;
         dao::media(&mut tx, actor.workspace, saved.id, false).await?;
         return Ok(saved);
     }
@@ -1266,6 +1448,14 @@ pub async fn register_media(
         &file.media_type,
     )
     .await?;
+    if !write.workspace_wide {
+        sqlx::query("UPDATE cms.media SET contributor_id=$3 WHERE workspace_id=$1 AND id=$2")
+            .bind(actor.workspace)
+            .bind(id)
+            .bind(write.membership_id)
+            .execute(&mut *tx)
+            .await?;
+    }
     reliability::audit(
         &mut tx,
         actor,
@@ -1311,10 +1501,13 @@ pub async fn update_media(
     )
     .await?
     {
+        contributors::media_access(&mut tx, actor, id, "cms.media.manage").await?;
         dao::media(&mut tx, actor.workspace, id, false).await?;
         return Ok(saved);
     }
+    contributors::media_access(&mut tx, actor, id, "cms.media.manage").await?;
     let current = dao::media(&mut tx, actor.workspace, id, true).await?;
+    if !write.workspace_wide && sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM cms.revision_media rm JOIN cms.entries e ON e.workspace_id=rm.workspace_id AND (e.published_revision_id=rm.revision_id OR e.submitted_revision_id=rm.revision_id) WHERE rm.workspace_id=$1 AND rm.media_id=$2)").bind(actor.workspace).bind(id).fetch_one(&mut *tx).await? { return Err(Error::Conflict("This image is published or in review; upload a new image for your revision")); }
     if current.version != input.expected_version {
         return Err(Error::Conflict("Media changed; reload before editing"));
     }
@@ -1353,6 +1546,9 @@ pub async fn archive_media(
 ) -> Result<ContentMedia, Error> {
     let mut tx = pool.begin().await?;
     let write = mutation(&mut tx, actor, "cms.media.manage").await?;
+    if !write.workspace_wide {
+        return Err(Error::Forbidden);
+    }
     let operation = format!("cms.media.archive:{id}");
     let request = serde_json::to_value(&input).expect("media serializes");
     if let Some(saved) = reliability::replay::<ContentMedia>(
@@ -1365,9 +1561,11 @@ pub async fn archive_media(
     )
     .await?
     {
+        contributors::media_access(&mut tx, actor, id, "cms.media.manage").await?;
         dao::media(&mut tx, actor.workspace, id, false).await?;
         return Ok(saved);
     }
+    contributors::media_access(&mut tx, actor, id, "cms.media.manage").await?;
     let current = dao::media(&mut tx, actor.workspace, id, true).await?;
     if current.version != input.expected_version {
         return Err(Error::Conflict("Media changed; reload before editing"));
@@ -1460,6 +1658,7 @@ pub async fn preview(
     let mut tx = pool.begin().await?;
     authorize(&mut tx, actor, "cms.read").await?;
     authorize(&mut tx, actor, "cms.drafts.read").await?;
+    contributors::entry_access(&mut tx, actor, id, "cms.drafts.read").await?;
     let entry = dao::entry(&mut tx, actor.workspace, id, false).await?;
     let content_type = dao::content_type(&mut tx, actor.workspace, entry.type_id, false).await?;
     let fields = render(
@@ -1470,6 +1669,7 @@ pub async fn preview(
     )
     .await?;
     Ok(PublicPage {
+        authors: entry.authors,
         headless: false,
         title: entry.title,
         slug: entry.slug,
@@ -1485,8 +1685,15 @@ pub async fn export_entries(
 ) -> Result<Value, Error> {
     let limit = page_limit(query.limit)?;
     let mut tx = pool.begin().await?;
-    authorize(&mut tx, actor, "cms.read").await?;
-    authorize(&mut tx, actor, "cms.drafts.read").await?;
+    if !authorize(&mut tx, actor, "cms.read").await?.workspace_wide {
+        return Err(Error::Forbidden);
+    }
+    if !authorize(&mut tx, actor, "cms.drafts.read")
+        .await?
+        .workspace_wide
+    {
+        return Err(Error::Forbidden);
+    }
     if let Some(after) = query.after {
         dao::entry(&mut tx, actor.workspace, after, false).await?;
     }
@@ -1581,6 +1788,7 @@ pub async fn public_data(
     for link in links {
         let row = dao::public_entry(&mut tx, identity.workspace, identity.id, &link.slug).await?;
         items.push(PublicDataEntry {
+            authors: contributors::public_authors(row.authors, key),
             title: row.title,
             slug: row.slug,
             published_at: row.published_at,
@@ -1596,6 +1804,7 @@ pub async fn public_entry(pool: &PgPool, key: &str, slug: &str) -> Result<Public
     let row = dao::public_entry(&mut tx, identity.workspace, identity.id, slug).await?;
     let fields = render(&mut tx, identity.workspace, &row.fields, &row.values).await?;
     Ok(PublicPage {
+        authors: contributors::public_authors(row.authors, key),
         headless: identity.headless,
         title: row.title,
         slug: row.slug,

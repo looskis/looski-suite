@@ -5,7 +5,7 @@
   const root = $derived(`/workspaces/${data.workspace.id}/cms`);
   const nextQuery = $derived(
     data.page?.next_cursor
-      ? `?${new URLSearchParams({ search: data.search, archived: String(data.archived), type: data.typeId, after: data.page.next_cursor })}`
+      ? `?${new URLSearchParams({ search: data.search, archived: String(data.archived), type: data.typeId, review: data.reviewState, after: data.page.next_cursor })}`
       : '',
   );
 </script>
@@ -13,9 +13,12 @@
 <svelte:head><title>Content · Looski</title></svelte:head>
 
 <div class="page-heading">
-  <h1>Content</h1>
+  <h1>{data.writing?.contributor_only ? 'My articles' : 'Content'}</h1>
   <div class="page-actions">
-    {#if data.page}<RecordDrawer title="New entry" error={Boolean(form?.input)}>
+    {#if data.page && data.writing?.can_edit}<RecordDrawer
+        title="New entry"
+        error={Boolean(form?.input)}
+      >
         {#if form?.message && form?.input}<p role="alert">
             {form.message}
           </p>{/if}
@@ -64,12 +67,20 @@
   <section class="index-list">
     <div class="toolbar">
       <nav class="view-tabs" aria-label="Entries views">
-        <a href="?" aria-current={!data.archived ? 'page' : undefined}
-          >All entries</a
+        <a
+          href="?"
+          aria-current={!data.archived && !data.reviewState
+            ? 'page'
+            : undefined}>All entries</a
         ><a
           href="?archived=true"
           aria-current={data.archived ? 'page' : undefined}>Archived</a
         >
+        {#if data.writing?.can_publish}<a
+            href="?review=submitted"
+            aria-current={data.reviewState === 'submitted' ? 'page' : undefined}
+            >Review queue</a
+          >{/if}
       </nav>
     </div>
     <form method="GET" class="inline">
@@ -85,6 +96,7 @@
         </select></label
       >
       <input type="hidden" name="archived" value={String(data.archived)} />
+      <input type="hidden" name="review" value={data.reviewState} />
       <button class="secondary">Search</button>
     </form>
     <div class="record-table">
@@ -101,6 +113,10 @@
               <td>{item.type_name}</td>
               <td>
                 {#if item.archived}Archived
+                {:else if item.contributor_id && item.review_state !== 'published'}{item.review_state.replaceAll(
+                    '_',
+                    ' ',
+                  )}
                 {:else if item.published_revision_number === null || item.published_revision_number === undefined}Draft
                 {:else if item.unpublished_changes}Published, with unpublished
                   changes
@@ -121,14 +137,18 @@
   </section>
 {:else}
   <section>
-    <h2>Content is turned off</h2>
-    <p>
-      Existing content is retained, and public pages stay closed until Content
-      is turned on. It works whether or not Forms or CRM are on.
-    </p>
+    {#if data.pending}<h2>Waiting for collection access</h2>
+      <p>
+        An editor needs to approve your collection before you can start writing.
+      </p>{:else}
+      <h2>Content is turned off</h2>
+      <p>
+        Existing content is retained, and public pages stay closed until Content
+        is turned on. It works whether or not Forms or CRM are on.
+      </p>{/if}
   </section>
 {/if}
-{#if data.module}
+{#if data.module && !data.writing?.contributor_only}
   <section>
     <h2>{data.module.enabled ? 'Content is enabled' : 'Enable Content'}</h2>
     <form method="POST" action="?/module">

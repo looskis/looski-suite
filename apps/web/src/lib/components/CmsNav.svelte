@@ -1,11 +1,28 @@
 <script lang="ts">
   import { page } from '$app/state';
   const root = $derived(`/workspaces/${page.params.workspace}/cms`);
-  const tabs = [
-    { path: '', label: 'Entries' },
-    { path: '/types', label: 'Content types' },
+  const tabs = $derived([
+    {
+      path: '',
+      label: page.data.writing?.contributor_only ? 'My articles' : 'Entries',
+    },
+    ...(page.data.writing?.can_manage_types
+      ? [{ path: '/types', label: 'Content types' }]
+      : []),
     { path: '/media', label: 'Media' },
-  ];
+    { path: '/activity', label: 'Updates' },
+    ...(page.data.writing?.contributor_only ||
+    page.data.writing?.can_manage_contributors
+      ? [
+          {
+            path: '/contributors',
+            label: page.data.writing?.contributor_only
+              ? 'My profile'
+              : 'Contributors',
+          },
+        ]
+      : []),
+  ]);
 </script>
 
 <nav aria-label="Content sections" class="toolbar">

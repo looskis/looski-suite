@@ -12,7 +12,12 @@
   const text = (key: string) =>
     input?.[`value.${key}`] ?? String(draft?.values[key] ?? '');
   const title = $derived(draft?.title ?? published?.title ?? '');
-  const editable = $derived(!data.entry.archived && !data.entry.type_archived);
+  const editable = $derived(
+    !data.entry.archived &&
+      !data.entry.type_archived &&
+      data.entry.review_state !== 'submitted' &&
+      data.writing?.can_edit,
+  );
 </script>
 
 <svelte:head><title>{title} · Content · Looski</title></svelte:head>
@@ -156,9 +161,10 @@
       {#if editable}
         <div class="toolbar">
           <button>Save draft</button>
-          <button class="secondary" formaction="?/saveAndPublish"
-            >Save and publish</button
-          >
+          {#if data.writing?.can_publish && !data.entry.contributor_id}<button
+              class="secondary"
+              formaction="?/saveAndPublish">Save and publish</button
+            >{/if}
         </div>
       {/if}
     </form>
@@ -173,7 +179,7 @@
         19,
       )}, at /{published.slug}.
     </p>
-    {#if draft}
+    {#if draft && data.writing?.can_publish}
       <form method="POST" action="?/unpublish">
         <input type="hidden" name="idempotency_key" value={data.key} />
         <input
@@ -186,7 +192,7 @@
     {/if}
   </section>
 {/if}
-{#if draft}
+{#if draft && data.writing?.can_edit && (!published || data.writing?.can_publish) && data.entry.review_state !== 'submitted'}
   <section>
     <h2>{data.entry.archived ? 'Restore' : 'Archive'}</h2>
     {#if !data.entry.archived && published}<p>
@@ -205,5 +211,61 @@
         >{data.entry.archived ? 'Restore entry' : 'Archive entry'}</button
       >
     </form>
+  </section>
+{/if}
+
+{#if data.entry.contributor_id && draft}
+  <section>
+    <h2>Editorial review</h2>
+    <p>Status: {data.entry.review_state.replaceAll('_', ' ')}</p>
+    {#if data.entry.review_note}<p role="status">
+        {data.entry.review_note}
+      </p>{/if}
+    <p>
+      Save and preview your changes before submitting. Submitted revisions stay
+      locked until returned or withdrawn.
+    </p>
+    {#if data.entry.authors?.length}<div class="toolbar" aria-label="Authors">
+        {#each data.entry.authors as author}<span
+            >{#if author.image_url}<img
+                src={author.image_url}
+                width="32"
+                height="32"
+                alt=""
+              />{/if}{author.name}</span
+          >{/each}
+      </div>{/if}
+    {#if !data.entry.archived && !data.entry.type_archived}
+      <form method="POST" action="?/review">
+        <input
+          type="hidden"
+          name="idempotency_key"
+          value={data.key + '-review'}
+        />
+        <input
+          type="hidden"
+          name="expected_version"
+          value={data.entry.version}
+        />
+        {#if data.entry.review_state === 'submitted'}
+          {#if data.writing?.can_publish}
+            <label
+              >Feedback<textarea name="note" maxlength="3000"></textarea></label
+            >
+            <button name="review_action" value="request_changes"
+              >Request changes</button
+            >
+            <button formaction="?/approve"
+              >Approve and publish this revision</button
+            >
+          {:else}<button name="review_action" value="withdraw"
+              >Withdraw to edit</button
+            >{/if}
+        {:else if data.entry.unpublished_changes && data.writing?.can_edit}<button
+            name="review_action"
+            value="submit">Submit saved revision for review</button
+          >{/if}
+      </form>
+    {/if}
   </section>
 {/if}

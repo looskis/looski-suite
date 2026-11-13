@@ -552,6 +552,38 @@ export interface paths {
         patch: operations["access_edit_role"];
         trace?: never;
     };
+    "/api/v1/workspaces/{workspace_id}/cms/contribution-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listCmsContributionEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/cms/contributors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listCmsContributors"];
+        put?: never;
+        post: operations["saveCmsContributor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspace_id}/cms/entries": {
         parameters: {
             query?: never;
@@ -626,6 +658,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["publishContentEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/cms/entries/{entry_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reviewCmsContribution"];
         delete?: never;
         options?: never;
         head?: never;
@@ -802,6 +850,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["archiveContentType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/cms/types/{type_id}/coauthor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["saveCmsCoauthor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspace_id}/cms/writing-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCmsWritingAccess"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4018,6 +4098,14 @@ export interface components {
         };
         /** @enum {string} */
         AssignmentRule: "initiator" | "context_owner" | "fixed";
+        Author: {
+            bio: string;
+            /** @description Only the bundled brand asset or a published CMS media path; never user HTML. */
+            image_url?: string | null;
+            /** Format: uuid */
+            media_id?: string | null;
+            name: string;
+        };
         Authorization: {
             /** @description One-time code. Display it to its owner; never put it in URLs or logs. */
             code: string;
@@ -4183,6 +4271,13 @@ export interface components {
             token_type: string;
             user: components["schemas"]["SessionUser"];
         };
+        CoauthorSettings: {
+            /** Format: int64 */
+            expected_version: number;
+            /** @description Empty removes the default co-author from future contributor drafts. */
+            name: string;
+            use_looski_logo?: boolean;
+        };
         Collect: {
             components?: components["schemas"]["BTreeMap"];
             consent: boolean;
@@ -4308,12 +4403,17 @@ export interface components {
         };
         ContentEntry: {
             archived: boolean;
+            authors?: components["schemas"]["Author"][];
+            /** Format: uuid */
+            contributor_id?: string | null;
             created_at: string;
             draft?: components["schemas"]["EntryDraft"] | null;
             /** Format: uuid */
             id: string;
             public_key: string;
             published?: components["schemas"]["PublishedEntry"] | null;
+            review_note: string;
+            review_state: string;
             type_archived: boolean;
             /** Format: uuid */
             type_id: string;
@@ -4353,6 +4453,7 @@ export interface components {
             version: number;
         };
         ContentRevision: {
+            authors?: components["schemas"]["Author"][];
             created_at: string;
             /** Format: uuid */
             entry_id: string;
@@ -4373,6 +4474,7 @@ export interface components {
         };
         ContentType: {
             archived: boolean;
+            contribution_coauthor?: components["schemas"]["Author"] | null;
             created_at: string;
             description: string;
             fields: components["schemas"]["ContentField"][];
@@ -4392,6 +4494,29 @@ export interface components {
             items: components["schemas"]["ContentType"][];
             /** Format: uuid */
             next_cursor?: string | null;
+        };
+        ContributionEvent: {
+            created_at: string;
+            /** Format: uuid */
+            entry_id: string;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            note: string;
+            title: string;
+        };
+        Contributor: {
+            active: boolean;
+            bio: string;
+            /** Format: uuid */
+            membership_id: string;
+            name: string;
+            /** Format: uuid */
+            photo_media_id?: string | null;
+            /** Format: uuid */
+            type_id: string;
+            /** Format: int64 */
+            version: number;
         };
         Conversation: {
             /** Format: uuid */
@@ -4846,11 +4971,15 @@ export interface components {
         EntrySummary: {
             archived: boolean;
             /** Format: uuid */
+            contributor_id?: string | null;
+            /** Format: uuid */
             id: string;
             public_key: string;
             /** Format: int32 */
             published_revision_number?: number | null;
             published_slug?: string | null;
+            review_note: string;
+            review_state: string;
             slug: string;
             title: string;
             /** Format: uuid */
@@ -5771,6 +5900,7 @@ export interface components {
             next_cursor?: string | null;
         };
         PublicDataEntry: {
+            authors?: components["schemas"]["Author"][];
             published_at: string;
             slug: string;
             title: string;
@@ -5801,6 +5931,7 @@ export interface components {
             next_cursor?: string | null;
         };
         PublicPage: {
+            authors?: components["schemas"]["Author"][];
             fields: components["schemas"]["PublicField"][];
             headless: boolean;
             published_at?: string | null;
@@ -5862,6 +5993,7 @@ export interface components {
             expected_version: number;
         };
         PublishedEntry: {
+            authors?: components["schemas"]["Author"][];
             published_at: string;
             /** Format: uuid */
             revision_id: string;
@@ -6042,6 +6174,14 @@ export interface components {
             expected_version: number;
             state: string;
         };
+        /** @enum {string} */
+        ReviewAction: "submit" | "request_changes" | "withdraw";
+        ReviewChange: {
+            action: components["schemas"]["ReviewAction"];
+            /** Format: int64 */
+            expected_version: number;
+            note?: string;
+        };
         RevisionPage: {
             items: components["schemas"]["ContentRevision"][];
             /** Format: uuid */
@@ -6183,6 +6323,22 @@ export interface components {
             /** @description Disable built-in HTML pages while retaining public JSON delivery. Omitted updates preserve the setting. */
             headless?: boolean | null;
             name: string;
+        };
+        SaveContributor: {
+            active: boolean;
+            bio?: string;
+            /**
+             * Format: int64
+             * @description Zero creates a grant; updates require the current version.
+             */
+            expected_version: number;
+            /** Format: uuid */
+            membership_id: string;
+            name: string;
+            /** Format: uuid */
+            photo_media_id?: string | null;
+            /** Format: uuid */
+            type_id: string;
         };
         SaveCoordinationRule: {
             archived?: boolean | null;
@@ -6888,6 +7044,13 @@ export interface components {
         Workspace: {
             id: string;
             name: string;
+        };
+        WritingAccess: {
+            can_edit: boolean;
+            can_manage_contributors: boolean;
+            can_manage_types: boolean;
+            can_publish: boolean;
+            contributor_only: boolean;
         };
     };
     responses: never;
@@ -9423,9 +9586,199 @@ export interface operations {
             };
         };
     };
+    listCmsContributionEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContributionEvent"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listCmsContributors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Contributor"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    saveCmsContributor: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveContributor"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Contributor"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     listContentEntries: {
         parameters: {
             query?: {
+                review_state?: string;
                 limit?: number;
                 after?: string;
                 search?: string;
@@ -9908,6 +10261,74 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    reviewCmsContribution: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewChange"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContentEntry"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10961,6 +11382,135 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    saveCmsCoauthor: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                workspace_id: string;
+                type_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoauthorSettings"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContentType"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getCmsWritingAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspace_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WritingAccess"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

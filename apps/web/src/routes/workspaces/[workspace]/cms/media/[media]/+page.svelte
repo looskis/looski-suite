@@ -48,22 +48,24 @@
     <button>Save</button>
   </form>
 </section>
-<section>
-  <h2>{data.item.archived ? 'Restore' : 'Archive'}</h2>
-  {#if !data.item.archived}<p>
-      Archiving removes this item from every public page at once. Pages regain
-      it when it is restored.
-    </p>{/if}
-  <form method="POST" action="?/archive">
-    <input type="hidden" name="idempotency_key" value={data.key} />
-    <input type="hidden" name="expected_version" value={data.item.version} />
-    <input
-      type="hidden"
-      name="archived"
-      value={data.item.archived ? 'false' : 'true'}
-    />
-    <button class="secondary"
-      >{data.item.archived ? 'Restore media' : 'Archive media'}</button
-    >
-  </form>
-</section>
+{#if !data.writing?.contributor_only}
+  <section>
+    <h2>{data.item.archived ? 'Restore' : 'Archive'}</h2>
+    {#if !data.item.archived}<p>
+        Archiving removes this item from every public page at once. Pages regain
+        it when it is restored.
+      </p>{/if}
+    <form method="POST" action="?/archive">
+      <input type="hidden" name="idempotency_key" value={data.key} />
+      <input type="hidden" name="expected_version" value={data.item.version} />
+      <input
+        type="hidden"
+        name="archived"
+        value={data.item.archived ? 'false' : 'true'}
+      />
+      <button class="secondary"
+        >{data.item.archived ? 'Restore media' : 'Archive media'}</button
+      >
+    </form>
+  </section>
+{/if}

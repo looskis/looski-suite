@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 use super::{ApiError, AppState, RequestId, source_interface, verified_identity};
+use crate::cms::contributors::{
+    self, CoauthorSettings, ContributionEvent, Contributor, ReviewChange, SaveContributor,
+    WritingAccess,
+};
 use crate::{
     application::{ActorContext, OperationError},
     cms::{
@@ -419,8 +423,95 @@ async fn public_media(
     );
     Ok(response)
 }
+
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/cms/writing-access",operation_id="getCmsWritingAccess",tag="cms",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path)),responses((status=200,body=WritingAccess),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError)))]
+async fn writing_access(
+    State(state): State<AppState>,
+    Path(workspace): Path<Uuid>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+) -> Result<Json<WritingAccess>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = actor(&identity, workspace, request_id, &headers);
+    Ok(Json(contributors::writing_access(&state.db, &actor).await?))
+}
+
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/cms/contributors",operation_id="listCmsContributors",tag="cms",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path)),responses((status=200,body=Vec<Contributor>),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError)))]
+async fn contributors_list(
+    State(state): State<AppState>,
+    Path(workspace): Path<Uuid>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+) -> Result<Json<Vec<Contributor>>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = actor(&identity, workspace, request_id, &headers);
+    Ok(Json(contributors::list(&state.db, &actor).await?))
+}
+
+#[utoipa::path(post,path="/api/v1/workspaces/{workspace_id}/cms/contributors",operation_id="saveCmsContributor",tag="cms",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=SaveContributor,responses((status=200,body=Contributor),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError)))]
+async fn contributors_save(
+    State(state): State<AppState>,
+    Path(workspace): Path<Uuid>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<SaveContributor>,
+) -> Result<Json<Contributor>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = actor(&identity, workspace, request_id, &headers);
+    Ok(Json(
+        contributors::save(&state.db, &actor, key(&headers)?, input).await?,
+    ))
+}
+
+#[utoipa::path(post,path="/api/v1/workspaces/{workspace_id}/cms/types/{type_id}/coauthor",operation_id="saveCmsCoauthor",tag="cms",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("type_id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=CoauthorSettings,responses((status=200,body=ContentType),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError)))]
+async fn coauthor(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<CoauthorSettings>,
+) -> Result<Json<ContentType>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = actor(&identity, workspace, request_id, &headers);
+    Ok(Json(
+        contributors::coauthor(&state.db, &actor, id, key(&headers)?, input).await?,
+    ))
+}
+
+#[utoipa::path(post,path="/api/v1/workspaces/{workspace_id}/cms/entries/{entry_id}/review",operation_id="reviewCmsContribution",tag="cms",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path),("entry_id"=Uuid,Path),("Idempotency-Key"=String,Header)),request_body=ReviewChange,responses((status=200,body=ContentEntry),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError)))]
+async fn review(
+    State(state): State<AppState>,
+    Path((workspace, id)): Path<(Uuid, Uuid)>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+    Json(input): Json<ReviewChange>,
+) -> Result<Json<ContentEntry>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = actor(&identity, workspace, request_id, &headers);
+    Ok(Json(
+        contributors::review(&state.db, &actor, id, key(&headers)?, input).await?,
+    ))
+}
+
+#[utoipa::path(get,path="/api/v1/workspaces/{workspace_id}/cms/contribution-events",operation_id="listCmsContributionEvents",tag="cms",security(("bearerAuth"=[])),params(("workspace_id"=Uuid,Path)),responses((status=200,body=Vec<ContributionEvent>),(status=400,body=ApiError),(status=401,body=ApiError),(status=403,body=ApiError),(status=404,body=ApiError),(status=409,body=ApiError)))]
+async fn contribution_events(
+    State(state): State<AppState>,
+    Path(workspace): Path<Uuid>,
+    headers: HeaderMap,
+    Extension(request_id): Extension<RequestId>,
+) -> Result<Json<Vec<ContributionEvent>>, Failure> {
+    let identity = verified_identity(&state, &headers).await?;
+    let actor = actor(&identity, workspace, request_id, &headers);
+    Ok(Json(contributors::events(&state.db, &actor).await?))
+}
+
 pub(super) fn routes() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
+        .routes(routes!(writing_access))
+        .routes(routes!(contributors_list, contributors_save))
+        .routes(routes!(coauthor))
+        .routes(routes!(review))
+        .routes(routes!(contribution_events))
         .routes(routes!(list_types, create_type))
         .routes(routes!(get_type, update_type))
         .routes(routes!(archive_type))

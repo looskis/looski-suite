@@ -99,6 +99,57 @@ async function change(
   );
 }
 export const actions: Actions = {
+  review: async (event) => {
+    requireSameOrigin(event);
+    const { workspace, client } = await workspaceClient(
+      event,
+      event.params.workspace,
+    );
+    const form = await event.request.formData();
+    const action = String(form.get('review_action'));
+    if (
+      action !== 'submit' &&
+      action !== 'withdraw' &&
+      action !== 'request_changes'
+    )
+      return fail(400, { message: 'Invalid review action' });
+    const result = await client.POST(
+      '/api/v1/workspaces/{workspace_id}/cms/entries/{entry_id}/review',
+      {
+        params: {
+          path: { workspace_id: workspace.id, entry_id: event.params.entry },
+          header: {
+            'Idempotency-Key': String(form.get('idempotency_key') ?? ''),
+          },
+        },
+        body: {
+          expected_version: Number(form.get('expected_version')),
+          action,
+          note: String(form.get('note') ?? ''),
+        },
+      },
+    );
+    if (!result.data)
+      return fail(result.response.status, {
+        message: result.error?.message ?? 'Could not update review',
+      });
+    redirect(303, event.url.pathname);
+  },
+  approve: async (event) => {
+    requireSameOrigin(event);
+    const form = await event.request.formData();
+    const result = await change(
+      event,
+      'publish',
+      String(form.get('idempotency_key') ?? ''),
+      version(form),
+    );
+    if (!result.data)
+      return fail(result.response.status, {
+        message: result.error?.message ?? 'Could not publish this revision',
+      });
+    redirect(303, event.url.pathname);
+  },
   save: async (event) => {
     requireSameOrigin(event);
     const form = await event.request.formData();
