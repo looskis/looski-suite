@@ -73,7 +73,14 @@ alice.call(cms + '/media?after=' + foreign_image['id'], expected=404)
 assert [m['id'] for m in alice.call(cms + '/media')['items']] == [image['id']]
 alice.call(cms + '/media/' + foreign_image['id'], 'PATCH', {'expected_version': 1, 'title': 'Stolen'}, expected=404)
 call(site + '/media/' + image['id'], expected=404, authenticated=False)
+# Admin-supplied profile photos are shared for reading, never for mutation.
+a = call(cms + '/contributors', 'POST', {'membership_id': alice.membership, 'type_id': t['id'], 'name': 'Alice', 'bio': a['bio'], 'photo_media_id': foreign_image['id'], 'active': True, 'expected_version': a['version']}, key=key())
+assert alice.call(cms + '/media/' + foreign_image['id'])['id'] == foreign_image['id']
+assert alice.call(cms + '/media/' + foreign_image['id'] + '/content')['content_base64'] == base64.b64encode(png).decode()
+a = alice.call(cms + '/contributors', 'POST', {**{k:v for k,v in a.items() if k!='version'}, 'expected_version': a['version']})
+alice.call(cms + '/media/' + foreign_image['id'], 'PATCH', {'expected_version': foreign_image['version'], 'title': 'Still not mine'}, expected=404)
 a = alice.call(cms + '/contributors', 'POST', {'membership_id': alice.membership, 'type_id': t['id'], 'name': 'Alice', 'bio': a['bio'], 'photo_media_id': image['id'], 'active': True, 'expected_version': a['version']})
+alice.call(cms + '/media/' + foreign_image['id'] + '/content', expected=404)
 def save(person, current, body='Updated article.', expected=200, **extra):
     return person.call(epath, 'PATCH', {'expected_version': current['version'], 'title': current['draft']['title'], 'slug': current['draft']['slug'], 'values': {'body': body}, **extra}, expected=expected)
 save(alice, entry, expected=404, values={'body':'Other image', 'hero':foreign_image['id']})
@@ -168,6 +175,15 @@ for path in [cms+'/entries',epath,epath+'/preview',epath+'/revisions',cms+'/medi
     alice.call(path,expected=403)
 assert 'Waiting for collection access' in web(root)[1]
 assert call(site+'/entries/'+later['published']['slug'],authenticated=False)['authors'][0]['name']=='Alice Updated'
+# Access can be revoked after suspension even when the profile image was archived.
+b = bob.call(cms + '/contributors', 'POST', {'membership_id': bob.membership, 'type_id': t['id'], 'name': 'Bob', 'bio': b['bio'], 'photo_media_id': foreign_image['id'], 'active': True, 'expected_version': b['version']})
+member_path = base + '/access/members/' + bob.membership
+member = call(member_path)
+call(member_path, 'PATCH', {'state': 'suspended', 'role_ids': [bob.role['id']], 'expected_version': member['version']}, key=key())
+call(cms + '/contributors', 'POST', {**{k:v for k,v in b.items() if k!='version'}, 'expected_version': b['version']}, expected=400, key=key())
+call(cms + '/media/' + foreign_image['id'] + '/archive', 'POST', {'expected_version': foreign_image['version'], 'archived': True}, key=key())
+revoked = call(cms + '/contributors', 'POST', {**{k:v for k,v in b.items() if k!='version'}, 'active': False, 'expected_version': b['version']}, key=key())
+assert not revoked['active']
 # New interfaces share the canonical API; no alternate authority path.
 assert f.cli(['cms','contributors'])
 assert not f.mcp('cms_contributors',{'workspace_id':f.workspace}).get('isError')

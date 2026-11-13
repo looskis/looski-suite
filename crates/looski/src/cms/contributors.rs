@@ -173,8 +173,10 @@ pub(super) async fn media_access(
             .workspace_wide;
     }
     a.workspace_wide &= authorize(db, actor, "cms.read").await?.workspace_wide;
-    if !a.workspace_wide && !sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM cms.media WHERE workspace_id=$1 AND id=$2 AND contributor_id=$3)")
-        .bind(actor.workspace).bind(id).bind(a.membership_id).fetch_one(db).await? { return Err(Error::NotFound); }
+    // An administrator may supply a writer's profile image. Sharing that image
+    // permits reading and retaining it, but never editing somebody else's media.
+    if !a.workspace_wide && !sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM cms.media WHERE workspace_id=$1 AND id=$2 AND contributor_id=$3) OR ($4 AND EXISTS(SELECT 1 FROM cms.contributors c JOIN cms.content_types t ON (t.workspace_id,t.id)=(c.workspace_id,c.type_id) WHERE c.workspace_id=$1 AND c.photo_media_id=$2 AND c.membership_id=$3 AND c.active AND t.archived_at IS NULL))")
+        .bind(actor.workspace).bind(id).bind(a.membership_id).bind(action == "cms.read").fetch_one(db).await? { return Err(Error::NotFound); }
     Ok(())
 }
 pub(super) async fn assign_entry(
@@ -459,9 +461,14 @@ pub async fn save(
     if current.as_ref().map_or(0, |c| c.version) != input.expected_version {
         return Err(Error::Conflict("Contributor changed; reload before saving"));
     }
-    access::require_active_member(&mut tx, actor.workspace, input.membership_id).await?;
+    // Suspension and withdrawn media must not prevent removing a grant.
+    if input.active {
+        access::require_active_member(&mut tx, actor.workspace, input.membership_id).await?;
+    }
     dao::content_type(&mut tx, actor.workspace, input.type_id, false).await?;
-    if let Some(id) = input.photo_media_id {
+    if let Some(id) = input.photo_media_id.filter(|_| {
+        input.active || current.as_ref().and_then(|c| c.photo_media_id) != input.photo_media_id
+    }) {
         media_access(&mut tx, actor, id, "cms.read").await?;
         if dao::known_media(&mut tx, actor.workspace, &[id], true).await? != 1 {
             return Err(Error::Invalid("Choose an active profile image"));
